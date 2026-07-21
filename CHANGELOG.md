@@ -226,7 +226,15 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Changed
 
-### Deprecated
+- **Docs: README scope corrected to the complete engine.** The status/scope block led with "Ships
+  **Phase 1**" and read as a phase-by-phase build ladder, understating the shipped surface. Rewritten to
+  state plainly that the **engine is complete** (identity resolver + `$translate`, CodeSystem load +
+  `$lookup`/`$validate-code`, ValueSet `compose`/`$expand`/binding, UCUM, the GEMs + SNOMED→ICD-10-CM
+  crosswalks, and the RxNorm drug graph) while keeping the two accurate caveats intact: **pre-alpha
+  `0.0.x`, not yet published to npm**, and **no code-system content is bundled** (BYO data; the
+  public-domain content packs are still to come). Added a "not on npm yet" note beside the `npm install`
+  line so the aspirational command is not mistaken for a live one. Docs-only — no API, version, or
+  runtime change.
 
 ### Removed
 

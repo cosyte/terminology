@@ -1,0 +1,5 @@
+---
+"@cosyte/terminology": patch
+---
+
+Docs: correct the README scope description. The status/scope block led with "Ships **Phase 1**" and read as a phase-by-phase build ladder, understating the shipped surface. Rewritten to state plainly that the **engine is complete** — the code-system identity resolver + ConceptMap `$translate`, the CodeSystem load layer + `$lookup`/`$validate-code`, ValueSet `compose`/`$expand`/binding, UCUM validation/canonicalization (official functional-test gate), the CMS GEMs + NLM SNOMED CT → ICD-10-CM crosswalks, and the RxNorm drug graph. Both accurate caveats are kept intact: **pre-alpha `0.0.x`, not yet published to npm**, and **no code-system content is bundled** (bring-your-own data; the public-domain content packs are still to come, blocked on getting a verbatim public-domain release into the build, not on engine work). Added a "not on npm yet" note beside the `npm install` line so the aspirational command is not mistaken for a live one. README ships in the package `files`, so this is a `patch` on the artifact; no API, version, or runtime change.
