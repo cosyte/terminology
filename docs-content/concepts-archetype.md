@@ -8,8 +8,9 @@ sidebar_position: 1
 
 `@cosyte/terminology` is a **terminology engine**, not a wire-format parser. It mirrors the FHIR
 **Terminology Module** — the industry's own architecture for keeping terminology a *swappable
-service* separate from the data that uses it — so its operations (`$translate` now; `$lookup`,
-`$validate-code`, `$expand` later) speak the FHIR shape every downstream tool already understands.
+service* separate from the data that uses it — so its operations (`$translate`, `$lookup`,
+`$validate-code`, and ValueSet `$expand` / binding now; UCUM and the published crosswalks later)
+speak the FHIR shape every downstream tool already understands.
 
 ## Bring-your-own data, engine-only
 
@@ -28,6 +29,13 @@ or map target.**
   any declared `group.unmapped` fallback mode — **never** a guessed target.
 - Every target `translate` returns is drawn **verbatim** from the supplied map.
 - An unrecognized code system resolves to a typed `unknown`, never a guessed URI.
+- A ValueSet `$expand` whose parts cannot all be computed (a missing code system, an unimplemented
+  filter, a truncated server expansion) returns `complete: false` with a typed
+  `TERM_VALUESET_CANNOT_EXPAND` / `TERM_VALUESET_EXPANSION_TRUNCATED` diagnostic — the `contains` set
+  is a **lower bound**, never a silently-empty membership.
+- ValueSet binding (`validateCodeInValueSet`) returns a **decided** `result` only when it can prove
+  membership; otherwise a typed `undetermined` — never a fabricated "not a member", because a false
+  negative on a binding is a clinical error.
 
 ## The never-invert invariant
 

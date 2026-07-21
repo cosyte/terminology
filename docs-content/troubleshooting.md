@@ -45,6 +45,31 @@ loaded partially and translating some codes while silently dropping others.
 Not through a forward map. Steward maps are directional and **non-invertible**, so `translate` only
 matches the map's source side. Reverse translation needs an explicit inverse `ConceptMap`.
 
+## `validateCodeInValueSet` returned `undetermined` — is my code a member or not?
+
+The engine could not **prove** membership either way, so it refuses to guess. This happens when a part
+of the value set cannot be evaluated: an intensional `filter`/`system` include whose code system you
+did not pass in the `ExpansionContext`, a referenced value set that is not supplied, an unimplemented
+filter operator (`regex` / `generalizes`), or a **truncated** pre-computed expansion. The result
+carries `code: "TERM_VALUESET_CANNOT_EXPAND"` and a `diagnostics` list naming each gap.
+
+```ts
+const r = validateCodeInValueSet(coding, valueSet, { codeSystems });
+if (r.undetermined) {
+  r.diagnostics; // each names the code system / value set it could not resolve
+}
+```
+
+Supply the missing `CodeSystem` (or referenced `ValueSet`) in the context and re-check. A truncated
+server expansion must be re-fetched in full — the engine never treats a truncated snapshot as complete
+membership (a false "not a member" is a clinical error).
+
+## `expand` returned `complete: false`
+
+The `contains` set is a **lower bound**, not exhaustive membership — some intensional part could not be
+computed (see above). Read the `diagnostics` for which code system or filter was missing; do **not**
+treat the partial `contains` as the whole value set.
+
 ## Diagnostics and logs
 
 Diagnostic and error `message` fields are **value-free** — they carry a stable code and, at most, a
@@ -53,12 +78,19 @@ context** can be PHI: never log the surrounding record.
 
 ## Known limitations (this release)
 
-> **Status:** `@cosyte/terminology` ships **Phase 1** — the code-system identity resolver and the
-> ConceptMap `$translate` engine.
+> **Status:** `@cosyte/terminology` ships through **Phase 3** — the code-system identity resolver, the
+> ConceptMap `$translate` engine, the CodeSystem load layer with `$lookup` / `$validate-code`, and the
+> ValueSet `compose` / `$expand` / binding operations.
 
-- **No CodeSystem content** — `translate` operates over the map's declared codes; `$lookup` /
-  `$validate-code` arrive in Phase 2.
-- **No value-set binding, no UCUM, no published crosswalks** yet (Phases 3–6).
+- **BYO data** — `$expand` and binding operate over the `CodeSystem` releases and referenced
+  `ValueSet`s you supply in the `ExpansionContext`; an intensional part with no supplied code system is
+  a typed `TERM_VALUESET_CANNOT_EXPAND`, never a fabricated member.
+- **Subsumption is the release's own hierarchy** — `is-a` / `descendent-of` read the loaded code
+  system's `parent` edges (nested `concept`s or an explicit `parent` property). Deep cross-release
+  subsumption is a later phase.
+- **Intensional filters are best-effort** — `is-a` / `descendent-of` / `is-not-a` / `=` / `in` /
+  `not-in` / `exists` are implemented; `regex` / `generalizes` surface as `TERM_VALUESET_CANNOT_EXPAND`.
+- **No UCUM, no published crosswalks** yet (Phases 4–6).
 - **No bundled SNOMED/CPT/UMLS/VSAC content** — ever; those are bring-your-own by license.
 
 The **API Reference** always reflects exactly what this release ships — treat it as the source of
