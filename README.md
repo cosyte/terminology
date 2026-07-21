@@ -13,10 +13,13 @@ canonical URI) are published facts, grounded firsthand and encoded.
 > **Status:** pre-alpha (`0.0.x`), not yet published to npm. Ships **Phase 1** — the code-system
 > identity resolver and the ConceptMap `$translate` engine — **Phase 2** — the CodeSystem load layer
 > (RRF / CSV / fixed-width / FHIR JSON) with `$lookup` and `$validate-code` — **Phase 3** — ValueSet
-> binding (`compose` / `$expand` / `$validate-code`) — and **Phase 4** — UCUM unit validation and
-> canonicalization (`validateUcum` / `ucumEqual`, recognition only, no magnitude conversion). Later
-> phases add the published crosswalks (SNOMED→ICD-10-CM, GEMs, the RxNorm graph) and the bundleable
-> public-domain packs.
+> binding (`compose` / `$expand` / `$validate-code`) — **Phase 4** — UCUM unit validation and
+> canonicalization (`validateUcum` / `ucumEqual`, recognition only, no magnitude conversion) — and
+> **Phase 5** — the crosswalk resolvers: the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
+> public-domain) and the NLM **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` /
+> `applyComplexMap`, BYO — zero SNOMED content bundled), both directional and never inverted, with
+> No-Map / combination-cluster / context-required outcomes typed, never fabricated. Later phases add
+> the RxNorm drug graph and the bundleable public-domain content packs (including a GEM pack).
 
 ## Install
 

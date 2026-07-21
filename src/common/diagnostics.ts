@@ -104,6 +104,38 @@ export const DIAGNOSTIC_CODES = {
    * `reason` is value-free (a grammar fault or an unknown-atom shape), never PHI.
    */
   TERM_UCUM_INVALID: "TERM_UCUM_INVALID",
+  /**
+   * A crosswalk source code has an **authored No-Map** — the steward declares it has no valid target
+   * in the other classification (a GEM `NoDx`/`NoPCS` sentinel, or a SNOMED complex-map `447638001`
+   * "cannot be classified" category). A **first-class typed outcome, never an error and never a
+   * guess** (the never-fabricate invariant, applied to crosswalks — roadmap §4.1). Distinct from
+   * {@link TERM_CROSSWALK_UNMAPPED}: the source *is* in the map, and the map says "no target".
+   */
+  TERM_CROSSWALK_NO_MAP: "TERM_CROSSWALK_NO_MAP",
+  /**
+   * A crosswalk source code is **absent from the map entirely** — not an authored No-Map, simply not
+   * present. Surfaced as a typed outcome (never a fabricated target, never a silent success), and
+   * kept distinct from {@link TERM_CROSSWALK_NO_MAP} so a caller can tell "the steward said no target"
+   * from "this code was not in the file".
+   */
+  TERM_CROSSWALK_UNMAPPED: "TERM_CROSSWALK_UNMAPPED",
+  /**
+   * A SNOMED→ICD-10-CM complex-map group's decision needs **patient context** (an `IFA` age band or
+   * gender) the caller did not supply. The engine surfaces the candidate rules + advice and **refuses
+   * to pick a branch** it lacks the data for (roadmap §4.1) — never a silently-chosen target.
+   */
+  TERM_CROSSWALK_CONTEXT_REQUIRED: "TERM_CROSSWALK_CONTEXT_REQUIRED",
+  /**
+   * A GEM file line was structurally unusable — not three whitespace-delimited fields, or a flag
+   * field that is not a 5-digit code. The row is **skipped and surfaced** as a load warning (liberal
+   * on load), never kept as a partially-parsed entry.
+   */
+  TERM_GEM_MALFORMED_ROW: "TERM_GEM_MALFORMED_ROW",
+  /**
+   * A SNOMED complex-map RF2 refset row was structurally unusable — missing its
+   * `referencedComponentId`/`mapGroup`/`mapPriority`. Skipped and surfaced, never partial.
+   */
+  TERM_COMPLEX_MAP_MALFORMED_ROW: "TERM_COMPLEX_MAP_MALFORMED_ROW",
 } as const;
 
 /**
@@ -143,6 +175,19 @@ export const FATAL_CODES = {
    * is the surfaced `TERM_VALUESET_CANNOT_EXPAND` diagnostic at expansion time.)
    */
   TERM_VALUESET_MALFORMED: "TERM_VALUESET_MALFORMED",
+  /**
+   * A crosswalk map *source* was structurally unusable — e.g. a SNOMED complex-map RF2 refset with
+   * empty content or a header missing a required column. Thrown rather than silently loading an empty
+   * or mis-keyed map. (Malformed individual **rows** are skipped-and-surfaced warnings, not fatals.)
+   */
+  TERM_CROSSWALK_MALFORMED: "TERM_CROSSWALK_MALFORMED",
+  /**
+   * An **inversion** of a directional crosswalk was requested — a forbidden operation. The GEMs and
+   * the SNOMED→ICD-10-CM map are authoritative in **one direction only**; a forward map is not the
+   * inverse of the backward map (roadmap §4.1). Thrown by {@link ../crosswalk/gems.invertGem} so the
+   * never-invert refusal is a first-class, discoverable contract rather than a silent absence.
+   */
+  TERM_MAP_NOT_INVERTIBLE: "TERM_MAP_NOT_INVERTIBLE",
 } as const;
 
 /**

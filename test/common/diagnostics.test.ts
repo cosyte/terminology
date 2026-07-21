@@ -15,11 +15,16 @@ describe("diagnostic + fatal code registries", () => {
     expect(sortedCodeSet(DIAGNOSTIC_CODES)).toMatchInlineSnapshot(`
       [
         "TERM_CODE_UNKNOWN",
+        "TERM_COMPLEX_MAP_MALFORMED_ROW",
         "TERM_CONCEPT_DEPRECATED",
         "TERM_CONCEPT_HEADER_NOT_BILLABLE",
+        "TERM_CROSSWALK_CONTEXT_REQUIRED",
+        "TERM_CROSSWALK_NO_MAP",
+        "TERM_CROSSWALK_UNMAPPED",
         "TERM_CSV_MALFORMED",
         "TERM_FHIR_CONCEPT_MALFORMED",
         "TERM_FIXED_WIDTH_MALFORMED",
+        "TERM_GEM_MALFORMED_ROW",
         "TERM_RRF_MALFORMED_ROW",
         "TERM_SYSTEM_UNRECOGNIZED",
         "TERM_TRANSLATE_UNMAPPED",
@@ -35,6 +40,8 @@ describe("diagnostic + fatal code registries", () => {
       [
         "TERM_CODESYSTEM_MALFORMED",
         "TERM_CONCEPTMAP_MALFORMED",
+        "TERM_CROSSWALK_MALFORMED",
+        "TERM_MAP_NOT_INVERTIBLE",
         "TERM_VALUESET_MALFORMED",
       ]
     `);

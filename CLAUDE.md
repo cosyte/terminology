@@ -54,8 +54,21 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
   derivative, no runtime file read; see `vendor/ucum/NOTICE.md`); the official `UcumFunctionalTests.xml`
   suite is the conformance gate (all 530 validation cases pass). Also exports `parseUcum` / `reduce` /
   `loadUcumEssence`. Zero deps.
-- **Deferred to later phases:** crosswalk resolvers SNOMED→ICD-10-CM/GEMs (P5); the RxNorm graph (P6);
-  bundleable public-domain packs (P7).
+- **Phase 5 shipped** (`TERMINOLOGY-5`): the **crosswalk resolvers** in `src/crosswalk/` — the
+  never-fabricate/never-invert invariant applied to the published directional reference maps. `loadGems`
+  - `applyGem` resolve the CMS **public-domain** ICD-9↔ICD-10 **GEMs** in their authored `direction`,
+    decoding the 5-position flag field (approximate | no-map | combination | scenario | choice-list,
+    grounded on the CMS Dx GEM guide/tech-doc): a 1:many source returns the full candidate set, a
+    combination source surfaces its scenario→choice-list clusters, a `NoDx` No-Map is typed
+    `TERM_CROSSWALK_NO_MAP`, an absent source the distinct `TERM_CROSSWALK_UNMAPPED`. `loadComplexMap` +
+    `applyComplexMap` resolve the NLM **SNOMED→ICD-10-CM complex map** (**BYO** — zero SNOMED content
+    bundled; structured rows or raw RF2): map groups are an AND, priorities an if-then-else of `IFA`
+    age/gender rules against caller `PatientContext`, a group needing absent context is typed
+    `TERM_CROSSWALK_CONTEXT_REQUIRED` (never a guessed branch), Map Advice + Categories ride through
+    verbatim. `invertGem` throws `TERM_MAP_NOT_INVERTIBLE` (never-invert as a first-class contract). No
+    map content bundled (GEMs BYO now / a future public-domain pack; SNOMED BYO forever). Zero deps.
+- **Deferred to later phases:** the RxNorm graph (P6); bundleable public-domain packs incl. a GEM pack
+  (P7).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

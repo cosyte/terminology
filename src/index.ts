@@ -45,8 +45,23 @@
  * - {@link parseUcum} / {@link reduce} / {@link loadUcumEssence} — the underlying grammar parser,
  *   dimensional reducer, and the in-memory model of the vendored, verbatim UCUM table.
  *
- * Deferred to later phases: the published crosswalk resolvers (SNOMED→ICD-10-CM, GEMs, the RxNorm
- * graph) and the bundleable public-domain packs.
+ * **Phase 5** adds the **crosswalk resolvers** — the never-fabricate/never-invert invariant applied
+ * to the published, directional reference maps (roadmap §4.1, the safety crown):
+ *
+ * - {@link loadGems} + {@link applyGem} — the CMS **ICD-9↔ICD-10 GEMs** (public-domain reference
+ *   mappings), honoring the steward's Approximate / No-Map / Combination (scenario→choice-list) flags.
+ *   A No-Map source is a typed {@link CrosswalkNoMap}; a 1:many source returns the full candidate set.
+ * - {@link loadComplexMap} + {@link applyComplexMap} — the NLM **SNOMED CT → ICD-10-CM complex map**
+ *   (BYO, SNOMED-licensed content — **zero bundled**), evaluating Map Group / Priority / `IFA` Rule /
+ *   Advice / Category against caller-supplied {@link PatientContext}; a rule needing context the
+ *   caller lacks is a typed {@link ComplexMapContextRequired}, never a guessed branch.
+ * - {@link invertGem} — the never-invert refusal made a first-class, thrown contract
+ *   ({@link FATAL_CODES.TERM_MAP_NOT_INVERTIBLE}).
+ *
+ * Deferred to later phases: the RxNorm drug relationship graph (Phase 6) and the bundleable
+ * public-domain content packs, including a bundled GEM pack (the content-packs phase). The GEMs are
+ * CMS public-domain, so a caller may supply the file today (BYO); SNOMED/CPT/UMLS content stays BYO
+ * permanently (a licensing wall — roadmap §5).
  *
  * @packageDocumentation
  */
@@ -191,3 +206,43 @@ export type {
   LinearReduction,
   SpecialReduction,
 } from "./ucum/types.js";
+
+// ── Crosswalk resolvers: ICD-9↔ICD-10 GEMs + SNOMED→ICD-10-CM complex map (never-fabricate) ───────
+export { loadGems, applyGem, invertGem, type GemSource } from "./crosswalk/gems.js";
+export {
+  loadComplexMap,
+  applyComplexMap,
+  COMPLEX_MAP_SOURCE_SYSTEM,
+  type ComplexMapInput,
+} from "./crosswalk/complex-map.js";
+export {
+  MAP_CATEGORIES,
+  NO_MAP_CATEGORIES,
+  ICD10CM_SYSTEM,
+  ICD9CM_SYSTEM,
+  SNOMEDCT_SYSTEM,
+  type MapCategoryId,
+} from "./crosswalk/categories.js";
+export type {
+  GemDirection,
+  GemFlags,
+  GemEntry,
+  GemMap,
+  GemLoadWarning,
+  GemChoiceList,
+  GemScenario,
+  GemMatched,
+  GemApplyResult,
+  ComplexMapEntry,
+  ComplexMap,
+  ComplexMapLoadWarning,
+  PatientContext,
+  ComplexMapGroupResult,
+  ComplexMapGroupResolved,
+  ComplexMapGroupNoMap,
+  ComplexMapContextRequired,
+  ComplexMapMatched,
+  ComplexMapApplyResult,
+  CrosswalkNoMap,
+  CrosswalkUnmapped,
+} from "./crosswalk/types.js";
