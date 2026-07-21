@@ -14,6 +14,40 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 5 — Crosswalk resolvers: ICD-9↔ICD-10 GEMs + SNOMED CT → ICD-10-CM complex map**
+  (`TERMINOLOGY-5`). The never-fabricate / never-invert invariant applied to the published,
+  **directional** reference maps — the safety crown (roadmap §4.1). Both stewards say these are _not_
+  crosswalks (CMS: _"GEMs are not crosswalks… reference mappings"_; NLM: _"semi-automated"_), so a hit
+  is a **candidate carrying the steward's flags**, never an equivalence and never a fabricated code.
+  - **`loadGems(source)` / `applyGem(map, code)`** — the CMS **public-domain** GEMs, loaded in their
+    authored `direction` (`"9-to-10"` / `"10-to-9"`) and applied only that way. Decodes the 5-position
+    flag field (**approximate | no-map | combination | scenario | choice-list**, grounded firsthand on
+    the CMS Dx GEM User's Guide / Technical Documentation) and carries it through verbatim. A **1:many**
+    source returns the **full** candidate set (never collapsed to one); a **combination** source
+    surfaces its scenario→choice-list structure so a caller can build valid clusters (one target per
+    choice list); a **`NoDx`** No-Map source is the typed `TERM_CROSSWALK_NO_MAP`; a source **absent**
+    from the file is the distinct `TERM_CROSSWALK_UNMAPPED`. Liberal on load (a malformed line is a
+    skipped, surfaced `TERM_GEM_MALFORMED_ROW`, never partial).
+  - **`loadComplexMap(input)` / `applyComplexMap(map, source, context)`** — the NLM SNOMED CT →
+    ICD-10-CM complex map, **BYO** (SNOMED is licensed — **zero** SNOMED content is bundled; the engine
+    ships only the rule machinery, roadmap §5). Accepts structured rows or a raw RF2 extended-map
+    refset. A source's **map groups are an AND** (a manifestation code _and_ an etiology code → two
+    groups, one resolution each); within a group, **priorities are an if-then-else** chain of `IFA`
+    rules evaluated against caller-supplied `PatientContext` (age band, gender). A group whose decision
+    needs context the caller did **not** supply is the typed `TERM_CROSSWALK_CONTEXT_REQUIRED` — the
+    candidate rules + Map Advice ride through, and the engine **refuses to pick a branch** it lacks the
+    data for. Map Categories (`447638001` cannot-classify → No-Map, `447639009` context-dependent,
+    `447640006` ambiguous) and Map Advice are carried verbatim.
+  - **`invertGem(map)`** — the never-invert refusal made a first-class, thrown contract: the forward
+    (9→10) and backward (10→9) GEM files are **separate, non-inverse** artifacts, so an inversion
+    request always throws `TERM_MAP_NOT_INVERTIBLE` rather than fabricate a transpose.
+  - **New stable codes** (additions-only): diagnostics `TERM_CROSSWALK_NO_MAP`,
+    `TERM_CROSSWALK_UNMAPPED`, `TERM_CROSSWALK_CONTEXT_REQUIRED`, `TERM_GEM_MALFORMED_ROW`,
+    `TERM_COMPLEX_MAP_MALFORMED_ROW`; fatals `TERM_CROSSWALK_MALFORMED`, `TERM_MAP_NOT_INVERTIBLE`.
+  - **No map content bundled.** The GEMs are CMS public-domain, so a caller may supply the file today
+    (BYO); bundling a public-domain GEM pack is deferred to the content-packs phase. SNOMED/CPT/UMLS
+    stay BYO permanently (a licensing wall — roadmap §5). Property + unit tests lock the
+    never-fabricate / never-invert / No-Map / context-required invariants. Zero runtime dependencies.
 - **Phase 4 — UCUM: grammar parser + `validateUcum` + `ucumEqual`** (`TERMINOLOGY-4`). Unit
   recognition, validation, and **representation canonicalization only** — **no** magnitude conversion
   (`mg/dL` → `mmol/L` needs an analyte's molar mass, a clinical computation the engine refuses;

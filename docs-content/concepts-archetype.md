@@ -9,8 +9,8 @@ sidebar_position: 1
 `@cosyte/terminology` is a **terminology engine**, not a wire-format parser. It mirrors the FHIR
 **Terminology Module** — the industry's own architecture for keeping terminology a *swappable
 service* separate from the data that uses it — so its operations (`$translate`, `$lookup`,
-`$validate-code`, and ValueSet `$expand` / binding now; UCUM and the published crosswalks later)
-speak the FHIR shape every downstream tool already understands.
+`$validate-code`, ValueSet `$expand` / binding, UCUM unit validation, and the published crosswalk
+resolvers) speak the FHIR shape every downstream tool already understands.
 
 ## Bring-your-own data, engine-only
 
@@ -42,7 +42,34 @@ or map target.**
 Real steward maps (SNOMED→ICD-10-CM, the GEMs) are approximate, 1:many, and **non-invertible**.
 `translate` reads a map in its **authored direction only** — it matches a source coding against the
 map's *source-side* codes and never against targets — so a directional map cannot be run backwards.
-Reverse translation requires an explicit inverse map; it is never synthesized.
+Reverse translation requires an explicit inverse map; it is never synthesized. The CMS GEMs make this
+explicit: the forward (9→10) and backward (10→9) files are **separate artifacts**, and `invertGem`
+throws `TERM_MAP_NOT_INVERTIBLE` rather than fabricate a transpose.
+
+## The crosswalk resolvers
+
+The published reference maps are the library's highest-risk surface, and the stewards say so in as
+many words — CMS: *"GEMs are not crosswalks. They are reference mappings"*; NLM: the SNOMED→ICD-10-CM
+map is *"semi-automated."* The resolvers honour that.
+
+- **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`) — CMS **public-domain**. Each entry carries the
+  steward's 5-position flags (**approximate | no-map | combination | scenario | choice-list**),
+  surfaced verbatim. A 1:many source returns the **whole** candidate set; a combination source
+  surfaces its scenario→choice-list structure so a caller can build valid clusters (one target per
+  choice list); a `NoDx` **No-Map** source is the typed `TERM_CROSSWALK_NO_MAP`, distinct from a
+  source simply **absent** from the file (`TERM_CROSSWALK_UNMAPPED`).
+- **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` / `applyComplexMap`) — **BYO** (SNOMED is
+  licensed; the engine bundles **zero** SNOMED content, only the rule machinery). A source's **map
+  groups** are an AND (a manifestation code *and* an etiology code → two groups); within a group,
+  **priorities** are an if-then-else chain of `IFA` rules evaluated against caller-supplied
+  `PatientContext` (age band, gender). A group whose decision needs context the caller did **not**
+  supply is the typed `TERM_CROSSWALK_CONTEXT_REQUIRED` — the candidate rules and Map Advice ride
+  through, and the engine refuses to pick a branch it lacks the data for. Steward Map Categories
+  (`447638001` cannot-classify, `447639009` context-dependent, `447640006` ambiguous) are carried
+  verbatim.
+
+Both are **directional and never inverted**, and both extend the same never-fabricate rule: a
+crosswalk never invents a target, and "No-Map" is a first-class typed outcome, never an empty success.
 
 ## Liberal load, conservative assertion
 

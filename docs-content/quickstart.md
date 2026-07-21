@@ -166,9 +166,72 @@ const check = validateCodeInValueSet({ system: "http://example.org/cs", code: "x
 check.undetermined; // => true
 ```
 
+## Crosswalk between classifications (ICD-9↔ICD-10 GEMs)
+
+The CMS **GEMs** are *public-domain* reference mappings between ICD-9-CM and ICD-10-CM. Load the file
+(bring-your-own — it is a free CMS download) in its authored direction and apply it. A 1:many source
+returns the **full** candidate set; a No-Map source is a typed outcome, never a fabricated code.
+
+```ts runnable
+import { loadGems, applyGem } from "@cosyte/terminology";
+
+// Synthetic rows in the CMS GEM format: `source target flags` (flags: approximate|no-map|combination|scenario|choice-list).
+const gems = loadGems({
+  direction: "9-to-10",
+  version: "2018",
+  content: "25000 E119 10000\nV290 NoDx 11000\n",
+});
+
+const hit = applyGem(gems, "25000");
+hit.mapped; // => true
+```
+
+A source the steward marked **No-Map** is surfaced as a typed result — never a guessed target:
+
+```ts runnable
+import { loadGems, applyGem } from "@cosyte/terminology";
+
+const gems = loadGems({ direction: "9-to-10", content: "V290 NoDx 11000\n" });
+const r = applyGem(gems, "V290");
+!r.mapped && r.noMap && r.code; // => "TERM_CROSSWALK_NO_MAP"
+```
+
+The forward (9→10) and backward (10→9) GEM files are **separate, non-inverse** artifacts — asking the
+engine to invert one throws, by design:
+
+```ts runnable throws
+import { loadGems, invertGem } from "@cosyte/terminology";
+
+const gems = loadGems({ direction: "9-to-10", content: "0010 A000 00000\n" });
+invertGem(gems); // throws TERM_MAP_NOT_INVERTIBLE
+```
+
+## Resolve a SNOMED CT → ICD-10-CM complex map (BYO)
+
+The NLM SNOMED→ICD-10-CM map is *rule-based* and **context-dependent**. The engine ships the rule
+machinery; the map rows are **yours** (SNOMED is licensed — the engine bundles zero SNOMED content).
+Each map group resolves against the patient context you supply; a rule needing context you did **not**
+supply is surfaced as `context-required`, never a guessed branch.
+
+```ts runnable
+import { loadComplexMap, applyComplexMap } from "@cosyte/terminology";
+
+const map = loadComplexMap({
+  format: "rows",
+  rows: [
+    { source: "72098002", group: 1, priority: 1, rule: "IFA 248152002 | Female (finding) |", advice: "MAP IS CONTEXT DEPENDENT FOR GENDER", target: "O00.9", category: "447639009" },
+    { source: "72098002", group: 1, priority: 2, rule: "OTHERWISE TRUE", advice: "CANNOT BE CLASSIFIED WITHOUT GENDER", category: "447638001" },
+  ],
+});
+
+// No gender in context ⇒ the engine refuses to pick a branch.
+const stalled = applyComplexMap(map, "72098002", {});
+stalled.mapped && stalled.groups[0]?.outcome; // => "context-required"
+```
+
 > **About runnable examples.** Blocks tagged ```` ```ts runnable ```` are extracted, run against the
 > package, and their `// =>` results asserted — so a documented example can never silently drift from
-> the code.
+> the code. A ```` ```ts runnable throws ```` block must throw.
 
 ## Next
 
