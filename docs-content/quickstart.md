@@ -7,9 +7,9 @@ sidebar_position: 1
 # Quickstart
 
 `@cosyte/terminology` is a **terminology engine**, not a wire parser: it answers FHIR terminology
-questions over **consumer-supplied** resources. This release ships two of them — the code-system
-identity resolver and the ConceptMap `$translate` engine — with one non-negotiable rule: **it never
-fabricates a code**.
+questions over **consumer-supplied** resources — the code-system identity resolver, the ConceptMap
+`$translate` engine, and the CodeSystem `$lookup` / `$validate-code` operations — with one
+non-negotiable rule: **it never fabricates a code**.
 
 ## Resolve a code system to its canonical URI
 
@@ -63,6 +63,42 @@ const map = loadConceptMap({ resourceType: "ConceptMap", group: [] });
 const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
 
 result.unmapped; // => true
+```
+
+## Look up a code in a code system
+
+Load a **consumer-supplied** release (RRF, CSV, fixed-width, or a FHIR `CodeSystem` JSON — the engine
+ships zero copyrighted content) and resolve a code to its display and status. An unknown code is a
+typed `{ found: false }`, never a fabricated display.
+
+```ts runnable
+import { loadCodeSystem, lookup } from "@cosyte/terminology";
+
+const cs = loadCodeSystem({
+  format: "fhir",
+  resource: {
+    resourceType: "CodeSystem",
+    url: "http://example.org/labs",
+    concept: [{ code: "2160-0", display: "Creatinine [Mass/volume] in Serum or Plasma" }],
+  },
+});
+
+const hit = lookup(cs, "2160-0");
+hit.found ? hit.display : "?"; // => "Creatinine [Mass/volume] in Serum or Plasma"
+```
+
+An unknown code never yields a guessed display:
+
+```ts runnable
+import { loadCodeSystem, lookup, validateCode } from "@cosyte/terminology";
+
+const cs = loadCodeSystem({
+  format: "fhir",
+  resource: { resourceType: "CodeSystem", concept: [{ code: "A", display: "Alpha" }] },
+});
+
+lookup(cs, "ZZZ").found; // => false
+validateCode(cs, "ZZZ").valid; // => false
 ```
 
 > **About runnable examples.** Blocks tagged ```` ```ts runnable ```` are extracted, run against the

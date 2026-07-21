@@ -10,10 +10,11 @@ recognition consume. It ships the **engine, never copyrighted terminology conten
 full LOINC/UMLS, and VSAC value sets are strictly bring-your-own; code-system _identities_ (OID ↔
 canonical URI) are published facts, grounded firsthand and encoded.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phase 1** — the
-> code-system identity resolver and the ConceptMap `$translate` engine. Later phases add CodeSystem
-> `$lookup`/`$validate-code`, ValueSet `$expand`, UCUM validation, and the published crosswalks
-> (SNOMED→ICD-10-CM, GEMs, the RxNorm graph).
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. Ships **Phase 1** — the code-system
+> identity resolver and the ConceptMap `$translate` engine — and **Phase 2** — the CodeSystem load
+> layer (RRF / CSV / fixed-width / FHIR JSON) with `$lookup` and `$validate-code`. Later phases add
+> ValueSet `$expand`, UCUM validation, and the published crosswalks (SNOMED→ICD-10-CM, GEMs, the
+> RxNorm graph).
 
 ## Install
 
@@ -48,6 +49,26 @@ if (result.unmapped) {
     m.comment; // steward map advice, carried through verbatim
   }
 }
+```
+
+## Look up a code in a code system
+
+```ts
+import { loadCodeSystem, lookup, validateCode } from "@cosyte/terminology";
+
+// Load a consumer-supplied release: RRF (RxNorm/UMLS), CSV (LOINC), fixed-width
+// (ICD-10-CM order file — see ICD10CM_ORDER_FILE_FIELDS), or a FHIR CodeSystem JSON.
+const cs = loadCodeSystem({ format: "fhir", resource: myFhirCodeSystemJson });
+
+const hit = lookup(cs, "2160-0"); // $lookup
+if (hit.found) {
+  hit.display; // the preferred display, verbatim from the release
+  hit.status; // deprecated / header-not-billable / obsolete / … carried, never presented clean
+} else {
+  hit.code; // "TERM_CODE_UNKNOWN" — never a fabricated display
+}
+
+validateCode(cs, "2160-0").valid; // $validate-code — true iff present; never a guessed true
 ```
 
 ## The invariants this engine is built on

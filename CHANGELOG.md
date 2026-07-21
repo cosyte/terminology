@@ -14,6 +14,35 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 2 — the CodeSystem load layer + FHIR `$lookup` / `$validate-code`** (`TERMINOLOGY-2`).
+  Loads a **consumer-supplied** code-system release into an immutable, queryable model and answers the
+  two FHIR R4 CodeSystem identity operations. Ships the engine only — **zero bundled copyrighted
+  content** (RxNorm/LOINC/ICD-10-CM/SNOMED/CPT releases are BYO).
+  - **`loadCodeSystem(source)`** — one entry point over four hand-rolled, zero-dep readers, dispatched
+    on `source.format`: **RRF** (pipe-delimited, single trailing pipe; one parameterized reader for
+    RxNorm `RXNCONSO` and UMLS `MRCONSO`), **RFC-4180 CSV** (real quote handling — LOINC `Loinc.csv`),
+    **fixed-width** (slice-by-column order files; `ICD10CM_ORDER_FILE_FIELDS` preset with the
+    position-15 header/billable flag), and native **FHIR R4 `CodeSystem` JSON** (nested-concept
+    flattening, standard `inactive`/`deprecated`/`status` properties). Liberal on load: a malformed
+    row is skipped and surfaced in `warnings` (`TERM_RRF_MALFORMED_ROW` / `TERM_CSV_MALFORMED` /
+    `TERM_FIXED_WIDTH_MALFORMED` / `TERM_FHIR_CONCEPT_MALFORMED`); a structurally unusable _source_ is
+    the typed fatal `TERM_CODESYSTEM_MALFORMED`.
+  - **`lookup(cs, code)`** — FHIR `$lookup`: code → display + definition + properties, carrying a
+    `ConceptStatus` (deprecated / header-not-billable / obsolete / suppressed, with `active` and, for
+    ICD-10-CM, `billable`). An unknown code is a typed `{ found: false }` — never a fabricated display.
+  - **`validateCode(cs, code)`** — FHIR `$validate-code`: `valid: true` for a present code **carrying
+    its status** (a deprecated or header code validates as present but is flagged, never presented
+    clean); an absent code is `valid: false` with `TERM_CODE_UNKNOWN` — never a guessed `true`.
+  - **The never-fabricate invariant extends to code identity** — locked by property-based +
+    fuzz tests (the RRF/CSV/fixed-width readers never crash on hostile input; a lookup display always
+    comes verbatim from the loaded release). Grounded firsthand on FHIR R4
+    (`codesystem-operation-lookup`/`-validate-code`, concept-properties).
+  - New value-free stable codes: `TERM_CODE_UNKNOWN`, `TERM_CONCEPT_DEPRECATED`,
+    `TERM_CONCEPT_HEADER_NOT_BILLABLE`, `TERM_RRF_MALFORMED_ROW`, `TERM_CSV_MALFORMED`,
+    `TERM_FIXED_WIDTH_MALFORMED`, `TERM_FHIR_CONCEPT_MALFORMED` (diagnostics) and
+    `TERM_CODESYSTEM_MALFORMED` (fatal). New JSON helpers `getBoolean` / `getNumber`.
+  - **Zero runtime dependencies** retained.
+
 - **Phase 1 — the ConceptMap `$translate` engine + code-system identity/canonical-URI resolver**
   (`TERMINOLOGY-1`). This replaces the parser-shaped scaffold stubs: `@cosyte/terminology` is a
   **terminology engine** modeled on the FHIR Terminology Module, not a wire parser.

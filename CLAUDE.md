@@ -25,10 +25,15 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
   (`resolveSystem`) and the ConceptMap **`$translate` engine** (`loadConceptMap` + `translate`), with
   the **never-fabricate / never-invert** invariants. Layout: `src/common/` (value types +
   diagnostics), `src/systems/` (identity registry + resolver), `src/conceptmap/` (the engine).
-  Pre-alpha `0.0.x`, not yet published to npm.
-- **Deferred to later phases:** CodeSystem loaders + `$lookup`/`$validate-code` (P2); ValueSet
-  `$expand`/binding (P3); UCUM validation (P4); crosswalk resolvers SNOMED→ICD-10-CM/GEMs (P5); the
-  RxNorm graph (P6); bundleable public-domain packs (P7).
+- **Phase 2 shipped** (`TERMINOLOGY-2`): the **CodeSystem load layer** + FHIR **`$lookup` /
+  `$validate-code`** in `src/codesystem/`. `loadCodeSystem` over four hand-rolled zero-dep readers
+  (RRF pipe-delimited, RFC-4180 CSV, fixed-width order files with `ICD10CM_ORDER_FILE_FIELDS`, native
+  FHIR `CodeSystem` JSON); `lookup`/`validateCode` carry a `ConceptStatus` (deprecated /
+  header-not-billable / obsolete / suppressed). Never-fabricate extends to code identity (unknown →
+  typed `unknown`/`valid:false`, never a guessed display). Liberal on load: malformed rows → typed
+  warnings; unusable source → fatal `TERM_CODESYSTEM_MALFORMED`. Pre-alpha `0.0.x`, unpublished.
+- **Deferred to later phases:** ValueSet `$expand`/binding (P3); UCUM validation (P4); crosswalk
+  resolvers SNOMED→ICD-10-CM/GEMs (P5); the RxNorm graph (P6); bundleable public-domain packs (P7).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

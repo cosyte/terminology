@@ -69,3 +69,44 @@ export function getArray(obj: unknown, key: string): readonly unknown[] | undefi
   const v = obj[key];
   return Array.isArray(v) ? v : undefined;
 }
+
+/**
+ * Read a **boolean** property from an untrusted object, or `undefined` if absent/not a boolean.
+ *
+ * A non-boolean (including a missing key, or the strings `"true"`/`"false"`) yields `undefined` —
+ * the accessor never coerces, so a caller can distinguish "explicitly `false`" from "absent".
+ *
+ * @param obj - The source object (may be any `unknown`).
+ * @param key - The property name to read.
+ * @returns The boolean value, or `undefined` when the key is missing or not a boolean.
+ * @example
+ * ```ts
+ * import { getBoolean } from "@cosyte/terminology";
+ *
+ * getBoolean({ inactive: true }, "inactive"); // => true
+ * ```
+ */
+export function getBoolean(obj: unknown, key: string): boolean | undefined {
+  if (!isJsonObject(obj)) return undefined;
+  const v = obj[key];
+  return typeof v === "boolean" ? v : undefined;
+}
+
+/**
+ * Read a **number** property from an untrusted object, or `undefined` if absent/not a finite number.
+ *
+ * @param obj - The source object (may be any `unknown`).
+ * @param key - The property name to read.
+ * @returns The number value, or `undefined` when the key is missing or not a finite number.
+ * @example
+ * ```ts
+ * import { getNumber } from "@cosyte/terminology";
+ *
+ * getNumber({ valueInteger: 3 }, "valueInteger"); // => 3
+ * ```
+ */
+export function getNumber(obj: unknown, key: string): number | undefined {
+  if (!isJsonObject(obj)) return undefined;
+  const v = obj[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}

@@ -14,6 +14,13 @@ describe("diagnostic + fatal code registries", () => {
   it("diagnostic-code surface is stable", () => {
     expect(sortedCodeSet(DIAGNOSTIC_CODES)).toMatchInlineSnapshot(`
       [
+        "TERM_CODE_UNKNOWN",
+        "TERM_CONCEPT_DEPRECATED",
+        "TERM_CONCEPT_HEADER_NOT_BILLABLE",
+        "TERM_CSV_MALFORMED",
+        "TERM_FHIR_CONCEPT_MALFORMED",
+        "TERM_FIXED_WIDTH_MALFORMED",
+        "TERM_RRF_MALFORMED_ROW",
         "TERM_SYSTEM_UNRECOGNIZED",
         "TERM_TRANSLATE_UNMAPPED",
       ]
@@ -23,6 +30,7 @@ describe("diagnostic + fatal code registries", () => {
   it("fatal-code surface is stable", () => {
     expect(sortedCodeSet(FATAL_CODES)).toMatchInlineSnapshot(`
       [
+        "TERM_CODESYSTEM_MALFORMED",
         "TERM_CONCEPTMAP_MALFORMED",
       ]
     `);

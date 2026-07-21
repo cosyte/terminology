@@ -41,6 +41,46 @@ export const DIAGNOSTIC_CODES = {
    * Surfaced as a typed `unknown`, never coerced to a guessed canonical URI.
    */
   TERM_SYSTEM_UNRECOGNIZED: "TERM_SYSTEM_UNRECOGNIZED",
+  /**
+   * An RRF (pipe-delimited RxNorm/UMLS release) row was structurally unusable — too few columns to
+   * reach a configured field, or a missing code. The row is **skipped and surfaced** as a load
+   * warning (liberal on load), never kept as a partially-parsed concept.
+   */
+  TERM_RRF_MALFORMED_ROW: "TERM_RRF_MALFORMED_ROW",
+  /**
+   * A CSV (RFC-4180, e.g. LOINC `Loinc.csv`) row was structurally unusable — too few fields to reach
+   * a configured column. The row is **skipped and surfaced** as a load warning, never partial.
+   */
+  TERM_CSV_MALFORMED: "TERM_CSV_MALFORMED",
+  /**
+   * A fixed-width (e.g. ICD-10-CM order file) row was structurally unusable — too short to contain
+   * the configured code field, or a missing code. Skipped and surfaced, never partial.
+   */
+  TERM_FIXED_WIDTH_MALFORMED: "TERM_FIXED_WIDTH_MALFORMED",
+  /**
+   * A concept inside a FHIR `CodeSystem` resource was unusable — not an object, or missing its
+   * required `code`. Skipped and surfaced (the whole resource still loads); `line` is `0` since a
+   * JSON concept is not line-addressable.
+   */
+  TERM_FHIR_CONCEPT_MALFORMED: "TERM_FHIR_CONCEPT_MALFORMED",
+  /**
+   * A `$lookup`/`$validate-code` found no concept for the code in the loaded release. A **first-class
+   * typed outcome, never a guess** — the engine returns `unknown`/`valid: false`, never a fabricated
+   * display or a coerced `valid: true` (the never-fabricate invariant, applied to code identity).
+   */
+  TERM_CODE_UNKNOWN: "TERM_CODE_UNKNOWN",
+  /**
+   * A resolved concept is **deprecated / no longer current** (e.g. LOINC `STATUS = DEPRECATED`, or a
+   * FHIR concept flagged `inactive`). Surfaced on the concept's status so a caller never presents a
+   * non-current code as clean; the concept is still *found* (a lookup succeeds), it is just flagged.
+   */
+  TERM_CONCEPT_DEPRECATED: "TERM_CONCEPT_DEPRECATED",
+  /**
+   * A resolved concept is a **classification header, not a billable/valid leaf** (e.g. an ICD-10-CM
+   * order-file row with the position-15 flag `0`). Surfaced on the concept's status: a header code is
+   * found but is **not valid for claim submission**, and must never be presented as billable.
+   */
+  TERM_CONCEPT_HEADER_NOT_BILLABLE: "TERM_CONCEPT_HEADER_NOT_BILLABLE",
 } as const;
 
 /**
@@ -65,6 +105,13 @@ export const FATAL_CODES = {
    * missing a required field. Thrown rather than silently loading a partial, misleading map.
    */
   TERM_CONCEPTMAP_MALFORMED: "TERM_CONCEPTMAP_MALFORMED",
+  /**
+   * A CodeSystem *source* was structurally unusable — a FHIR resource with the wrong `resourceType`,
+   * or a delimited source whose configured code/display column is absent from the header. Thrown
+   * rather than silently loading an empty or mis-keyed release. (Malformed individual **rows** are
+   * skipped-and-surfaced load warnings, not fatals — only an unusable *source* is fatal.)
+   */
+  TERM_CODESYSTEM_MALFORMED: "TERM_CODESYSTEM_MALFORMED",
 } as const;
 
 /**
