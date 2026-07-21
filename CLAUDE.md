@@ -42,8 +42,20 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
   `undetermined` (never a fabricated "not a member"). Subsumption reads the release's own hierarchy —
   the FHIR CodeSystem loader now synthesizes a standard `parent` concept-property from nested
   `concept`s. Zero deps.
-- **Deferred to later phases:** UCUM validation (P4); crosswalk resolvers SNOMED→ICD-10-CM/GEMs (P5);
-  the RxNorm graph (P6); bundleable public-domain packs (P7).
+- **Phase 4 shipped** (`TERMINOLOGY-4`): the **UCUM unit layer** in `src/ucum/`. `validateUcum` is a
+  hand-rolled zero-dep UCUM grammar parser (base units, longest-match metric prefixes, `.`/`/`,
+  signed exponents, `{…}` inert annotations, `10*`/`10^`, case-sensitive) over the vendored UCUM atom
+  table; `ucumEqual` reduces two expressions to base dimensions and reports same-unit equivalence
+  (`N` ≡ `kg.m/s2`). **Recognition/validation/representation-canonicalization only — no magnitude
+  conversion** (roadmap §2/§4.3). Never-fabricate extends to units: an unparseable/unknown unit →
+  typed `TERM_UCUM_INVALID` (never a guessed unit); a special (non-linear) unit is never equated with
+  a linear one; distinct arbitrary units never compare equal. The UCUM `ucum-essence.xml` (v2.2) is
+  **vendored verbatim** (`vendor/ucum/`, embedded byte-for-byte, transformed at runtime — no
+  derivative, no runtime file read; see `vendor/ucum/NOTICE.md`); the official `UcumFunctionalTests.xml`
+  suite is the conformance gate (all 530 validation cases pass). Also exports `parseUcum` / `reduce` /
+  `loadUcumEssence`. Zero deps.
+- **Deferred to later phases:** crosswalk resolvers SNOMED→ICD-10-CM/GEMs (P5); the RxNorm graph (P6);
+  bundleable public-domain packs (P7).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

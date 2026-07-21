@@ -56,6 +56,7 @@
   "scripts": {
     "build": "tsup",
     "changeset": "changeset",
+    "gen:ucum": "tsx scripts/generate-ucum-essence-data.ts",
     "typecheck": "tsc --noEmit",
     "phi-scan": "tsx scripts/phi-scan.ts",
     "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\" --max-warnings=0 --no-error-on-unmatched-pattern",

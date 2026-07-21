@@ -96,6 +96,14 @@ export const DIAGNOSTIC_CODES = {
    * absent from a truncated expansion is `undetermined`, never a confident "not a member".
    */
   TERM_VALUESET_EXPANSION_TRUNCATED: "TERM_VALUESET_EXPANSION_TRUNCATED",
+  /**
+   * A UCUM unit expression is **not valid** — it does not parse against the UCUM grammar, or it
+   * names an atom absent from the vendored UCUM table. A **first-class typed outcome, never an
+   * error and never a guess**: {@link validateUcum} returns `{ valid: false, reason }`, never a
+   * coerced or "nearest" unit (the never-fabricate invariant, applied to units — roadmap §4.3). The
+   * `reason` is value-free (a grammar fault or an unknown-atom shape), never PHI.
+   */
+  TERM_UCUM_INVALID: "TERM_UCUM_INVALID",
 } as const;
 
 /**
