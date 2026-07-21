@@ -10,20 +10,35 @@ recognition consume. It ships the **engine, never copyrighted terminology conten
 full LOINC/UMLS, and VSAC value sets are strictly bring-your-own; code-system _identities_ (OID ↔
 canonical URI) are published facts, grounded firsthand and encoded.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. Ships **Phase 1** — the code-system
-> identity resolver and the ConceptMap `$translate` engine — **Phase 2** — the CodeSystem load layer
-> (RRF / CSV / fixed-width / FHIR JSON) with `$lookup` and `$validate-code` — **Phase 3** — ValueSet
-> binding (`compose` / `$expand` / `$validate-code`) — **Phase 4** — UCUM unit validation and
-> canonicalization (`validateUcum` / `ucumEqual`, recognition only, no magnitude conversion) —
-> **Phase 5** — the crosswalk resolvers: the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
-> public-domain) and the NLM **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` /
-> `applyComplexMap`, BYO — zero SNOMED content bundled) — and **Phase 6** — the **RxNorm drug graph**
-> (`loadRxNormGraph` + `ingredientsOf` / `genericFor` / `brandsFor` / `doseFormsOf` / `consistsOf` /
-> `resolveNdc` / `approximateMatch`) over a **BYO** RxNorm RRF release, edges read in RxNorm's
-> documented direction and never inverted, an absent `RXCUI`/NDC typed, never fabricated. Later phases
-> add the bundleable public-domain content packs (RxNorm Prescribable, ICD-10-CM, UCUM, LOINC).
+> **Status:** pre-alpha (`0.0.x`), **not yet published to npm.** The **engine is complete** — every
+> operation below ships today. What is still to come is bundled _content_, not capability. The surface:
+>
+> - the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
+>   (`loadConceptMap` / `translate`);
+> - the **CodeSystem load layer** (RRF / CSV / fixed-width / FHIR JSON) with **`$lookup`** and
+>   **`$validate-code`**;
+> - **ValueSet** binding (`compose` / **`$expand`** / **`$validate-code`**), subsumption read from the
+>   release's own hierarchy;
+> - **UCUM** unit validation and canonicalization (`validateUcum` / `ucumEqual`, recognition only, **no
+>   magnitude conversion**) — the official UCUM functional-test suite is the conformance gate;
+> - the **crosswalk resolvers** — the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
+>   public-domain) and the NLM **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` /
+>   `applyComplexMap`, BYO — zero SNOMED content bundled), never inverted;
+> - the **RxNorm drug graph** (`loadRxNormGraph` + `ingredientsOf` / `genericFor` / `brandsFor` /
+>   `doseFormsOf` / `consistsOf` / `resolveNdc` / `approximateMatch`) over a **BYO** RxNorm RRF release,
+>   edges read in RxNorm's documented direction and never inverted, an absent `RXCUI`/NDC typed, never
+>   fabricated.
+>
+> **Bring your own data.** The engine is whole; **no code-system _content_ is bundled yet.** It runs
+> over the FHIR resources and standard releases _you_ supply. The bundleable public-domain content packs
+> (RxNorm Prescribable, ICD-10-CM, UCUM, LOINC) are still to come — they are blocked on getting a genuine
+> verbatim public-domain release into the build, not on engine work — and the copyrighted content
+> (SNOMED CT / CPT / full LOINC / UMLS / VSAC) is bring-your-own permanently by license.
 
 ## Install
+
+> **Not on npm yet.** `@cosyte/terminology` is pre-alpha and **unpublished** — the command below is how
+> you will install it once the first `0.0.x` release lands. Until then the package is source-only.
 
 ```bash
 npm install @cosyte/terminology
