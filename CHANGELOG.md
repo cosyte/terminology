@@ -14,6 +14,44 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 6 — RxNorm drug relationship graph** (`TERMINOLOGY-6`). Ingredient / brand / clinical-drug /
+  dose-form graph navigation over a **caller-supplied** RxNorm RRF release — the never-fabricate
+  invariant applied to the drug graph (roadmap §4.2). Ships the graph **mechanism** over the real RRF
+  wire format; ships **no** RxNorm content.
+  - **`loadRxNormGraph(source)`** — load `RXNCONSO` (concepts, typed by `TTY`: `IN`/`PIN`/`BN`/`SCD`/
+    `SBD`/`SCDC`/`DF`/…), `RXNREL` (directed `RELA` edges), and optionally `RXNSAT` (`ATN=NDC`
+    attributes) into an immutable graph. Reuses the shared zero-dep RRF reader. The **column layouts and
+    the direction convention are grounded firsthand** on the NLM RxNorm Technical Documentation (§ file
+    descriptions; §12.7) and the UMLS Reference Manual: `RELA` is _"the relationship which the second
+    concept (`RXCUI2`) has to the first (`RXCUI1`)"_, so every row is read `RXCUI2 ⟶RELA⟶ RXCUI1` and
+    normalized to `subject = RXCUI2`, `object = RXCUI1` — the documented medication-safety trap
+    (roadmap §10 Q5), **pinned by fixtures** built in the real wire format. Liberal on load: a
+    structurally unusable row is a skipped, surfaced `TERM_RXNORM_MALFORMED_ROW`; rows not of interest
+    (non-`RXNORM` atoms, atom-level relationships, non-`NDC` attributes) are skipped silently.
+  - **`ingredientsOf` / `genericFor` / `brandsFor` / `doseFormsOf` / `consistsOf` / `relatedByRela`** —
+    graph navigation following **authored edges only**. RxNorm ships both directions of an asymmetric
+    relationship as separate rows, so `genericFor` follows the authored `tradename_of` and `brandsFor`
+    the authored `has_tradename` — the engine **never synthesizes an inverse**. An absent `RXCUI` is a
+    typed `TERM_RXNORM_UNKNOWN_RXCUI`; a present concept with no such edge is a found result with an
+    **empty** target set (an honest "no such edge", distinct from "unknown concept").
+  - **`resolveNdc(graph, ndc)`** — NDC → `RXCUI` carrying the temporal status and the **as-of release**
+    (NDC↔RXCUI is many:1 and temporal). An NDC in the loaded release is `active` as of that release;
+    obsolete/alien statuses come from RxNav NDC-history data (a differential/BYO source, not the base
+    RRF), never fabricated. An absent NDC is a typed `TERM_RXNORM_NDC_UNMAPPED`, never a guessed `RXCUI`.
+  - **`approximateMatch(graph, query, options?)`** — the **opt-in, explicitly labeled** similarity path
+    (never the default, never an exact code assertion): every candidate carries `approximate: true` and
+    a derived token-overlap score; a no-match is an empty array, never a nearest guess.
+  - Also exports `getConcept`, the `RELA` / `RELA_INVERSE` / `TERM_TYPES` / `asTermType` /
+    `RXNORM_SYSTEM` identity facts, and the graph types. New stable diagnostic codes:
+    `TERM_RXNORM_MALFORMED_ROW`, `TERM_RXNORM_UNKNOWN_RXCUI`, `TERM_RXNORM_NDC_UNMAPPED`.
+  - **Content posture (honest).** This phase does **not** bundle RxNorm content. RxNorm's Current
+    Prescribable Content is public-domain and _bundleable_ per the licensing matrix, but a genuine
+    verbatim release could not be obtained in the build sandbox (no build-time network for the release
+    archive), and fabricating "real RxNorm content" would breach the never-fabricate / grounding
+    discipline. So Phase 6 ships the **BYO** graph mechanism grounded firsthand on the RxNorm technical
+    documentation, and **actual content-bundling is deferred to the content-packs phase (Phase 7)**.
+    All fixtures are synthetic rows in the real RRF wire format. Zero runtime dependencies.
+
 - **Phase 5 — Crosswalk resolvers: ICD-9↔ICD-10 GEMs + SNOMED CT → ICD-10-CM complex map**
   (`TERMINOLOGY-5`). The never-fabricate / never-invert invariant applied to the published,
   **directional** reference maps — the safety crown (roadmap §4.1). Both stewards say these are _not_

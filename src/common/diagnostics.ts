@@ -136,6 +136,28 @@ export const DIAGNOSTIC_CODES = {
    * `referencedComponentId`/`mapGroup`/`mapPriority`. Skipped and surfaced, never partial.
    */
   TERM_COMPLEX_MAP_MALFORMED_ROW: "TERM_COMPLEX_MAP_MALFORMED_ROW",
+  /**
+   * A RxNorm RRF row (`RXNCONSO` / `RXNREL` / `RXNSAT`) was structurally unusable — too few columns to
+   * reach a required field, or a missing `RXCUI`/NDC value. The row is **skipped and surfaced** as a
+   * load warning (liberal on load), never kept as a partial concept/edge. Rows that are simply *not of
+   * interest* (a non-`RXNORM` atom, an atom-level relationship, a non-`NDC` attribute) are skipped
+   * **silently** — they are expected, not faults.
+   */
+  TERM_RXNORM_MALFORMED_ROW: "TERM_RXNORM_MALFORMED_ROW",
+  /**
+   * A RxNorm graph navigation was asked about an `RXCUI` **absent from the loaded release** — a
+   * first-class typed outcome, never a fabricated concept and never an empty "success" (the
+   * never-fabricate invariant, applied to the drug graph — roadmap §4.2). Distinct from a *present*
+   * concept that simply has no edge of the requested relationship (that is a found result with empty
+   * targets).
+   */
+  TERM_RXNORM_UNKNOWN_RXCUI: "TERM_RXNORM_UNKNOWN_RXCUI",
+  /**
+   * An NDC could **not be resolved** to any `RXCUI` in the loaded RxNorm release — a typed, surfaced
+   * absence, never a guessed `RXCUI`. NDC↔RXCUI is many:1 and temporal (roadmap §4.2), so a resolution
+   * is always release-scoped; an NDC not present in the loaded release is this diagnostic.
+   */
+  TERM_RXNORM_NDC_UNMAPPED: "TERM_RXNORM_NDC_UNMAPPED",
 } as const;
 
 /**

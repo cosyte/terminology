@@ -78,9 +78,10 @@ context** can be PHI: never log the surrounding record.
 
 ## Known limitations (this release)
 
-> **Status:** `@cosyte/terminology` ships through **Phase 3** — the code-system identity resolver, the
-> ConceptMap `$translate` engine, the CodeSystem load layer with `$lookup` / `$validate-code`, and the
-> ValueSet `compose` / `$expand` / binding operations.
+> **Status:** `@cosyte/terminology` ships through **Phase 6** — the code-system identity resolver, the
+> ConceptMap `$translate` engine, the CodeSystem load layer with `$lookup` / `$validate-code`, the
+> ValueSet `compose` / `$expand` / binding operations, UCUM validation, the crosswalk resolvers, and
+> the RxNorm drug graph.
 
 - **BYO data** — `$expand` and binding operate over the `CodeSystem` releases and referenced
   `ValueSet`s you supply in the `ExpansionContext`; an intensional part with no supplied code system is
@@ -90,7 +91,12 @@ context** can be PHI: never log the surrounding record.
   subsumption is a later phase.
 - **Intensional filters are best-effort** — `is-a` / `descendent-of` / `is-not-a` / `=` / `in` /
   `not-in` / `exists` are implemented; `regex` / `generalizes` surface as `TERM_VALUESET_CANNOT_EXPAND`.
-- **No UCUM, no published crosswalks** yet (Phases 4–6).
+- **RxNorm graph is BYO** — `loadRxNormGraph` operates over the RxNorm RRF release you supply; the
+  engine bundles **no** RxNorm content. NDC↔RXCUI resolution is release-scoped and carries the as-of
+  release; obsolete/alien NDC statuses come from RxNav NDC-history data (a differential source), not the
+  base RRF concept files, and are never fabricated. Approximate matching is opt-in and always labeled.
+- **No bundled content packs yet** — the bundleable public-domain packs (RxNorm Prescribable,
+  ICD-10-CM, UCUM, LOINC) are a later phase (Phase 7); until then every release is bring-your-own.
 - **No bundled SNOMED/CPT/UMLS/VSAC content** — ever; those are bring-your-own by license.
 
 The **API Reference** always reflects exactly what this release ships — treat it as the source of

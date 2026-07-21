@@ -71,6 +71,45 @@ map is *"semi-automated."* The resolvers honour that.
 Both are **directional and never inverted**, and both extend the same never-fabricate rule: a
 crosswalk never invents a target, and "No-Map" is a first-class typed outcome, never an empty success.
 
+## The RxNorm drug graph
+
+RxNorm's drug graph — ingredient (`IN`) → clinical-drug component (`SCDC`) → semantic clinical drug
+(`SCD`) → semantic branded drug (`SBD`), with brand (`BN`) and dose-form (`DF`) cross-links — is
+navigated over a **bring-your-own** RxNorm RRF release (`loadRxNormGraph` reads `RXNCONSO` concepts,
+`RXNREL` relationships, and `RXNSAT` NDC attributes). The engine bundles **zero** RxNorm content
+(roadmap §5); the graph is entirely the caller's release, and a resolution is release-scoped.
+
+- **Direction is a documented trap, grounded firsthand.** RxNorm's `RXNREL` stores each relationship
+  as *"the relationship which the **second** concept (`RXCUI2`) HAS TO the **first** (`RXCUI1`)"* (NLM
+  RxNorm Technical Documentation §12.7; UMLS Reference Manual). So a row is read
+  `RXCUI2 ⟶RELA⟶ RXCUI1`, and the loader normalizes every edge to `subject = RXCUI2`,
+  `object = RXCUI1`. A `has_ingredient` row therefore puts the **drug** in `RXCUI2` and the
+  **ingredient** in `RXCUI1`. Getting this backwards is a wrong-medication bug, so it is pinned by
+  fixtures.
+- **Authored edges only — never inverted.** RxNorm ships both directions of an asymmetric
+  relationship as separate rows, so `genericFor` follows the authored `tradename_of` and `brandsFor`
+  follows the authored `has_tradename`; the engine **never** synthesizes a reverse edge. Convenience
+  resolvers (`ingredientsOf`, `doseFormsOf`, `consistsOf`) and the generic `relatedByRela` all follow
+  authored predicates.
+- **Never fabricate.** A queried `RXCUI` absent from the release is a typed
+  `TERM_RXNORM_UNKNOWN_RXCUI`; a *present* concept with no such relationship is a found result with an
+  **empty** target set (an honest "no such edge", distinct from "unknown concept"). An NDC not in the
+  release is a typed `TERM_RXNORM_NDC_UNMAPPED`, never a guessed `RXCUI`.
+- **NDC↔RXCUI is many:1 and temporal.** `resolveNdc` carries the temporal status
+  (`active`/`obsolete`/`alien`/`unknown`) and the **as-of release** — an NDC present in the loaded
+  release is `active` as of that release; obsolete/alien statuses come from RxNav NDC-history data (a
+  differential/BYO source, not the base RRF concept files) and are never fabricated.
+- **Coverage is not correctness.** Approximate name matching (`approximateMatch`) is an **opt-in,
+  explicitly labeled** path — never the default resolution and never an exact assertion (every
+  candidate carries `approximate: true` and a derived score). A "no match" is an empty array, never a
+  nearest guess.
+
+> **Content posture.** Phase 6 ships the graph *mechanism* over the real RRF format, grounded firsthand
+> on the RxNorm technical documentation; it does **not** bundle RxNorm content. The public-domain
+> Current Prescribable Content pack (bundleable per the licensing matrix) is deferred to the
+> content-packs phase (Phase 7) — a genuine, verbatim RxNorm release is required to bundle it, and it
+> is not fabricated to fill the gap.
+
 ## Liberal load, conservative assertion
 
 Loading is **liberal**: `loadConceptMap` accepts an untrusted `unknown` and degrades a malformed
