@@ -1,89 +1,80 @@
 /**
- * Property-based conformance tests for the cosyte parser archetype, driven by the shared
- * `@cosyte/test-utils` invariant runners. The kit owns the **invariants**; this parser owns the
- * **format-specific arbitraries** (the `Terminology` generators below).
- *
- * This file is the intended shape for every `@cosyte/*` parser (see `@cosyte/hl7`'s
- * `test/property/`). While `@cosyte/terminology` is still a scaffold:
- *
- *   - the **lenient-mode** invariant runs today against the stub parser (it must never throw on
- *     arbitrary input and must only emit registered warning codes) — a real, passing guard; and
- *   - the **round-trip** invariant is `it.todo` until the serializer (`serializeTerminology` /
- *     `result.toString()`) lands. The body is written against the real runner so it typechecks and
- *     lints now, and flips on by changing `it.todo` to `it` once a serializer exists.
- *
- * Replace the placeholder arbitraries with real spec-clean and hostile generators as the parser
- * grows, and add the `immutabilityProperty` + warning-code snapshot guards (see `@cosyte/test-utils`).
+ * ConceptMap load round-trip property: loading a resource, projecting the loaded model back to a
+ * FHIR JSON shape, and re-loading yields a **structurally equal** model. This proves the loader is
+ * lossless over the fields it retains and does not drift a map on a round trip (the terminology
+ * analogue of a parser's parse↔serialize round-trip).
  */
 
-import { describe, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import fc from "fast-check";
-import { lenientNeverThrowsProperty, roundTripProperty } from "@cosyte/test-utils";
 
-import {
-  FATAL_CODES,
-  WARNING_CODES,
-  parseTerminology,
-  type ParsedTerminology,
-} from "../../src/index.js";
+import { loadConceptMap, type ConceptMap } from "../../src/index.js";
 
-const fatalCodes = new Set<string>(Object.values(FATAL_CODES));
-const knownWarningCodes = new Set<string>(Object.values(WARNING_CODES));
-
-/**
- * Placeholder arbitrary for **hostile / quirky** input — the lenient-mode generator. Today this is
- * just arbitrary strings; replace it with a generator that emits real Terminology quirks (truncated
- * segments, unknown elements, encoding oddities) the lenient parser must recover into warnings.
- */
-function hostileInput(): fc.Arbitrary<string> {
-  return fc.string();
-}
-
-/**
- * Placeholder arbitrary for **spec-clean** values — the round-trip generator. Today it produces the
- * stub's parsed shape; replace it with a generator of spec-valid messages the builder/serializer can
- * emit, so `parse(serialize(x))` can be asserted structurally equal to `x`.
- */
-function specCleanTerminology(): fc.Arbitrary<ParsedTerminology> {
-  return fc.constant({ value: {}, warnings: [] } satisfies ParsedTerminology);
-}
-
-describe("terminology conformance (archetype invariants)", () => {
-  it("is lenient — arbitrary input never throws a non-fatal, and every warning has a known code", () => {
-    lenientNeverThrowsProperty({
-      arbitrary: hostileInput(),
-      parse: (raw: string) => parseTerminology(raw),
-      // The stub parser never throws; once real fatals exist, only those may escape as throws.
-      isFatal: (err) =>
-        typeof err === "object" &&
-        err !== null &&
-        "code" in err &&
-        fatalCodes.has(String(err.code)),
-      getWarnings: (parsed) => (parsed as ParsedTerminology).warnings,
-      isKnownCode: (code) => knownWarningCodes.has(code),
-      hasPositionalContext: (warning) =>
-        warning.position === undefined || typeof warning.position === "object",
-    });
+/** Project a loaded {@link ConceptMap} back to a FHIR-JSON resource the loader accepts. */
+function toFhirJson(map: ConceptMap): Record<string, unknown> {
+  const json: Record<string, unknown> = { resourceType: "ConceptMap" };
+  if (map.url !== undefined) json["url"] = map.url;
+  if (map.version !== undefined) json["version"] = map.version;
+  if (map.sourceScope !== undefined) json["sourceUri"] = map.sourceScope;
+  if (map.targetScope !== undefined) json["targetUri"] = map.targetScope;
+  json["group"] = map.group.map((g) => {
+    const gj: Record<string, unknown> = {
+      element: g.element.map((e) => {
+        const ej: Record<string, unknown> = {
+          target: e.target.map((t) => ({ ...t })),
+        };
+        if (e.code !== undefined) ej["code"] = e.code;
+        if (e.display !== undefined) ej["display"] = e.display;
+        return ej;
+      }),
+    };
+    if (g.source !== undefined) gj["source"] = g.source;
+    if (g.sourceVersion !== undefined) gj["sourceVersion"] = g.sourceVersion;
+    if (g.target !== undefined) gj["target"] = g.target;
+    if (g.targetVersion !== undefined) gj["targetVersion"] = g.targetVersion;
+    if (g.unmapped !== undefined) gj["unmapped"] = { ...g.unmapped };
+    return gj;
   });
+  return json;
+}
 
-  // TODO: flip `it.todo` -> `it` once a serializer (`serializeTerminology` / `result.toString()`)
-  // exists. The body already typechecks and lints against the real runner.
-  it.todo("round-trips — parse(serialize(x)) is structurally equal to x", () => {
-    roundTripProperty({
-      arbitrary: specCleanTerminology(),
-      // Replace with the real serializer once it lands.
-      serialize: (value) => JSON.stringify(value),
-      // Replace with the real parser once it returns the model type the arbitrary produces. The
-      // placeholder reconstructs the stub shape from the wire string without an unsafe cast.
-      parse: (raw): ParsedTerminology => {
-        const decoded: unknown = JSON.parse(raw);
-        const warnings =
-          typeof decoded === "object" && decoded !== null && "warnings" in decoded
-            ? (decoded as ParsedTerminology).warnings
-            : [];
-        return { value: {}, warnings };
-      },
-      equals: (a, b) => JSON.stringify(a) === JSON.stringify(b),
-    });
+const EQUIVS = ["equivalent", "wider", "narrower", "relatedto", "disjoint"] as const;
+
+const jsonArb = fc.record({
+  resourceType: fc.constant("ConceptMap"),
+  url: fc.option(fc.webUrl(), { nil: undefined }),
+  version: fc.option(fc.constantFrom("1.0.0", "2.1"), { nil: undefined }),
+  group: fc.array(
+    fc.record({
+      source: fc.option(fc.constantFrom("http://s1", "http://s2"), { nil: undefined }),
+      target: fc.option(fc.constantFrom("http://t1", "http://t2"), { nil: undefined }),
+      element: fc.array(
+        fc.record({
+          code: fc.constantFrom("a", "b", "c"),
+          target: fc.array(
+            fc.record({
+              code: fc.constantFrom("x", "y", "z"),
+              equivalence: fc.constantFrom(...EQUIVS),
+            }),
+            { maxLength: 3 },
+          ),
+        }),
+        { maxLength: 4 },
+      ),
+    }),
+    { maxLength: 3 },
+  ),
+});
+
+describe("ConceptMap load round-trip", () => {
+  it("load → project → load is structurally stable", () => {
+    fc.assert(
+      fc.property(jsonArb, (json) => {
+        const once = loadConceptMap(json);
+        const twice = loadConceptMap(toFhirJson(once));
+        expect(twice).toStrictEqual(once);
+      }),
+      { numRuns: 500 },
+    );
   });
 });

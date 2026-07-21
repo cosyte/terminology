@@ -6,13 +6,19 @@ sidebar_position: 1
 
 # @cosyte/terminology
 
-Parse real-world, vendor-quirky Terminology and pull fields out in one line — without reading the spec.
-`@cosyte/terminology` is a zero-dependency TypeScript toolkit following the cosyte parser archetype: a lenient
-parser, an immutable model, a spec-clean serializer, and a profile system for vendor quirks. It
-mirrors the API shape of the reference parser, `@cosyte/hl7`.
+Answer FHIR terminology questions over your own code-system data, in one line — without standing up a
+terminology server. `@cosyte/terminology` is a **zero-dependency terminology engine** for US
+healthcare code systems. It is **not a wire parser**; it mirrors the FHIR **Terminology Module**
+(`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating over **consumer-supplied** FHIR
+resources.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This page describes the scaffold; the
-> real parser lands in subsequent phases.
+It ships the **engine, never copyrighted terminology content** — SNOMED CT, CPT, full LOINC/UMLS, and
+VSAC value sets are strictly bring-your-own. Code-system *identities* (the OID ↔ canonical-URI facts)
+are published facts and are encoded, grounded firsthand against the HL7/FHIR registry.
+
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phase 1**: the
+> code-system identity resolver and the ConceptMap `$translate` engine. Later phases add CodeSystem
+> `$lookup`/`$validate-code`, ValueSet `$expand`, UCUM validation, and the published crosswalks.
 
 ## Install
 
@@ -20,20 +26,28 @@ mirrors the API shape of the reference parser, `@cosyte/hl7`.
 npm install @cosyte/terminology
 ```
 
-## Parse a message
+## Translate a code through a ConceptMap
 
 ```ts
-import { parseTerminology } from "@cosyte/terminology";
+import { loadConceptMap, translate } from "@cosyte/terminology";
 
-const result = parseTerminology(raw);
+const map = loadConceptMap(myConceptMapJson); // a standard FHIR R4 ConceptMap resource
+const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
 
-result.warnings; // stable, positional tolerance warnings
+if (result.unmapped) {
+  // A first-class, surfaced outcome — never a guessed target.
+} else {
+  for (const m of result.matches) {
+    // m.target (a Coding), m.relationship, m.equivalence, m.comment
+  }
+}
 ```
 
-The parser is **lenient by default** — vendor quirks become warnings, not failures — while the
-serializer always emits spec-clean output (Postel's Law). A `{ strict: true }` mode (to be added)
-escalates every tolerated deviation to a thrown error.
+The engine is **conservative on assertion**: an unmapped source is a typed `unmapped`, never a
+fabricated target, and a directional map is never silently inverted.
 
 ## Next
 
+- [Quickstart](./quickstart) — resolve a system and translate a code, runnable.
+- [Core Concepts](./concepts-archetype) — the engine model and the never-fabricate invariant.
 - Read the **API reference** for every export, generated from source.

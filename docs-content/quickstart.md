@@ -6,43 +6,70 @@ sidebar_position: 1
 
 # Quickstart
 
-Parse a Terminology payload and read the result in a few lines. `@cosyte/terminology` is **lenient by default**
-(Postel's Law): real-world, vendor-quirky input parses into a value plus a list of tolerance
-**warnings**, rather than throwing.
+`@cosyte/terminology` is a **terminology engine**, not a wire parser: it answers FHIR terminology
+questions over **consumer-supplied** resources. This release ships two of them — the code-system
+identity resolver and the ConceptMap `$translate` engine — with one non-negotiable rule: **it never
+fabricates a code**.
 
-## Parse a payload
+## Resolve a code system to its canonical URI
+
+A `Coding` off any parser (HL7 v2, C-CDA, FHIR) might name its system by OID, mnemonic, or URI.
+`resolveSystem` canonicalizes it — and returns a **typed unknown** rather than guessing when it does
+not recognize the identifier.
 
 ```ts runnable
-import { parseTerminology } from "@cosyte/terminology";
+import { resolveSystem, isUnknownSystem } from "@cosyte/terminology";
 
-// Replace this with a real Terminology message once the parser lands; on clean input the lenient
-// parser recovers nothing, so `warnings` is empty.
-const { value, warnings } = parseTerminology("");
-
-warnings; // => []
+const loinc = resolveSystem("2.16.840.1.113883.6.1");
+isUnknownSystem(loinc) ? "?" : loinc.url; // => "http://loinc.org"
 ```
 
-`parseTerminology` always returns a `{ value, warnings }` pair. Each warning carries a **stable code**
-you can branch on without it churning between releases:
+## Translate a code through a ConceptMap
 
-```ts
-import { parseTerminology, WARNING_CODES } from "@cosyte/terminology";
+Feed the engine a standard FHIR `ConceptMap` resource, then translate a `Coding` through it. The
+data is **bring-your-own** — the engine never ships copyrighted map content.
 
-const { warnings } = parseTerminology(raw);
+```ts runnable
+import { loadConceptMap, translate } from "@cosyte/terminology";
 
-for (const w of warnings) {
-  if (w.code === WARNING_CODES.EXAMPLE_TOLERATED_DEVIATION) {
-    // handle the tolerated deviation
-  }
-}
+const map = loadConceptMap({
+  resourceType: "ConceptMap",
+  group: [
+    {
+      source: "http://hl7.org/fhir/administrative-gender",
+      target: "http://terminology.hl7.org/CodeSystem/v2-0001",
+      element: [{ code: "male", target: [{ code: "M", equivalence: "equivalent" }] }],
+    },
+  ],
+});
+
+const result = translate(
+  { system: "http://hl7.org/fhir/administrative-gender", code: "male" },
+  map,
+);
+
+result.unmapped; // => false
 ```
 
-> **About runnable examples.** The first block above is tagged ```` ```ts runnable ````: the docs
-> build extracts it, runs it against the package, and asserts the `// =>` result — so a documented
-> example can never silently drift from the code. Tag a fence `runnable` only once its `// =>`
-> assertions match the shipped behavior; leave illustrative fragments as a plain ```` ```ts ```` block.
+## An unmapped source is surfaced, never guessed
+
+When a source does not map, the result is a **typed `unmapped`** carrying the source and any
+declared fallback mode — never a fabricated target.
+
+```ts runnable
+import { loadConceptMap, translate } from "@cosyte/terminology";
+
+const map = loadConceptMap({ resourceType: "ConceptMap", group: [] });
+const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
+
+result.unmapped; // => true
+```
+
+> **About runnable examples.** Blocks tagged ```` ```ts runnable ```` are extracted, run against the
+> package, and their `// =>` results asserted — so a documented example can never silently drift from
+> the code.
 
 ## Next
 
-- [Core Concepts](./concepts-archetype) — the parser archetype and the tolerance model.
+- [Core Concepts](./concepts-archetype) — the engine model and the never-fabricate invariant.
 - **API Reference** — every export, generated from source.

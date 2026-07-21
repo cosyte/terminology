@@ -2,23 +2,33 @@
 
 ## Project
 
-**`@cosyte/terminology`** — a developer-focused Terminology parser + utility library for Node.js/TypeScript,
-published under the Cosyte brand. Open-source (MIT). One of the sibling `@cosyte/*` healthcare-standard
-parsers that **mirror each other's API** — `@cosyte/hl7` is the reference; this repo deliberately
-copies its shape.
+**`@cosyte/terminology`** — a developer-focused **terminology engine** for US healthcare code systems,
+published under the Cosyte brand. Open-source (MIT). It is **not a parser** and does **not** mirror the
+parser API: it mirrors the FHIR **Terminology Module** (`$translate`, `$lookup`, `$validate-code`,
+`$expand`, …), operating over **consumer-supplied** FHIR resources. It is a sibling engine consumed the
+way the parsers are — `@cosyte/transform` depends on it (one-way, acyclic); the parsers do not import
+it. The authoritative plan is the meta-repo `operations/roadmaps/terminology.md`.
 
-**North star (the archetype):** a developer can parse a real-world, vendor-quirky Terminology message
-and pull useful fields out in one line — without reading the spec. Liberal on parse (quirks become
-warnings), conservative on emit (always spec-clean). See `documentation/conventions.md` →
-"The standard parser archetype" in the meta-repo for the full contract this repo must satisfy:
-Postel's Law, the tiered tolerance model, stable warning codes, zero runtime deps, dual ESM + CJS,
-immutability + explicit mutation, and the profile system.
+**North star:** a developer holds a code off a parsed message and, in one line, canonicalizes its code
+system (`resolveSystem`) or translates it through a supplied ConceptMap (`translate`) — and is
+**never handed a fabricated target**. The engine is **liberal on load** (a malformed resource is a
+typed diagnostic, not a crash) and **conservative on assertion** (an unmapped source is a typed,
+surfaced `unmapped`, never a guess; a directional map is never inverted).
+
+**Licensing is the load-bearing constraint.** Ship the **engine only** — **zero bundled copyrighted
+terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-system _identities_
+(OID ↔ canonical URI) are published facts, encoded and cited firsthand. See the roadmap §5 matrix.
 
 ## Status
 
-- **Scaffolded from the shared `@cosyte/*` parser template.** Pre-alpha `0.0.x`, not yet published to
-  npm. `src/index.ts` carries archetype **stubs** (`parseTerminology`, `WARNING_CODES`, `FATAL_CODES`)
-  — the real parser lands in subsequent phases.
+- **Phase 1 shipped** (`TERMINOLOGY-1`): the code-system **identity/canonical-URI resolver**
+  (`resolveSystem`) and the ConceptMap **`$translate` engine** (`loadConceptMap` + `translate`), with
+  the **never-fabricate / never-invert** invariants. Layout: `src/common/` (value types +
+  diagnostics), `src/systems/` (identity registry + resolver), `src/conceptmap/` (the engine).
+  Pre-alpha `0.0.x`, not yet published to npm.
+- **Deferred to later phases:** CodeSystem loaders + `$lookup`/`$validate-code` (P2); ValueSet
+  `$expand`/binding (P3); UCUM validation (P4); crosswalk resolvers SNOMED→ICD-10-CM/GEMs (P5); the
+  RxNorm graph (P6); bundleable public-domain packs (P7).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

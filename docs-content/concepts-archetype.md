@@ -1,42 +1,57 @@
 ---
 id: concepts-archetype
-title: The parser archetype
+title: The engine model
 sidebar_position: 1
 ---
 
 # Core Concepts
 
-`@cosyte/terminology` follows the shared **cosyte parser archetype** — the same mental model every `@cosyte/*`
-parser implements, so what you learn here transfers across the suite. `@cosyte/hl7` is the reference
-implementation; this package mirrors its shape.
+`@cosyte/terminology` is a **terminology engine**, not a wire-format parser. It mirrors the FHIR
+**Terminology Module** — the industry's own architecture for keeping terminology a *swappable
+service* separate from the data that uses it — so its operations (`$translate` now; `$lookup`,
+`$validate-code`, `$expand` later) speak the FHIR shape every downstream tool already understands.
 
-## Postel's Law: lenient parse, strict emit
+## Bring-your-own data, engine-only
 
-The parser is **liberal in what it accepts** and the serializer is **conservative in what it emits**.
-Vendor quirks and tolerated deviations don't fail a parse — they become **warnings** — while anything
-the serializer produces is spec-clean. A `{ strict: true }` option escalates every tolerated
-deviation to a thrown error for callers who want the parse to fail loudly instead.
+The engine ships **no copyrighted terminology content**. You feed it standard FHIR resources — a
+`ConceptMap`, and later a `CodeSystem`/`ValueSet` — and it answers questions over them. SNOMED CT,
+CPT, the full UMLS/RxNorm release, and VSAC value sets are **strictly consumer-supplied** (a licensing
+wall, not a feature gap). What the engine *does* encode is code-system **identity** — the OID ↔
+canonical-URI ↔ mnemonic facts — because an identity is a published fact, not content.
 
-## The tolerance tiers
+## The never-fabricate invariant
 
-Every deviation the parser encounters falls into one of three tiers:
+The single rule the whole library is built around: **the engine never invents a code, display, unit,
+or map target.**
 
-- **Tier 1 — spec-clean.** No deviation; no warning.
-- **Tier 2 — recoverable.** A vendor quirk the parser tolerates. It returns a **warning** with a
-  stable code and positional context, and keeps going. Never thrown (unless `strict`).
-- **Tier 3 — fatal.** Unrecoverable structural corruption. **Always thrown**, even in lenient mode.
+- A `$translate` over an **unmapped** source returns a typed `unmapped` result — surfaced, carrying
+  any declared `group.unmapped` fallback mode — **never** a guessed target.
+- Every target `translate` returns is drawn **verbatim** from the supplied map.
+- An unrecognized code system resolves to a typed `unknown`, never a guessed URI.
 
-## Stable warning + fatal codes
+## The never-invert invariant
 
-Warnings and fatal errors carry **stable codes** — `WARNING_CODES` (Tier 2) and `FATAL_CODES`
-(Tier 3). Consumers branch on these, so a code's name is part of the public contract: renaming or
-removing one is a **breaking change**. Codes are `key === value` entries, so the full set survives an
-`Object.values(...)` snapshot into a stability tripwire.
+Real steward maps (SNOMED→ICD-10-CM, the GEMs) are approximate, 1:many, and **non-invertible**.
+`translate` reads a map in its **authored direction only** — it matches a source coding against the
+map's *source-side* codes and never against targets — so a directional map cannot be run backwards.
+Reverse translation requires an explicit inverse map; it is never synthesized.
 
-> **Status:** the code registries currently hold placeholder entries; the real codes are added as the
-> parser grows, phase by phase. See the **API Reference** for the exact set this release ships.
+## Liberal load, conservative assertion
+
+Loading is **liberal**: `loadConceptMap` accepts an untrusted `unknown` and degrades a malformed
+resource to a typed fatal (`TERM_CONCEPTMAP_MALFORMED`) rather than crashing — but it refuses to load
+a structurally partial, misleading map. Assertion is **conservative**: a 1:many mapping returns the
+full candidate set (never collapsed to one), and steward advice comments ride through verbatim.
+
+## Stable diagnostic + fatal codes
+
+Outcomes carry **stable codes** — `DIAGNOSTIC_CODES` (typed, surfaced, non-throwing outcomes like
+`TERM_TRANSLATE_UNMAPPED`) and `FATAL_CODES` (thrown, like `TERM_CONCEPTMAP_MALFORMED`). Consumers
+branch on these, so a code's name is part of the public contract: renaming or removing one is a
+**breaking change**. Diagnostics are **value-free** — a code plus, at most, a code + system +
+version, never a surrounding patient identifier (a code *in patient context* can be PHI).
 
 ## Immutability
 
-Parsed values are immutable by default; mutation happens only through explicit methods. This keeps a
-parsed document safe to share across a pipeline without defensive copying.
+Every value the engine returns — a loaded `ConceptMap`, a `Coding`, a `TranslateResult` — is
+deep-frozen, so it is safe to share across a pipeline without defensive copying.

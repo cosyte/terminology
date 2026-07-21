@@ -1,15 +1,19 @@
 # @cosyte/terminology
 
-> Terminology parser, serializer, and builder for Node.js and TypeScript — **lenient on parse,
-> spec-clean on emit**.
+> A **zero-dependency terminology engine** for US healthcare code systems — FHIR-shaped, BYO-data,
+> and it **never fabricates a code**.
 
-`@cosyte/terminology` is a zero-dependency TypeScript toolkit that follows the cosyte parser archetype: a lenient
-parser that turns real-world, vendor-quirky input into **warnings** rather than failures, paired with
-a serializer that always emits spec-clean output (Postel's Law). It mirrors the API shape of the
-reference parser, [`@cosyte/hl7`](https://github.com/cosyte/hl7).
+`@cosyte/terminology` is **not a wire parser**. It mirrors the FHIR **Terminology Module**
+(`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating over **consumer-supplied** FHIR
+resources. It is the sibling engine `@cosyte/transform` and, later, the parsers' code-system
+recognition consume. It ships the **engine, never copyrighted terminology content** — SNOMED CT, CPT,
+full LOINC/UMLS, and VSAC value sets are strictly bring-your-own; code-system _identities_ (OID ↔
+canonical URI) are published facts, grounded firsthand and encoded.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The public API below is the scaffold;
-> the real parser lands in subsequent phases.
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phase 1** — the
+> code-system identity resolver and the ConceptMap `$translate` engine. Later phases add CodeSystem
+> `$lookup`/`$validate-code`, ValueSet `$expand`, UCUM validation, and the published crosswalks
+> (SNOMED→ICD-10-CM, GEMs, the RxNorm graph).
 
 ## Install
 
@@ -17,32 +21,50 @@ reference parser, [`@cosyte/hl7`](https://github.com/cosyte/hl7).
 npm install @cosyte/terminology
 ```
 
-## Parse
+## Resolve a code system to its canonical URI
 
 ```ts
-import { parseTerminology } from "@cosyte/terminology";
+import { resolveSystem, isUnknownSystem } from "@cosyte/terminology";
 
-const result = parseTerminology(raw);
-
-result.warnings; // stable, positional tolerance warnings (never throws on quirks)
+const r = resolveSystem("2.16.840.1.113883.6.1"); // OID, mnemonic, or URI
+isUnknownSystem(r) ? "unknown" : r.url; // "http://loinc.org"
 ```
 
-The parser is **lenient by default** — vendor quirks become warnings, not failures. A
-`{ strict: true }` mode (to be added) escalates every tolerated deviation to a thrown error.
+## Translate a code through a ConceptMap
 
-## The cosyte parser archetype
+```ts
+import { loadConceptMap, translate } from "@cosyte/terminology";
 
-- **Postel's Law** — liberal parser (lenient default + warnings), conservative serializer (always
-  spec-clean), so quirks don't propagate downstream on round-trip.
-- **Tiered tolerance** — Tier 0/1 silent, Tier 2 warning + recovery (escalates in strict mode),
-  Tier 3 fatal always.
-- **Stable warning codes** — warnings carry stable string codes + positional context; consumers
-  branch on `w.code`, so renaming a code is a breaking change.
-- **Zero runtime dependencies** — Node stdlib only (healthcare integrations vet every dependency).
-- **Dual ESM + CJS** — built with `tsup`, validated with `attw`.
-- **Immutability** — parsed models are immutable; mutation is via explicit methods.
-- **Profile system** — a `defineProfile()` API for vendor quirks (to be added), with built-in
-  profiles authored through the same public API.
+const map = loadConceptMap(myFhirConceptMapJson); // a standard FHIR R4 ConceptMap
+const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
+
+if (result.unmapped) {
+  // Typed, surfaced outcome — carries any group.unmapped fallback mode. Never a guessed target.
+} else {
+  for (const m of result.matches) {
+    m.target; // a frozen Coding, drawn verbatim from the map
+    m.relationship; // "equivalent" | "source-is-narrower-than-target" | … (R5 vocabulary)
+    m.equivalence; // the verbatim FHIR R4 equivalence token
+    m.comment; // steward map advice, carried through verbatim
+  }
+}
+```
+
+## The invariants this engine is built on
+
+- **Never fabricate.** An unmapped source is a typed `unmapped`, never a guessed target. Every target
+  returned is drawn verbatim from the supplied map. An unrecognized system resolves to a typed
+  `unknown`, never a guessed URI.
+- **Never invert.** A directional map is read in its authored direction only; reverse translation
+  needs an explicit inverse map, never a mechanical inversion.
+- **BYO data, engine-only.** Zero copyrighted terminology content is bundled (a licensing wall, not a
+  gap); the engine operates over your own FHIR resources.
+- **Liberal load, conservative assertion.** Malformed input degrades to a typed diagnostic; a 1:many
+  mapping returns the full candidate set, never collapsed to one.
+- **Value-free diagnostics.** A diagnostic carries a code + system + version, never patient context —
+  a code _in patient context_ can be PHI.
+- **Zero runtime dependencies. Dual ESM + CJS.** Node stdlib only; built with `tsup`, validated with
+  `attw`. Immutable by construction (every returned value is deep-frozen).
 
 ## License
 
