@@ -81,6 +81,21 @@ export const DIAGNOSTIC_CODES = {
    * found but is **not valid for claim submission**, and must never be presented as billable.
    */
   TERM_CONCEPT_HEADER_NOT_BILLABLE: "TERM_CONCEPT_HEADER_NOT_BILLABLE",
+  /**
+   * A ValueSet `compose` part could **not be expanded** — an intensional `include`/`exclude` whose
+   * code system was not supplied, an unresolvable referenced value set, or a `filter` operator the
+   * engine does not implement. Surfaced as a typed outcome that marks the expansion **incomplete**;
+   * the engine **never** fabricates a member and **never** returns a silently-empty "no members"
+   * answer for a part it could not compute (roadmap §4.4 — a false "not a member" is a clinical error).
+   */
+  TERM_VALUESET_CANNOT_EXPAND: "TERM_VALUESET_CANNOT_EXPAND",
+  /**
+   * A **pre-computed** `ValueSet.expansion` is **incomplete** — its `total` exceeds the number of
+   * `contains` entries, or it is flagged too-costly (the VSAC `$expand` >1200-code truncation hazard,
+   * roadmap §4.4). The engine **never treats a truncated expansion as complete membership**: a code
+   * absent from a truncated expansion is `undetermined`, never a confident "not a member".
+   */
+  TERM_VALUESET_EXPANSION_TRUNCATED: "TERM_VALUESET_EXPANSION_TRUNCATED",
 } as const;
 
 /**
@@ -112,6 +127,14 @@ export const FATAL_CODES = {
    * skipped-and-surfaced load warnings, not fatals — only an unusable *source* is fatal.)
    */
   TERM_CODESYSTEM_MALFORMED: "TERM_CODESYSTEM_MALFORMED",
+  /**
+   * A `ValueSet` resource was structurally unusable — wrong `resourceType`, or a `compose`/`expansion`
+   * whose required shape (an `include` that is not an object, a `contains` entry missing its `code`)
+   * is corrupt. Thrown rather than silently loading a partial value set that would bind *some* codes
+   * and quietly drop others. (A `filter` operator the engine does not implement is **not** fatal — it
+   * is the surfaced `TERM_VALUESET_CANNOT_EXPAND` diagnostic at expansion time.)
+   */
+  TERM_VALUESET_MALFORMED: "TERM_VALUESET_MALFORMED",
 } as const;
 
 /**

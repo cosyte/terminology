@@ -63,11 +63,21 @@ function deriveStatus(props: readonly Property[]): ConceptStatus | undefined {
   return undefined;
 }
 
-/** Recursively collect concepts from a `concept[]` array into `into`, surfacing skipped rows. */
+/**
+ * Recursively collect concepts from a `concept[]` array into `into`, surfacing skipped rows.
+ *
+ * `parentCode` is the code of the enclosing concept when this array is a nested `concept` list. FHIR
+ * `CodeSystem` nesting is the default **is-a** hierarchy (`hierarchyMeaning` defaults to `is-a`), so a
+ * nested child gains a synthesized standard **`parent`** concept-property
+ * (`http://hl7.org/fhir/concept-properties#parent`) pointing at its enclosing code — the subsumption
+ * signal the ValueSet `is-a`/`descendent-of` filter reads. A `parent` property already declared
+ * verbatim for the same value is never duplicated; the flattened concept map is otherwise unchanged.
+ */
 function collectConcepts(
   rawConcepts: readonly unknown[],
   into: Map<string, Concept>,
   warnings: LoadWarning[],
+  parentCode?: string,
 ): void {
   for (const raw of rawConcepts) {
     if (!isJsonObject(raw)) {
@@ -89,6 +99,14 @@ function collectConcepts(
         const value = isJsonObject(p) ? readPropertyValue(p) : undefined;
         if (value !== undefined) props.push(Object.freeze({ code: pcode, value }));
       }
+      // Synthesize the nesting-derived `parent` edge (unless the release already declared it), so a
+      // nested hierarchy is queryable by `is-a`/`descendent-of` exactly like an explicit `parent`.
+      if (
+        parentCode !== undefined &&
+        !props.some((p) => p.code === "parent" && p.value === parentCode)
+      ) {
+        props.push(Object.freeze({ code: "parent", value: parentCode }));
+      }
       const out: Writable<Concept> = { code, properties: Object.freeze(props) };
       const display = getString(raw, "display");
       if (display !== undefined) out.display = display;
@@ -106,9 +124,12 @@ function collectConcepts(
         }),
       );
     }
-    // Recurse into nested children regardless (a header concept still has valid leaf children).
+    // Recurse into nested children regardless (a header concept still has valid leaf children). The
+    // enclosing concept's code becomes the child's synthesized `parent` (when the child has a code).
     const children = getArray(raw, "concept");
-    if (children !== undefined) collectConcepts(children, into, warnings);
+    if (children !== undefined) {
+      collectConcepts(children, into, warnings, code !== "" ? code : undefined);
+    }
   }
 }
 

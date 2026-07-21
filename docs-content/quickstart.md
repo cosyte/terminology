@@ -8,8 +8,9 @@ sidebar_position: 1
 
 `@cosyte/terminology` is a **terminology engine**, not a wire parser: it answers FHIR terminology
 questions over **consumer-supplied** resources — the code-system identity resolver, the ConceptMap
-`$translate` engine, and the CodeSystem `$lookup` / `$validate-code` operations — with one
-non-negotiable rule: **it never fabricates a code**.
+`$translate` engine, the CodeSystem `$lookup` / `$validate-code` operations, and the ValueSet
+`$expand` / binding operations — with one non-negotiable rule: **it never fabricates a code, and never
+treats an answer it could not compute as if it had**.
 
 ## Resolve a code system to its canonical URI
 
@@ -99,6 +100,70 @@ const cs = loadCodeSystem({
 
 lookup(cs, "ZZZ").found; // => false
 validateCode(cs, "ZZZ").valid; // => false
+```
+
+## Expand a value set and test membership
+
+Load a **consumer-supplied** FHIR `ValueSet` and expand its `compose` over the code systems you
+supply. `$expand` returns the flattened membership plus an honest `complete` flag; binding
+(`validateCodeInValueSet`) answers whether a code is allowed in a slot.
+
+```ts runnable
+import { loadCodeSystem, loadValueSet, expand } from "@cosyte/terminology";
+
+const cs = loadCodeSystem({
+  format: "fhir",
+  resource: {
+    resourceType: "CodeSystem",
+    url: "http://example.org/cs",
+    concept: [{ code: "a" }, { code: "b" }, { code: "c" }],
+  },
+});
+
+const vs = loadValueSet({
+  resourceType: "ValueSet",
+  compose: {
+    include: [{ system: "http://example.org/cs", concept: [{ code: "a" }, { code: "b" }] }],
+  },
+});
+
+const result = expand(vs, { codeSystems: new Map([["http://example.org/cs", cs]]) });
+result.complete; // => true
+```
+
+```ts runnable
+import { loadValueSet, validateCodeInValueSet } from "@cosyte/terminology";
+
+const vs = loadValueSet({
+  resourceType: "ValueSet",
+  compose: { include: [{ system: "http://example.org/cs", concept: [{ code: "a" }] }] },
+});
+
+const member = validateCodeInValueSet({ system: "http://example.org/cs", code: "a" }, vs);
+member.undetermined === false && member.result; // => true
+```
+
+## A value set it cannot expand is surfaced, never guessed
+
+When a part of the value set cannot be computed — a code system you did not supply, a truncated
+server expansion, an unimplemented filter — the answer is a typed **`undetermined`**, never a
+fabricated "not a member" (a false negative on a binding is a clinical error).
+
+```ts runnable
+import { loadValueSet, validateCodeInValueSet } from "@cosyte/terminology";
+
+// An intensional `is-a` filter whose code system was not supplied cannot be evaluated.
+const vs = loadValueSet({
+  resourceType: "ValueSet",
+  compose: {
+    include: [
+      { system: "http://example.org/cs", filter: [{ property: "concept", op: "is-a", value: "root" }] },
+    ],
+  },
+});
+
+const check = validateCodeInValueSet({ system: "http://example.org/cs", code: "x" }, vs);
+check.undetermined; // => true
 ```
 
 > **About runnable examples.** Blocks tagged ```` ```ts runnable ```` are extracted, run against the

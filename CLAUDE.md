@@ -32,8 +32,18 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
   header-not-billable / obsolete / suppressed). Never-fabricate extends to code identity (unknown →
   typed `unknown`/`valid:false`, never a guessed display). Liberal on load: malformed rows → typed
   warnings; unusable source → fatal `TERM_CODESYSTEM_MALFORMED`. Pre-alpha `0.0.x`, unpublished.
-- **Deferred to later phases:** ValueSet `$expand`/binding (P3); UCUM validation (P4); crosswalk
-  resolvers SNOMED→ICD-10-CM/GEMs (P5); the RxNorm graph (P6); bundleable public-domain packs (P7).
+- **Phase 3 shipped** (`TERMINOLOGY-3`): the **ValueSet binding layer** in `src/valueset/`.
+  `loadValueSet` (conservative on load → fatal `TERM_VALUESET_MALFORMED`); `expand` over `compose`
+  (`include`/`exclude`, explicit `concept` lists, whole-`system`, referenced value sets, and
+  `is-a`/`descendent-of`/`is-not-a`/`=`/`in`/`not-in`/`exists` `filter`s) plus pre-computed
+  `expansion` pass-through; `validateCodeInValueSet` binding. Never-fabricate extends to membership: an
+  unresolvable part → typed `TERM_VALUESET_CANNOT_EXPAND` and `complete: false` (a lower bound, never a
+  silently-empty set); a truncated expansion → `TERM_VALUESET_EXPANSION_TRUNCATED`, membership
+  `undetermined` (never a fabricated "not a member"). Subsumption reads the release's own hierarchy —
+  the FHIR CodeSystem loader now synthesizes a standard `parent` concept-property from nested
+  `concept`s. Zero deps.
+- **Deferred to later phases:** UCUM validation (P4); crosswalk resolvers SNOMED→ICD-10-CM/GEMs (P5);
+  the RxNorm graph (P6); bundleable public-domain packs (P7).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

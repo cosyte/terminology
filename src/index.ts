@@ -25,8 +25,18 @@
  * The never-fabricate invariant holds here too: an unknown code is a typed `unknown` / `valid: false`,
  * never a fabricated display or a guessed `valid: true`.
  *
- * Deferred to later phases: ValueSet `$expand`/binding, UCUM validation, and the published crosswalk
- * resolvers (SNOMED→ICD-10-CM, GEMs, the RxNorm graph).
+ * **Phase 3** adds the ValueSet binding layer — FHIR `$expand` / `$validate-code` over a `compose`:
+ *
+ * - {@link loadValueSet} — load a **consumer-supplied** FHIR `ValueSet` (intensional `compose` and/or
+ *   a pre-computed `expansion`) into an immutable model.
+ * - {@link expand} — flatten membership over the supplied {@link CodeSystem}s (`include`/`exclude`,
+ *   explicit `concept` lists, `is-a`/property `filter`s, referenced value sets), with an honest
+ *   `complete` flag: an unresolvable part is a typed `TERM_VALUESET_CANNOT_EXPAND`, never a guess.
+ * - {@link validateCodeInValueSet} — binding membership, returning a **decided** `result` only when
+ *   proven and a typed `undetermined` otherwise (a truncated expansion never reads as complete).
+ *
+ * Deferred to later phases: UCUM validation, and the published crosswalk resolvers (SNOMED→ICD-10-CM,
+ * GEMs, the RxNorm graph).
  *
  * @packageDocumentation
  */
@@ -127,3 +137,26 @@ export type {
   BillableFlag,
   FhirCodeSystemSource,
 } from "./codesystem/types.js";
+
+// ── ValueSet binding: compose / $expand / $validate-code ─────────────────────────────────────────
+export { loadValueSet } from "./valueset/load.js";
+export { expand } from "./valueset/expand.js";
+export { validateCodeInValueSet } from "./valueset/validate.js";
+export { buildSubsumption, isA, matchesFilter, unsupportedOps } from "./valueset/filters.js";
+export type { Subsumption, FilterMatch } from "./valueset/filters.js";
+export type {
+  ValueSet,
+  ValueSetCompose,
+  ConceptSetComponent,
+  ConceptSetFilter,
+  ConceptRef,
+  FilterOperator,
+  ExpansionContains,
+  ValueSetExpansion,
+  ExpansionContext,
+  ExpansionDiagnostic,
+  ExpandResult,
+  ValueSetMembership,
+  ValueSetMemberDecided,
+  ValueSetMemberUndetermined,
+} from "./valueset/types.js";

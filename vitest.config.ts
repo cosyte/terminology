@@ -9,7 +9,7 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * as later phases land (`codesystem/`, `valueset/`, `ucum/`, `crosswalk/`).
  */
 export default cosyteVitest({
-  coverageDirs: ["common", "systems", "conceptmap", "codesystem"],
+  coverageDirs: ["common", "systems", "conceptmap", "codesystem", "valueset"],
   test: {
     globals: false,
     environment: "node",

@@ -14,6 +14,43 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 3 — ValueSet binding: `compose` / `$expand` / `$validate-code` against a value set**
+  (`TERMINOLOGY-3`). Loads a **consumer-supplied** FHIR `ValueSet` and answers the FHIR R4 ValueSet
+  terminology operations over the CodeSystem loaders — engine only, **zero bundled content** (VSAC
+  value sets and their embedded SNOMED/CPT/RxNorm/LOINC remain BYO by license).
+  - **`loadValueSet(json)`** — validates an untrusted FHIR R4 `ValueSet` into an immutable model
+    (intensional `compose` of `include`/`exclude` over `system`/`concept`/`filter`/`valueSet`, and/or
+    a **pre-computed** `expansion` whose `total`/`valueset-toocostly` extension derive a `truncated`
+    flag). Conservative on load: a structurally unusable resource is the typed fatal
+    `TERM_VALUESET_MALFORMED`; an unimplemented `filter` operator is **not** fatal (it surfaces at
+    expansion time).
+  - **`expand(vs, ctx)`** — FHIR `$expand`: the union of `include` minus `exclude`, over the
+    **consumer-supplied** `CodeSystem`s (and referenced `ValueSet`s) in the `ExpansionContext`.
+    Supports explicit `concept` lists, whole-`system` includes, referenced value sets (intersection,
+    cycle-safe), and `filter`s — `is-a` / `descendent-of` / `is-not-a` subsumption over the release's
+    hierarchy plus `=` / `in` / `not-in` / `exists` property predicates. Returns an honest `complete`
+    flag: a part it could not compute (missing code system, unresolved value set, unimplemented op) is
+    a typed `TERM_VALUESET_CANNOT_EXPAND` and the `contains` set is an explicit **lower bound**, never
+    a silently-empty or fabricated membership.
+  - **`validateCodeInValueSet(coding, vs, ctx)`** — FHIR ValueSet `$validate-code` (binding): a
+    **decided** `result: true`/`false` only when membership is proven (found in a computable include
+    and not removed by any computable exclude / absent from a fully-evaluated value set), otherwise a
+    typed `undetermined` (`TERM_VALUESET_CANNOT_EXPAND`). A **truncated** pre-computed expansion never
+    reads as complete membership — a code absent from it is `undetermined`, never a fabricated "not a
+    member" (roadmap §4.4: a false negative on a binding is a clinical error).
+  - **Subsumption from the release's own hierarchy** — the FHIR `CodeSystem` loader now synthesizes a
+    standard `parent` concept-property from a **nested `concept`** hierarchy (default `is-a`
+    meaning), so `is-a`/`descendent-of` work over nested and explicit-`parent` code systems alike;
+    `buildSubsumption` / `isA` are exposed. Cycle-safe.
+  - **The never-fabricate invariant extends to value-set binding** — locked by property-based tests
+    (every expanded code is one the value set selects; excludes are honored; membership is
+    order-independent; a decided membership agrees with the full expansion; a truncated expansion is
+    never read as complete). Grounded firsthand on the FHIR R4 Terminology Module
+    (`valueset`, `valueset-operation-expand`, `valueset-operation-validate-code`, `valueset-filter-operator`).
+  - New value-free stable codes: `TERM_VALUESET_CANNOT_EXPAND`, `TERM_VALUESET_EXPANSION_TRUNCATED`
+    (diagnostics) and `TERM_VALUESET_MALFORMED` (fatal).
+  - **Zero runtime dependencies** retained.
+
 - **Phase 2 — the CodeSystem load layer + FHIR `$lookup` / `$validate-code`** (`TERMINOLOGY-2`).
   Loads a **consumer-supplied** code-system release into an immutable, queryable model and answers the
   two FHIR R4 CodeSystem identity operations. Ships the engine only — **zero bundled copyrighted
