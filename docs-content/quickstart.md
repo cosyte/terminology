@@ -229,6 +229,54 @@ const stalled = applyComplexMap(map, "72098002", {});
 stalled.mapped && stalled.groups[0]?.outcome; // => "context-required"
 ```
 
+## Navigate the RxNorm drug graph (BYO release)
+
+RxNorm's drug graph — ingredient → clinical drug → branded drug, with brand and dose-form cross-links
+— is loaded from a **bring-your-own** RxNorm RRF release (`RXNCONSO` + `RXNREL`, and `RXNSAT` for
+NDCs; the engine bundles **no** RxNorm content). Relationships are read in RxNorm's documented
+direction (`RELA` is the relationship the **second** `RXCUI` has to the **first**), and navigation
+follows only **authored** edges — the engine never synthesizes an inverse.
+
+```ts runnable
+import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
+
+// Synthetic rows in the real RxNorm RRF wire format (RXNCONSO 18 cols, RXNREL 16 cols).
+// "SCD(2) has_ingredient IN(1)": the drug has the ingredient — subject=RXCUI2=2, object=RXCUI1=1.
+const graph = loadRxNormGraph({
+  conso:
+    "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
+    "2|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
+  rel: "1|||RN|2|||has_ingredient|||RXNORM||||||",
+});
+
+const r = ingredientsOf(graph, "2");
+r.found && r.targets[0]?.name; // => "lisinopril"
+```
+
+An `RXCUI` absent from the loaded release is a typed unknown — never a guessed concept:
+
+```ts runnable
+import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
+
+const graph = loadRxNormGraph({ conso: "", rel: "" });
+const r = ingredientsOf(graph, "99999999");
+!r.found && r.code; // => "TERM_RXNORM_UNKNOWN_RXCUI"
+```
+
+Approximate name matching is an **opt-in, explicitly labeled** path — never the default, and never an
+exact code assertion (every candidate is marked `approximate: true`):
+
+```ts runnable
+import { loadRxNormGraph, approximateMatch } from "@cosyte/terminology";
+
+const graph = loadRxNormGraph({
+  conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||",
+  rel: "",
+});
+
+approximateMatch(graph, "lisinopril")[0]?.approximate; // => true
+```
+
 > **About runnable examples.** Blocks tagged ```` ```ts runnable ```` are extracted, run against the
 > package, and their `// =>` results asserted — so a documented example can never silently drift from
 > the code. A ```` ```ts runnable throws ```` block must throw.

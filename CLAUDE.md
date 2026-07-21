@@ -67,8 +67,25 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
     `TERM_CROSSWALK_CONTEXT_REQUIRED` (never a guessed branch), Map Advice + Categories ride through
     verbatim. `invertGem` throws `TERM_MAP_NOT_INVERTIBLE` (never-invert as a first-class contract). No
     map content bundled (GEMs BYO now / a future public-domain pack; SNOMED BYO forever). Zero deps.
-- **Deferred to later phases:** the RxNorm graph (P6); bundleable public-domain packs incl. a GEM pack
-  (P7).
+- **Phase 6 shipped** (`TERMINOLOGY-6`): the **RxNorm drug relationship graph** in `src/rxnorm/`.
+  `loadRxNormGraph` reads a **caller-supplied** RxNorm RRF release — `RXNCONSO` (concepts typed by
+  `TTY`: `IN`/`PIN`/`BN`/`SCD`/`SBD`/`SCDC`/`DF`/…), `RXNREL` (directed `RELA` edges), and optionally
+  `RXNSAT` (`ATN=NDC` attributes) — reusing the shared zero-dep RRF reader. The column layouts and the
+  **edge-direction convention** are grounded firsthand on the NLM RxNorm Technical Documentation
+  (§12.7) + UMLS Reference Manual: `RELA` is the relationship `RXCUI2` has to `RXCUI1`, so each row is
+  read `RXCUI2 ⟶RELA⟶ RXCUI1` and normalized to `subject=RXCUI2, object=RXCUI1` — the documented
+  medication-safety trap (roadmap §10 Q5), pinned by fixtures in the real wire format. Navigation
+  (`ingredientsOf`/`genericFor`/`brandsFor`/`doseFormsOf`/`consistsOf`/`relatedByRela`) follows
+  **authored edges only** — never synthesizes an inverse (RxNorm ships both directions as separate
+  rows). `resolveNdc` carries temporal status + as-of release; `approximateMatch` is opt-in + labeled,
+  never the default. Never-fabricate extends to the graph: an absent `RXCUI` →
+  `TERM_RXNORM_UNKNOWN_RXCUI`, an absent NDC → `TERM_RXNORM_NDC_UNMAPPED`, a present concept with no
+  such edge → a found result with **empty** targets. **Content posture:** ships the BYO graph mechanism
+  only — **zero RxNorm content bundled**; the public-domain Current Prescribable Content pack is
+  deferred to Phase 7 (a genuine verbatim release could not be obtained in the sandbox; fabricating it
+  would breach never-fabricate). Zero deps.
+- **Deferred to later phases:** bundleable public-domain packs — RxNorm Prescribable Content,
+  ICD-10-CM, UCUM, LOINC (with notice) + LOINC parts/hierarchy, incl. a GEM pack (P7).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

@@ -58,10 +58,24 @@
  * - {@link invertGem} — the never-invert refusal made a first-class, thrown contract
  *   ({@link FATAL_CODES.TERM_MAP_NOT_INVERTIBLE}).
  *
- * Deferred to later phases: the RxNorm drug relationship graph (Phase 6) and the bundleable
- * public-domain content packs, including a bundled GEM pack (the content-packs phase). The GEMs are
- * CMS public-domain, so a caller may supply the file today (BYO); SNOMED/CPT/UMLS content stays BYO
- * permanently (a licensing wall — roadmap §5).
+ * **Phase 6** adds the **RxNorm drug relationship graph** — ingredient / brand / clinical-drug /
+ * dose-form navigation over a **caller-supplied** RxNorm RRF release (roadmap §4.2):
+ *
+ * - {@link loadRxNormGraph} — load `RXNCONSO` (concepts, typed by `TTY`), `RXNREL` (directed `RELA`
+ *   edges, normalized to the documented `RXCUI2 ⟶RELA⟶ RXCUI1` direction), and optionally `RXNSAT`
+ *   (NDC attributes) into an immutable graph. Ships **no** RxNorm content — BYO release (roadmap §5).
+ * - {@link ingredientsOf} / {@link genericFor} / {@link brandsFor} / {@link doseFormsOf} /
+ *   {@link consistsOf} / {@link relatedByRela} — graph navigation following **authored** edges only
+ *   (the engine never synthesizes an inverse). An absent `RXCUI` is a typed {@link RxNormUnknown}.
+ * - {@link resolveNdc} — NDC → `RXCUI` carrying the temporal status and the as-of release; an absent
+ *   NDC is a typed {@link NdcUnmapped}, never a guess.
+ * - {@link approximateMatch} — the **opt-in, explicitly labeled** similarity path (never the default,
+ *   never an exact code assertion).
+ *
+ * Deferred to later phases: the bundleable public-domain content packs, including the RxNorm Current
+ * Prescribable Content pack and a GEM pack (the content-packs phase, Phase 7). The GEMs and the
+ * Prescribable subset are public-domain, so a caller may supply them today (BYO); SNOMED/CPT/full-UMLS
+ * content stays BYO permanently (a licensing wall — roadmap §5).
  *
  * @packageDocumentation
  */
@@ -246,3 +260,35 @@ export type {
   CrosswalkNoMap,
   CrosswalkUnmapped,
 } from "./crosswalk/types.js";
+
+// ── RxNorm drug graph: ingredient / brand / clinical-drug / dose-form navigation (never-fabricate) ──
+export { loadRxNormGraph, type RxNormGraphSource } from "./rxnorm/load.js";
+export {
+  getConcept,
+  relatedByRela,
+  ingredientsOf,
+  genericFor,
+  brandsFor,
+  doseFormsOf,
+  consistsOf,
+  resolveNdc,
+  approximateMatch,
+  type ApproximateMatchOptions,
+} from "./rxnorm/navigate.js";
+export { RELA, RELA_INVERSE, RXNORM_SYSTEM, type RelaName } from "./rxnorm/rela.js";
+export { TERM_TYPES, asTermType } from "./rxnorm/tty.js";
+export type {
+  TermType,
+  RxNormConcept,
+  RxNormEdge,
+  RxNormGraph,
+  RxNormLoadWarning,
+  RxNormNavResult,
+  RxNormRelated,
+  RxNormUnknown,
+  RxNormApproximateMatch,
+  NdcStatus,
+  NdcResolution,
+  NdcUnmapped,
+  NdcResult,
+} from "./rxnorm/types.js";
