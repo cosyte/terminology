@@ -12,6 +12,22 @@ this file is maintained by hand (Changesets handles the version bump and publish
 The first pre-alpha release (`0.0.1`) will ship the initial public API surface. The package begins
 its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until first alpha).
 
+### Security
+
+- **Dev-dependency advisory remediation (no runtime impact — `@cosyte/terminology`
+  ships zero runtime dependencies, so the published artifact is unchanged).**
+  Added the shared canonical scoped `pnpm.overrides` block pinning two transitive
+  **dev/build-time** packages to their patched releases: `esbuild`
+  (`>=0.27.3 <0.28.1` → `0.28.1`; GHSA dev-server path-traversal — not reachable
+  here: the library builds via `tsup`/`vitest` and never runs `esbuild serve`) and
+  the `@changesets/parse` copy of `js-yaml` (`>=4.0.0 <4.2.0` → `4.2.0`;
+  GHSA-h67p-54hq-rp68 merge-key DoS). The `js-yaml@3.x` pulled by `read-yaml-file`
+  (via `@manypkg/get-packages` → `@changesets/cli`) is **intentionally left**: it
+  calls `yaml.safeLoad`, removed/throwing in js-yaml 4, so it cannot be
+  force-upgraded without breaking the release tooling, and it only parses trusted
+  local repo YAML at release time. This mirrors `@cosyte/hl7` and is the shared
+  override block enforced suite-wide by the `@cosyte/config` drift check.
+
 ### Added
 
 - **Phase 6 — RxNorm drug relationship graph** (`TERMINOLOGY-6`). Ingredient / brand / clinical-drug /
