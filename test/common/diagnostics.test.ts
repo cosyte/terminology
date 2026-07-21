@@ -23,6 +23,7 @@ describe("diagnostic + fatal code registries", () => {
         "TERM_RRF_MALFORMED_ROW",
         "TERM_SYSTEM_UNRECOGNIZED",
         "TERM_TRANSLATE_UNMAPPED",
+        "TERM_UCUM_INVALID",
         "TERM_VALUESET_CANNOT_EXPAND",
         "TERM_VALUESET_EXPANSION_TRUNCATED",
       ]

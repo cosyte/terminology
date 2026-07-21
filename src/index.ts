@@ -35,8 +35,18 @@
  * - {@link validateCodeInValueSet} — binding membership, returning a **decided** `result` only when
  *   proven and a typed `undetermined` otherwise (a truncated expansion never reads as complete).
  *
- * Deferred to later phases: UCUM validation, and the published crosswalk resolvers (SNOMED→ICD-10-CM,
- * GEMs, the RxNorm graph).
+ * **Phase 4** adds the **UCUM** unit layer — a hand-rolled UCUM grammar parser + validation +
+ * representation canonicalization (recognition only, **no** magnitude conversion):
+ *
+ * - {@link validateUcum} — is a string a valid UCUM unit; if so, its canonical descriptor. An
+ *   invalid unit is a typed `TERM_UCUM_INVALID`, never a guessed "nearest" unit.
+ * - {@link ucumEqual} — do two expressions denote the *same unit* (`N` ≡ `kg.m/s2`), by reducing
+ *   both to base dimensions. Not magnitude conversion (`mg/dL` → `mmol/L` is refused).
+ * - {@link parseUcum} / {@link reduce} / {@link loadUcumEssence} — the underlying grammar parser,
+ *   dimensional reducer, and the in-memory model of the vendored, verbatim UCUM table.
+ *
+ * Deferred to later phases: the published crosswalk resolvers (SNOMED→ICD-10-CM, GEMs, the RxNorm
+ * graph) and the bundleable public-domain packs.
  *
  * @packageDocumentation
  */
@@ -160,3 +170,24 @@ export type {
   ValueSetMemberDecided,
   ValueSetMemberUndetermined,
 } from "./valueset/types.js";
+
+// ── UCUM: unit grammar validation + representation canonicalization (recognition only) ────────────
+export { validateUcum, ucumEqual } from "./ucum/validate.js";
+export { parseUcum, type ParseResult, type ParseFailure } from "./ucum/parse.js";
+export { reduce } from "./ucum/reduce.js";
+export { loadUcumEssence } from "./ucum/essence.js";
+export type {
+  UcumValidation,
+  UcumEssence,
+  UcumPrefix,
+  UcumAtom,
+  UnitNode,
+  ComponentNode,
+  SimpleUnitNode,
+  FactorNode,
+  GroupNode,
+  AnnotationNode,
+  Reduction,
+  LinearReduction,
+  SpecialReduction,
+} from "./ucum/types.js";

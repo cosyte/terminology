@@ -14,6 +14,38 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 4 — UCUM: grammar parser + `validateUcum` + `ucumEqual`** (`TERMINOLOGY-4`). Unit
+  recognition, validation, and **representation canonicalization only** — **no** magnitude conversion
+  (`mg/dL` → `mmol/L` needs an analyte's molar mass, a clinical computation the engine refuses;
+  roadmap §2/§4.3). Engine only; the UCUM table is **vendored verbatim**, never a derivative.
+  - **`validateUcum(unit)`** — a hand-rolled, zero-dep UCUM grammar parser (base units, metric
+    prefixes attached with no delimiter and resolved by **longest-match**, `.` multiply / `/` divide,
+    signed integer exponents, `{…}` inert annotations, the `10*` / `10^` powers-of-ten, **case
+    sensitive**) over the known atom table. Returns `{ valid: true, canonical }` for a well-formed
+    unit, or the typed `{ valid: false, code: "TERM_UCUM_INVALID", reason }` — an unparseable or
+    unknown unit is **never** a guessed "nearest" unit (the never-fabricate invariant, applied to
+    units; roadmap §4.3). Total and fail-safe: any string in, a typed result out, never a throw.
+  - **`ucumEqual(a, b)`** — reduces both expressions to base dimensions and reports whether they
+    denote the **same unit** (`N` ≡ `kg.m/s2`, `Pa` ≡ `N/m2`, `mmol/L` ≡ `mmol.L-1`, annotations
+    inert). This is **not** magnitude conversion — `mg` ≠ `g`, `km` ≠ `m`. A **special** (non-linear)
+    unit (`Cel`, `[pH]`, `B`) is never equated with a linear one, and distinct **arbitrary** units
+    (`[IU]` vs `[iU]`) never compare equal (the never-fabricate posture: no unproven equivalence).
+  - **`parseUcum` / `reduce` / `loadUcumEssence`** — the underlying AST parser, dimensional reducer,
+    and the in-memory model of the vendored UCUM table, exported for advanced use.
+  - **Vendored, verbatim UCUM data.** `vendor/ucum/ucum-essence.xml` (official v2.2) is checked in
+    byte-for-byte and embedded verbatim as a string (`src/ucum/essence-data.generated.ts`, via
+    `pnpm gen:ucum`); the engine parses it at runtime into a lookup table (a permitted UCUM use, not a
+    modification/derivative — see `vendor/ucum/NOTICE.md`; UCUM © Regenstrief Institute). No file is
+    read at runtime; a drift test proves the embedded copy is byte-identical to the vendored source.
+  - **Conformance gate.** The official `UcumFunctionalTests.xml` suite (EPL) is vendored and run: all
+    **530 validation cases** pass, and the **31 conversion pairs** are verified commensurable
+    (same reduced dimension). Magnitude-conversion sub-tests are a documented non-goal.
+  - **Scope, flagged.** Case-**sensitive** (c/s) mode only — the normative FHIR/HL7 interchange mode;
+    the case-insensitive (c/i) variant is **not** implemented (a c/i-only string is a typed
+    `TERM_UCUM_INVALID`, never silently reinterpreted). Deeply-nested/pathological input degrades to a
+    typed invalid (nesting is capped), never a crash. No magnitude conversion (documented non-goal).
+  - New value-free stable diagnostic code: **`TERM_UCUM_INVALID`**. Zero runtime dependencies.
+
 - **Phase 3 — ValueSet binding: `compose` / `$expand` / `$validate-code` against a value set**
   (`TERMINOLOGY-3`). Loads a **consumer-supplied** FHIR `ValueSet` and answers the FHIR R4 ValueSet
   terminology operations over the CodeSystem loaders — engine only, **zero bundled content** (VSAC

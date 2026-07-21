@@ -11,10 +11,12 @@ full LOINC/UMLS, and VSAC value sets are strictly bring-your-own; code-system _i
 canonical URI) are published facts, grounded firsthand and encoded.
 
 > **Status:** pre-alpha (`0.0.x`), not yet published to npm. Ships **Phase 1** — the code-system
-> identity resolver and the ConceptMap `$translate` engine — and **Phase 2** — the CodeSystem load
-> layer (RRF / CSV / fixed-width / FHIR JSON) with `$lookup` and `$validate-code`. Later phases add
-> ValueSet `$expand`, UCUM validation, and the published crosswalks (SNOMED→ICD-10-CM, GEMs, the
-> RxNorm graph).
+> identity resolver and the ConceptMap `$translate` engine — **Phase 2** — the CodeSystem load layer
+> (RRF / CSV / fixed-width / FHIR JSON) with `$lookup` and `$validate-code` — **Phase 3** — ValueSet
+> binding (`compose` / `$expand` / `$validate-code`) — and **Phase 4** — UCUM unit validation and
+> canonicalization (`validateUcum` / `ucumEqual`, recognition only, no magnitude conversion). Later
+> phases add the published crosswalks (SNOMED→ICD-10-CM, GEMs, the RxNorm graph) and the bundleable
+> public-domain packs.
 
 ## Install
 
@@ -70,6 +72,34 @@ if (hit.found) {
 
 validateCode(cs, "2160-0").valid; // $validate-code — true iff present; never a guessed true
 ```
+
+## Validate and compare UCUM units
+
+Recognition and canonicalization only — **no magnitude conversion** (`5 mg/dL` → `mmol/L` needs the
+analyte's molar mass, a clinical computation this engine refuses).
+
+```ts
+import { validateUcum, ucumEqual } from "@cosyte/terminology";
+
+const v = validateUcum("mmol/L");
+v.valid; // true — v.canonical is a stable canonical descriptor
+validateUcum("mg/dl/").valid; // false — code "TERM_UCUM_INVALID", never a guessed "nearest" unit
+
+ucumEqual("N", "kg.m/s2"); // true  — same unit, different spelling
+ucumEqual("mmol/L", "mmol.L-1"); // true  — annotations inert, operators normalized
+ucumEqual("mg", "g"); // false — different units (this is not conversion)
+ucumEqual("Cel", "K"); // false — a special (non-linear) unit is never equated with a linear one
+```
+
+The UCUM table is the official `ucum-essence.xml`, vendored **verbatim** and parsed at runtime; the
+engine ships no derivative of it and passes the official UCUM functional-test suite. See
+`vendor/ucum/NOTICE.md`.
+
+> **Case-sensitive (c/s) mode only.** UCUM's normative interchange mode — the one FHIR/HL7 bind to —
+> is case-sensitive (`m` = metre, `M` = mega, `Pa` = pascal, `pA` = picoampere). The
+> case-**insensitive** (c/i) spelling variant is **not** supported; a c/i-only string returns a typed
+> `TERM_UCUM_INVALID` (fail-safe — never silently reinterpreted). Magnitude conversion is likewise a
+> deliberate non-goal (recognition and canonicalization only).
 
 ## The invariants this engine is built on
 
