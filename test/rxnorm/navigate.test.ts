@@ -12,10 +12,12 @@
  * previously carried four such claims: a `BN` for atorvastatin labelled as the lisinopril brand, two
  * `SCD`s labelled `SBD` and `SCDC`, and an Oral Capsule dose form labelled "Oral Tablet".
  *
- * The **topology** is likewise RxNorm's own, matching `direction.test.ts`: `has_ingredient` runs
- * `SCDC ⟶ IN` and `SBD ⟶ BN`, and there is **no** `SCD ⟶ IN` ingredient edge in any release. This
- * file used to author one, which made the package's own suite model a graph the standard does not
- * describe.
+ * The **topology** is likewise RxNorm's own, matching `direction.test.ts`: `has_ingredient` is
+ * authored from the clinical side (`SCDC`/`SCDF`/`SCDG`) to the `IN` and from the branded side
+ * (`SBD`/`SBDC`/`SBDF`/`SBDG`) to the `BN`, and there is **no** `SCD ⟶ IN` ingredient edge in any
+ * release. This file used to author one, which made the package's own suite model a graph the
+ * standard does not describe. The fixture exercises the `SCDC` and `SBD` cases; the others behave
+ * the same way and are not enumerated here.
  */
 
 import { describe, it, expect } from "vitest";

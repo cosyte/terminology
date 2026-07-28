@@ -109,20 +109,27 @@ export function relatedByRela(
  * `has_precise_ingredient` edge in the loaded release.
  *
  * This follows the *authored, direct* edge only (never-fabricate, never a synthesized path), and
- * **RxNorm's ingredient topology is not the obvious one**, so read the term types before you read the
- * answer:
+ * **RxNorm's ingredient topology is not the obvious one**. Always read the `TTY` of what comes back:
  *
- * - a clinical drug **component** (`SCDC`) links directly to its ingredient (`SCDC ⟶ IN`);
- * - a **branded** drug's own `has_ingredient` edge lands on its **brand name** (`SBD ⟶ BN`). That is
- *   what the release says and what is echoed back, term type included; it is *not* the active
- *   ingredient, which is again reached through the component;
- * - a **clinical drug** (`SCD`) has **no** `has_ingredient` edge at all. RxNorm authors none, in any
- *   release, so this honestly returns found-with-empty-targets rather than walking the path on the
- *   caller's behalf. Reach the ingredient in two deliberate hops:
- *   `SCD ⟶consists_of⟶ SCDC ⟶has_ingredient⟶ IN`, i.e. {@link consistsOf} then `ingredientsOf`.
+ * - concepts on the **clinical** side (`SCDC`, `SCDF`, `SCDG`) link to the ingredient itself, an
+ *   `IN`;
+ * - concepts on the **branded** side (`SBD`, `SBDC`, `SBDF`, `SBDG`) link to their **brand name**, a
+ *   `BN`. That is what the release says and what is echoed back, term type included. It is *not* the
+ *   active ingredient. (`has_precise_ingredient`, which this function also follows, likewise reaches
+ *   a `PIN`.)
+ * - a **clinical drug** (`SCD`) carries **no** `has_ingredient` edge at all. RxNorm authors none, in
+ *   any release, so this honestly returns found-with-empty-targets rather than walking a path on the
+ *   caller's behalf.
  *
- * The engine never invents the transitive edge, and `IN ingredient_of` reaches the component, never
- * the clinical drug.
+ * Those pairings are the ones RxNorm authors, not a closed set a caller may rely on: check the
+ * returned `TTY` rather than assuming it from the one you queried.
+ *
+ * **To reach an active ingredient, walk to the CLINICAL component and take its edge.** From an `SCD`
+ * that is `SCD ⟶consists_of⟶ SCDC ⟶has_ingredient⟶ IN`, i.e. {@link consistsOf} then
+ * `ingredientsOf`. From an `SBD` it needs one more decision, because `consists_of` returns **both**
+ * its branded component (`SBDC`, whose own ingredient edge is the `BN` again) and the clinical
+ * `SCDC`: it is the `SCDC` that leads to the `IN`. The engine never invents the transitive edge and
+ * never picks that branch for you.
  *
  * @param graph - A loaded {@link RxNormGraph}.
  * @param rxcui - The concept (a drug or a clinical/branded component).

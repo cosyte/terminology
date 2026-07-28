@@ -128,11 +128,15 @@ dose-form graph. Relationships are read in RxNorm's documented direction (`RELA`
 the **second** `RXCUI` has to the **first**); navigation follows only authored edges — the engine
 never synthesizes an inverse, and never fabricates a concept, edge, or NDC.
 
-Authored edges only means the graph you get is RxNorm's, including where its shape surprises you:
-`has_ingredient` runs from a clinical drug **component** to the ingredient (`SCDC ⟶ IN`) and from a
-**branded** drug to its **brand name** (`SBD ⟶ BN`). RxNorm authors no ingredient edge on a clinical
-drug (`SCD`), so that query answers with an honest empty set rather than a guess, and the ingredient
-is reached in two deliberate hops through `consistsOf`.
+Authored edges only means the graph you get is RxNorm's, including where its shape surprises you.
+`has_ingredient` is authored from the **clinical** side (`SCDC`/`SCDF`/`SCDG`) to the ingredient
+`IN`, and from the **branded** side (`SBD`/`SBDC`/`SBDF`/`SBDG`) to the **brand name** `BN` rather
+than to the active ingredient. RxNorm authors no ingredient edge on a clinical drug (`SCD`) at all,
+so that query answers with an honest empty set rather than a guess. To reach an active ingredient,
+walk to the **clinical** component and take its edge: `consistsOf` then `ingredientsOf`. From an
+`SBD`, `consistsOf` returns both its branded component (`SBDC`, whose ingredient edge is the brand
+name again) and the clinical `SCDC`; it is the `SCDC` that leads to the `IN`. Read the `tty` of what
+comes back rather than assuming it.
 
 ```ts
 import {

@@ -6,8 +6,10 @@
  * type** ({@link TermType}: `IN` ingredient, `SCD` semantic clinical drug, `SBD` semantic branded
  * drug, `BN` brand name, `DF` dose form, …) and wired together by **directed relationships** carried
  * in `RXNREL.RRF` and labeled by a `RELA` (`has_ingredient`, `tradename_of`, `has_dose_form`,
- * `consists_of`, …). The graph these form is the whole point of this phase: resolve an `SCD` to its
- * ingredients, a branded drug to its generic, a drug to its dose form.
+ * `consists_of`, …). The graph these form is the whole point of this phase: resolve a drug to its
+ * components and through them to its ingredient, a branded drug to its generic, a drug to its dose
+ * form. Note that the ingredient edge is authored on the component rather than on the `SCD` itself
+ * (see {@link ../rxnorm/navigate.ingredientsOf}).
  *
  * **The direction convention is a documented medication-safety trap** (roadmap §4.2 / §10 Q5), and it
  * is grounded here firsthand on the NLM RxNorm Technical Documentation (§12.7) and the UMLS Reference
