@@ -13,10 +13,18 @@
  *
  * So an `RXNREL.RRF` row is read **`RXCUI2 ⟶RELA⟶ RXCUI1`**, and {@link ../rxnorm/load.loadRxNormGraph}
  * normalizes every row to `subject = RXCUI2`, `predicate = RELA`, `object = RXCUI1`. Concretely, a
- * `has_ingredient` row places the **drug** in `RXCUI2` and the **ingredient** in `RXCUI1` (the drug
- * *has* the ingredient); a `tradename_of` row places the **branded** concept in `RXCUI2` and the
- * **generic** in `RXCUI1` (the brand *is a tradename of* the generic). Getting this backwards is a
- * wrong-medication bug, so the fixtures pin it against the doc's convention.
+ * `has_ingredient` row places the **having** concept in `RXCUI2` and what it *has* in `RXCUI1`; a
+ * `tradename_of` row places the **branded** concept in `RXCUI2` and the **generic** in `RXCUI1` (the
+ * brand *is a tradename of* the generic). Getting this backwards is a wrong-medication bug, so the
+ * fixtures pin it against the doc's convention.
+ *
+ * **Direction is not topology, and the topology is not the obvious one.** Knowing how to read a row
+ * does not tell you which rows exist. RxNorm authors `has_ingredient` from the **clinical** side
+ * (`SCDC`/`SCDF`/`SCDG`) to an `IN`, and from the **branded** side (`SBD`/`SBDC`/`SBDF`/`SBDG`) to a
+ * `BN` rather than to the active ingredient; it authors **no** `SCD ⟶ IN` ingredient edge at all, so
+ * a clinical drug reaches its ingredient only through `consists_of`. Treat those pairings as the ones
+ * RxNorm authors, not as a closed set, and read the `TTY` of what a traversal returns. See
+ * {@link ../rxnorm/navigate.ingredientsOf}.
  *
  * @packageDocumentation
  */
@@ -35,9 +43,17 @@
  * ```
  */
 export const RELA = {
-  /** `has_ingredient` — subject (a drug/component) *has ingredient* object (an `IN`/`PIN`). */
+  /**
+   * `has_ingredient`: subject *has ingredient* object. Authored from the clinical side
+   * (`SCDC`/`SCDF`/`SCDG`) to an `IN` and from the branded side (`SBD`/`SBDC`/`SBDF`/`SBDG`) to a
+   * `BN`; RxNorm authors no `SCD ⟶ IN` row.
+   */
   HAS_INGREDIENT: "has_ingredient",
-  /** `ingredient_of` — subject (an `IN`/`PIN`) *is an ingredient of* object (a drug/component). */
+  /**
+   * `ingredient_of`: subject *is an ingredient of* object. The authored inverse, so an `IN` reaches
+   * clinical components and dose forms and a `BN` reaches branded concepts (the `SBD` included).
+   * Neither reaches an `SCD`.
+   */
   INGREDIENT_OF: "ingredient_of",
   /** `has_precise_ingredient` — subject *has precise ingredient* object (a `PIN`). */
   HAS_PRECISE_INGREDIENT: "has_precise_ingredient",

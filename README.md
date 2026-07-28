@@ -128,8 +128,24 @@ dose-form graph. Relationships are read in RxNorm's documented direction (`RELA`
 the **second** `RXCUI` has to the **first**); navigation follows only authored edges — the engine
 never synthesizes an inverse, and never fabricates a concept, edge, or NDC.
 
+Authored edges only means the graph you get is RxNorm's, including where its shape surprises you.
+`has_ingredient` is authored from the **clinical** side (`SCDC`/`SCDF`/`SCDG`) to the ingredient
+`IN`, and from the **branded** side (`SBD`/`SBDC`/`SBDF`/`SBDG`) to the **brand name** `BN` rather
+than to the active ingredient. RxNorm authors no ingredient edge on a clinical drug (`SCD`) at all,
+so that query answers with an honest empty set rather than a guess. To reach an active ingredient,
+walk to the **clinical** component and take its edge: `consistsOf` then `ingredientsOf`. From an
+`SBD`, `consistsOf` returns both its branded component (`SBDC`, whose ingredient edge is the brand
+name again) and the clinical `SCDC`; it is the `SCDC` that leads to the `IN`. Read the `tty` of what
+comes back rather than assuming it.
+
 ```ts
-import { loadRxNormGraph, ingredientsOf, genericFor, resolveNdc } from "@cosyte/terminology";
+import {
+  loadRxNormGraph,
+  ingredientsOf,
+  consistsOf,
+  genericFor,
+  resolveNdc,
+} from "@cosyte/terminology";
 
 const graph = loadRxNormGraph({
   conso: rxnconsoRrf,
@@ -138,8 +154,10 @@ const graph = loadRxNormGraph({
   version: "RXNORM_2026AA",
 });
 
-ingredientsOf(graph, "314076"); // { found: true, targets: [ { rxcui: "29046", tty: "IN", name: "lisinopril", … } ] }
-genericFor(graph, "311354"); // an SBD → its SCD, via the authored tradename_of edge
+ingredientsOf(graph, "316151"); // an SCDC → { found: true, targets: [ { rxcui: "29046", tty: "IN", name: "lisinopril", … } ] }
+ingredientsOf(graph, "314076"); // an SCD → { found: true, targets: [] }, because no such edge is authored
+consistsOf(graph, "314076"); // → the SCDC, the first of the two hops to the ingredient
+genericFor(graph, "104377"); // an SBD → its SCD, via the authored tradename_of edge
 resolveNdc(graph, "00000000001"); // { resolved: true, rxcui: "314076", status: "active", asOf: "RXNORM_2026AA" }
 ingredientsOf(graph, "99999999"); // { found: false, code: "TERM_RXNORM_UNKNOWN_RXCUI" } — never a guess
 ```

@@ -241,16 +241,82 @@ follows only **authored** edges — the engine never synthesizes an inverse.
 import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
 
 // Synthetic rows in the real RxNorm RRF wire format (RXNCONSO 18 cols, RXNREL 16 cols).
-// "SCD(2) has_ingredient IN(1)": the drug has the ingredient — subject=RXCUI2=2, object=RXCUI1=1.
+// "SCDC(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.
 const graph = loadRxNormGraph({
   conso:
     "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
-    "2|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
+    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||",
   rel: "1|||RN|2|||has_ingredient|||RXNORM||||||",
 });
 
 const r = ingredientsOf(graph, "2");
 r.found && r.targets[0]?.name; // => "lisinopril"
+```
+
+The ingredient edge is authored on the **component**, not on the clinical drug. That is RxNorm's own
+topology, not a simplification of the example. `has_ingredient` is authored from the **clinical**
+side (`SCDC`/`SCDF`/`SCDG`) to the ingredient `IN`, and from the **branded** side
+(`SBD`/`SBDC`/`SBDF`/`SBDG`) to the **brand name** `BN` rather than to the active ingredient. RxNorm
+authors **no** `SCD ⟶ IN` edge at all, so asking a clinical drug for its ingredients is an honest
+empty answer rather than a guessed one.
+
+To reach an active ingredient, walk to the **clinical** component and take its edge. From an `SCD`
+that is two hops through `consists_of`:
+
+```ts runnable
+import { loadRxNormGraph, consistsOf, ingredientsOf } from "@cosyte/terminology";
+
+const graph = loadRxNormGraph({
+  conso:
+    "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
+    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||\n" +
+    "3|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
+  rel: "1|||RN|2|||has_ingredient|||RXNORM||||||\n" + "2|||RN|3|||consists_of|||RXNORM||||||",
+});
+
+// The clinical drug carries no ingredient edge of its own.
+const direct = ingredientsOf(graph, "3");
+direct.found && direct.targets.length; // => 0
+
+// Hop 1: the drug's component. Hop 2: that component's ingredient.
+const parts = consistsOf(graph, "3");
+const component = parts.found ? parts.targets[0]?.rxcui : undefined;
+const viaComponent = ingredientsOf(graph, component ?? "");
+viaComponent.found && viaComponent.targets[0]?.name; // => "lisinopril"
+```
+
+From a **branded** drug the same walk needs one more decision, so do not take the first component
+blindly. An `SBD`'s `consists_of` returns **both** its branded component (an `SBDC`, whose own
+ingredient edge is the brand name again) and the clinical `SCDC`; it is the `SCDC` that leads to the
+`IN`. Select on the component's `tty`:
+
+```ts runnable
+import { loadRxNormGraph, consistsOf, ingredientsOf } from "@cosyte/terminology";
+
+const graph = loadRxNormGraph({
+  conso:
+    "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
+    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||\n" +
+    "4|ENG||||||||||RXNORM|BN||Zestril||N||\n" +
+    "5|ENG||||||||||RXNORM|SBDC||lisinopril 10 MG [Zestril]||N||\n" +
+    "6|ENG||||||||||RXNORM|SBD||lisinopril 10 MG Oral Tablet [Zestril]||N||",
+  rel:
+    "1|||RN|2|||has_ingredient|||RXNORM||||||\n" +
+    "4|||RN|5|||has_ingredient|||RXNORM||||||\n" +
+    "4|||RN|6|||has_ingredient|||RXNORM||||||\n" +
+    "5|||RN|6|||consists_of|||RXNORM||||||\n" +
+    "2|||RN|6|||consists_of|||RXNORM||||||",
+});
+
+// The branded drug's own ingredient edge is its BRAND NAME, not the active ingredient.
+const direct = ingredientsOf(graph, "6");
+direct.found && direct.targets[0]?.tty; // => "BN"
+
+// So pick the CLINICAL component, then take its ingredient edge.
+const parts = consistsOf(graph, "6");
+const clinical = parts.found ? parts.targets.find((c) => c.tty === "SCDC")?.rxcui : undefined;
+const active = ingredientsOf(graph, clinical ?? "");
+active.found && active.targets[0]?.name; // => "lisinopril"
 ```
 
 An `RXCUI` absent from the loaded release is a typed unknown — never a guessed concept:

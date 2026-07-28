@@ -1,7 +1,7 @@
 /**
- * **RxNorm drug-graph navigation** (roadmap Phase 6) — resolve an `SCD` to its ingredients, a branded
- * drug to its generic, a drug to its dose form, and an NDC to its `RXCUI`, over a loaded
- * {@link RxNormGraph}. Every query is **fail-safe and never-fabricate** (roadmap §4.2):
+ * **RxNorm drug-graph navigation** (roadmap Phase 6): resolve a drug to its components and its
+ * ingredient, a branded drug to its generic, a drug to its dose form, and an NDC to its `RXCUI`, over
+ * a loaded {@link RxNormGraph}. Every query is **fail-safe and never-fabricate** (roadmap §4.2):
  *
  * - a queried `RXCUI` absent from the graph is a typed {@link RxNormUnknown}, never a guessed concept;
  * - a present concept with no such relationship is a {@link RxNormRelated} with **empty** `targets` —
@@ -86,9 +86,9 @@ function follow(
  * ```ts
  * import { loadRxNormGraph, relatedByRela, RELA } from "@cosyte/terminology";
  *
- * // "SCD(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.
+ * // "SCDC(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.
  * const g = loadRxNormGraph({
- *   conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n2|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
+ *   conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||",
  *   rel: "1|||RN|2|||has_ingredient|||RXNORM||||||",
  * });
  * const r = relatedByRela(g, "2", RELA.HAS_INGREDIENT);
@@ -108,12 +108,28 @@ export function relatedByRela(
  * The **ingredients** of a concept — the concepts it links to by a **direct** `has_ingredient` /
  * `has_precise_ingredient` edge in the loaded release.
  *
- * This follows the *authored, direct* edge only (never-fabricate, never a synthesized path). Note the
- * release's own topology: a clinical component (`SCDC`) links directly to its `IN`, whereas some `SCD`
- * releases route the ingredient through the component (`SCD ⟶consists_of⟶ SCDC ⟶has_ingredient⟶ IN`).
- * When a drug's ingredient is not a *direct* edge, this honestly returns found-with-empty-targets —
- * traverse {@link consistsOf} then `ingredientsOf` to reach the ingredient through the component. The
- * engine never invents the transitive edge.
+ * This follows the *authored, direct* edge only (never-fabricate, never a synthesized path), and
+ * **RxNorm's ingredient topology is not the obvious one**. Always read the `TTY` of what comes back:
+ *
+ * - concepts on the **clinical** side (`SCDC`, `SCDF`, `SCDG`) link to the ingredient itself, an
+ *   `IN`;
+ * - concepts on the **branded** side (`SBD`, `SBDC`, `SBDF`, `SBDG`) link to their **brand name**, a
+ *   `BN`. That is what the release says and what is echoed back, term type included. It is *not* the
+ *   active ingredient. (`has_precise_ingredient`, which this function also follows, likewise reaches
+ *   a `PIN`.)
+ * - a **clinical drug** (`SCD`) carries **no** `has_ingredient` edge at all. RxNorm authors none, in
+ *   any release, so this honestly returns found-with-empty-targets rather than walking a path on the
+ *   caller's behalf.
+ *
+ * Those pairings are the ones RxNorm authors, not a closed set a caller may rely on: check the
+ * returned `TTY` rather than assuming it from the one you queried.
+ *
+ * **To reach an active ingredient, walk to the CLINICAL component and take its edge.** From an `SCD`
+ * that is `SCD ⟶consists_of⟶ SCDC ⟶has_ingredient⟶ IN`, i.e. {@link consistsOf} then
+ * `ingredientsOf`. From an `SBD` it needs one more decision, because `consists_of` returns **both**
+ * its branded component (`SBDC`, whose own ingredient edge is the `BN` again) and the clinical
+ * `SCDC`: it is the `SCDC` that leads to the `IN`. The engine never invents the transitive edge and
+ * never picks that branch for you.
  *
  * @param graph - A loaded {@link RxNormGraph}.
  * @param rxcui - The concept (a drug or a clinical/branded component).
@@ -122,8 +138,9 @@ export function relatedByRela(
  * ```ts
  * import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
  *
+ * // The ingredient edge is authored on the COMPONENT, not on the clinical drug.
  * const g = loadRxNormGraph({
- *   conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n2|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
+ *   conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||",
  *   rel: "1|||RN|2|||has_ingredient|||RXNORM||||||",
  * });
  * ingredientsOf(g, "2").found; // => true
@@ -146,7 +163,7 @@ export function ingredientsOf(graph: RxNormGraph, rxcui: string): RxNormNavResul
  *
  * // "SBD(2) tradename_of SCD(1)": subject=RXCUI2=2, object=RXCUI1=1.
  * const g = loadRxNormGraph({
- *   conso: "1|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||\n2|ENG||||||||||RXNORM|SBD||Zestril 10 MG Oral Tablet||N||",
+ *   conso: "1|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||\n2|ENG||||||||||RXNORM|SBD||lisinopril 10 MG Oral Tablet [Zestril]||N||",
  *   rel: "1|||RN|2|||tradename_of|||RXNORM||||||",
  * });
  * genericFor(g, "2").found; // => true
@@ -168,7 +185,7 @@ export function genericFor(graph: RxNormGraph, rxcui: string): RxNormNavResult {
  * import { loadRxNormGraph, brandsFor } from "@cosyte/terminology";
  *
  * const g = loadRxNormGraph({
- *   conso: "1|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||\n2|ENG||||||||||RXNORM|SBD||Zestril 10 MG Oral Tablet||N||",
+ *   conso: "1|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||\n2|ENG||||||||||RXNORM|SBD||lisinopril 10 MG Oral Tablet [Zestril]||N||",
  *   rel: "2|||RN|1|||has_tradename|||RXNORM||||||",
  * });
  * brandsFor(g, "1").found; // => true

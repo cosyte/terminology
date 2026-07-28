@@ -26,8 +26,9 @@ copy-pasteable answer to one real integration question.
 - **Validate a UCUM unit** — recognition/validation, never magnitude conversion.
 - **Resolve a SNOMED→ICD-10-CM crosswalk or the ICD-9↔ICD-10 GEMs** — carrying every steward
   No-Map/advice flag, never inverted.
-- **Navigate the RxNorm drug graph** — resolve an `SCD` to its ingredients, a brand to its generic, or
-  an NDC to its `RXCUI`, over a BYO RxNorm RRF release, never fabricating an edge.
+- **Navigate the RxNorm drug graph** — resolve a drug to its components and through them to its
+  ingredient, a brand to its generic, or an NDC to its `RXCUI`, over a BYO RxNorm RRF release, never
+  fabricating an edge.
 
 ## Planned guides
 

@@ -197,13 +197,23 @@ a summary.
   the full suite. Run that comparison before trusting a per-directory number here, and **do not pin
   the fast-check seed** to hold a figure still: cover the arm instead.
 - **The edge-direction convention is pinned per relation family, forward _and_ reverse**, in
-  `test/rxnorm/direction.test.ts`. Inverting it in the loader reds 19 tests; swapping a single
+  `test/rxnorm/direction.test.ts`. Inverting it in the loader reds 24 tests; swapping a single
   navigation helper reds 3. That file also encodes the topology RxNorm actually authors, which is
-  **not** the obvious one: `has_ingredient` runs `SCDC -> IN` and `SBD -> BN`, there is **no**
-  `SCD has_ingredient IN` edge, and `IN ingredient_of` reaches the component, never the clinical
-  drug. The property tests in `test/property/rxnorm.property.test.ts` **cannot** catch an inversion:
-  they check navigation against the loaded graph's own edges, which stay self-consistent when the
-  load flips. Do not weaken the pinned fixtures on the grounds that the property suite covers it.
+  **not** the obvious one: `has_ingredient` is authored from the **clinical** side
+  (`SCDC`/`SCDF`/`SCDG`) to the `IN` and from the **branded** side (`SBD`/`SBDC`/`SBDF`/`SBDG`) to
+  the `BN` rather than to the active ingredient; there is **no** `SCD has_ingredient IN` edge; and
+  `IN ingredient_of` reaches components and dose forms, never the clinical drug (whereas
+  `BN ingredient_of` does reach the `SBD` itself). The property tests in
+  `test/property/rxnorm.property.test.ts` **cannot** catch an inversion: they check navigation
+  against the loaded graph's own edges, which stay self-consistent when the load flips. Do not
+  weaken the pinned fixtures on the grounds that the property suite covers it.
+- **Do not write those pairings down as a closed set, and do not name a term type you have not
+  checked.** Both mistakes were made in this repo, in the slice that set out to fix exactly this
+  class of defect. Verify identity with `https://rxnav.nlm.nih.gov/REST/rxcui/{id}/properties.json`
+  and edges with `.../rxcui/{id}/related.json?rela={rela}` before you write either down. Reaching an
+  **active** ingredient is also not one recipe: from an `SCD` it is `consists_of` then
+  `has_ingredient`, but an `SBD`'s `consists_of` returns its `SBDC` as well as the `SCDC`, and only
+  the `SCDC` leads to the `IN`.
 
 ## Standing disciplines (every change)
 
