@@ -3,7 +3,7 @@
  * right reader (RRF / CSV / fixed-width / FHIR) and assembles the immutable {@link CodeSystem}.
  *
  * The engine is **content-agnostic and license-clean**: it loads a *consumer-supplied* release and
- * ships **zero** copyrighted content (roadmap §5). The loaded model is deep-frozen and keyed by code
+ * ships **zero** copyrighted content. The loaded model is deep-frozen and keyed by code
  * for O(1) {@link lookup}/{@link validateCode}.
  *
  * @packageDocumentation

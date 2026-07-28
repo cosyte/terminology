@@ -5,7 +5,7 @@
  * UMLS Reference Manual, `https://www.ncbi.nlm.nih.gov/books/NBK9685/`: *"values … are separated by
  * vertical bars (|)"* and each row ends with *"a vertical bar and line termination"*).
  *
- * **Liberal on load** (roadmap §6): a row too short to reach a configured column, or with an empty
+ * **Liberal on load**: a row too short to reach a configured column, or with an empty
  * code, is **skipped and surfaced** as a `TERM_RRF_MALFORMED_ROW` warning — never kept as a partial
  * concept, never a crash. RRF reserves `|` as the delimiter (fields never contain a literal pipe), so
  * a plain split is exact.

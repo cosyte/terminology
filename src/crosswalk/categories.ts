@@ -4,13 +4,13 @@
  * concepts. These are **published SNOMED CT metadata identifiers** (concept ids in the SNOMED CT
  * Model Component module), encoded here as identity facts (like the code-system OID↔URI facts in
  * {@link ../systems/registry}); **no SNOMED CT content is bundled** — a caller still supplies the map
- * refset itself under their own SNOMED licence (roadmap §5, the BYO posture).
+ * refset itself under their own SNOMED licence (the BYO posture).
  *
  * The category on a resolved SNOMED→ICD-10-CM map row is the steward telling the caller *how much to
  * trust the target*: a `447638001` "cannot be classified" row is a **No-Map**, a `447640006`
  * "ambiguous" row must surface its candidates rather than pick one, and a `447639009`
  * "context-dependent" row needs runtime patient context. The resolver never collapses these to a
- * single confident target (roadmap §4.1).
+ * single confident target.
  *
  * @packageDocumentation
  */
@@ -62,6 +62,6 @@ export const ICD9CM_SYSTEM = "http://hl7.org/fhir/sid/icd-9-cm";
 
 /**
  * The canonical code-system URI for **SNOMED CT** — the source system of the SNOMED→ICD-10-CM complex
- * map. Recognised by URI only; **no SNOMED CT content is bundled** (roadmap §5).
+ * map. Recognised by URI only; **no SNOMED CT content is bundled**.
  */
 export const SNOMEDCT_SYSTEM = "http://snomed.info/sct";

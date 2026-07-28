@@ -1,7 +1,7 @@
 /**
- * **RxNorm drug-graph navigation** (roadmap Phase 6): resolve a drug to its components and its
+ * **RxNorm drug-graph navigation**: resolve a drug to its components and its
  * ingredient, a branded drug to its generic, a drug to its dose form, and an NDC to its `RXCUI`, over
- * a loaded {@link RxNormGraph}. Every query is **fail-safe and never-fabricate** (roadmap §4.2):
+ * a loaded {@link RxNormGraph}. Every query is **fail-safe and never-fabricate**:
  *
  * - a queried `RXCUI` absent from the graph is a typed {@link RxNormUnknown}, never a guessed concept;
  * - a present concept with no such relationship is a {@link RxNormRelated} with **empty** `targets` —
@@ -246,7 +246,7 @@ export function consistsOf(graph: RxNormGraph, rxcui: string): RxNormNavResult {
 
 /**
  * Resolve an **NDC** (National Drug Code) to its `RXCUI` in the loaded release, carrying the temporal
- * status and the as-of release. NDC↔RXCUI is many:1 and changes across releases (roadmap §4.2), so an
+ * status and the as-of release. NDC↔RXCUI is many:1 and changes across releases, so an
  * NDC present in the release is `active` **as of that release**; an absent NDC is a typed
  * {@link NdcUnmapped}, never a guessed `RXCUI`.
  *
@@ -310,12 +310,12 @@ export interface ApproximateMatchOptions {
 }
 
 /**
- * **Opt-in, explicitly labeled** approximate name matching (roadmap §4.2) — find loaded concepts whose
+ * **Opt-in, explicitly labeled** approximate name matching — find loaded concepts whose
  * names are token-similar to `query`. This is **never** the default resolution path and its results
  * are **never** an exact code assertion: every candidate is marked `approximate: true` with a derived
  * {@link RxNormApproximateMatch.score}. A caller opts in by calling this function explicitly.
  *
- * Coverage is not correctness (roadmap §4.2): a "no match" is an **empty** array (typed, honest),
+ * Coverage is not correctness: a "no match" is an **empty** array (typed, honest),
  * distinct from a fabricated nearest guess. The engine never promotes an approximate hit to an exact
  * one.
  *

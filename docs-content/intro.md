@@ -16,11 +16,10 @@ It ships the **engine, never copyrighted terminology content** — SNOMED CT, CP
 VSAC value sets are strictly bring-your-own. Code-system *identities* (the OID ↔ canonical-URI facts)
 are published facts and are encoded, grounded firsthand against the HL7/FHIR registry.
 
-> **Status:** pre-alpha (`0.0.x`), published on npm. This release ships **Phases 1–6**: the
-> code-system identity resolver, the ConceptMap `$translate` engine, the CodeSystem
-> `$lookup`/`$validate-code` loaders, ValueSet `$expand`/binding, UCUM validation, the crosswalk
-> resolvers (GEMs + SNOMED→ICD-10-CM), and the RxNorm drug graph. Later phases add the bundleable
-> public-domain content packs (RxNorm Prescribable, ICD-10-CM, UCUM, LOINC).
+> **Status:** pre-alpha (`0.0.x`), published on npm. This release ships the code-system identity
+> resolver, the ConceptMap `$translate` engine, the CodeSystem `$lookup`/`$validate-code` loaders,
+> ValueSet `$expand`/binding, UCUM validation, the crosswalk resolvers (GEMs + SNOMED→ICD-10-CM),
+> and the RxNorm drug graph.
 
 ## Install
 

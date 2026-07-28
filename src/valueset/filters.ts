@@ -5,9 +5,9 @@
  * **Subsumption** is read from the loaded {@link CodeSystem}'s **`parent`** concept-properties
  * (`http://hl7.org/fhir/concept-properties#parent`) — which the FHIR loader synthesizes from a nested
  * `concept` hierarchy and carries verbatim from an explicit `parent` property. This is deliberately
- * the release's **own** hierarchy (roadmap: "hierarchy/`$subsumes` minimal; deep subsumption is
- * Phase 5"); a code system that encodes no parent edges has no descendants beyond identity, and that
- * is treated as complete — not guessed deeper.
+ * the release's **own** hierarchy: subsumption across two separate releases is not computed, and a
+ * code system that encodes no parent edges has no descendants beyond identity, which is treated as
+ * complete — not guessed deeper.
  *
  * **Filter support is explicit.** `is-a` / `descendent-of` / `is-not-a` / `=` / `in` / `not-in` /
  * `exists` are implemented; `regex` / `generalizes` / anything unrecognized report `supported: false`

@@ -8,8 +8,8 @@
  * not removed by any computable `exclude` is a definite member; a code absent from a fully-evaluated
  * value set is a definite non-member. When any relevant part cannot be evaluated (a missing code
  * system, a truncated pre-computed expansion, an unimplemented `filter`), the answer is a typed
- * {@link ValueSetMemberUndetermined} — **never** a fabricated `false` (roadmap §4.4: a false "not a
- * member" is a clinical error).
+ * {@link ValueSetMemberUndetermined} — **never** a fabricated `false` (a false "not a member" is a
+ * clinical error).
  *
  * @packageDocumentation
  */

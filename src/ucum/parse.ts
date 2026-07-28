@@ -1,5 +1,5 @@
 /**
- * The **UCUM grammar parser** (roadmap Phase 4): a hand-rolled, zero-dependency recursive-descent
+ * The **UCUM grammar parser**: a hand-rolled, zero-dependency recursive-descent
  * parser from a unit expression string to a {@link UnitNode} AST, grounded firsthand on the UCUM
  * specification's syntax (base units, metric prefixes attached with no delimiter and resolved by
  * longest-match, `.` multiply / `/` divide, signed integer exponents, `{…}` inert annotations, and
@@ -80,7 +80,7 @@ interface Cursor {
 /**
  * Maximum parenthesis nesting. Real UCUM units nest a handful of levels at most; a cap keeps a
  * hostile input (e.g. thousands of `(`) from overflowing the recursive-descent stack — it degrades
- * to a typed invalid, never a crash (roadmap Phase 4 "grammar parser never crashes on hostile input").
+ * to a typed invalid, never a crash: the parser does not crash on hostile input.
  */
 const MAX_PAREN_DEPTH = 100;
 

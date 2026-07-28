@@ -11,7 +11,7 @@ full LOINC/UMLS, and VSAC value sets are strictly bring-your-own; code-system _i
 canonical URI) are published facts, grounded firsthand and encoded.
 
 > **Status:** pre-alpha (`0.0.x`), **published on npm.** The **engine is complete** — every
-> operation below ships today. What is still to come is bundled _content_, not capability. The surface:
+> operation below ships today. The surface:
 >
 > - the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
 >   (`loadConceptMap` / `translate`);
@@ -29,10 +29,9 @@ canonical URI) are published facts, grounded firsthand and encoded.
 >   edges read in RxNorm's documented direction and never inverted, an absent `RXCUI`/NDC typed, never
 >   fabricated.
 >
-> **Bring your own data.** The engine is whole; **no code-system _content_ is bundled yet.** It runs
-> over the FHIR resources and standard releases _you_ supply. The bundleable public-domain content packs
-> (RxNorm Prescribable, ICD-10-CM, UCUM, LOINC) are still to come — they are blocked on getting a genuine
-> verbatim public-domain release into the build, not on engine work — and the copyrighted content
+> **Bring your own data.** The engine is whole; **no code-system _content_ is bundled.** It runs
+> over the FHIR resources and standard releases _you_ supply. The public-domain content packs
+> (RxNorm Prescribable, ICD-10-CM, UCUM, LOINC) are not bundled, and the copyrighted content
 > (SNOMED CT / CPT / full LOINC / UMLS / VSAC) is bring-your-own permanently by license.
 
 ## Install
@@ -173,7 +172,7 @@ ingredientsOf(graph, "99999999"); // { found: false, code: "TERM_RXNORM_UNKNOWN_
 ```
 
 The engine ships **no** RxNorm content — you supply the release (the public-domain Current Prescribable
-Content subset, or the full BYO release). Bundling the public-domain pack is a later phase.
+Content subset, or the full BYO release).
 
 ## The invariants this engine is built on
 

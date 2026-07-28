@@ -76,8 +76,8 @@ crosswalk never invents a target, and "No-Map" is a first-class typed outcome, n
 RxNorm's drug graph — ingredient (`IN`) → clinical-drug component (`SCDC`) → semantic clinical drug
 (`SCD`) → semantic branded drug (`SBD`), with brand (`BN`) and dose-form (`DF`) cross-links — is
 navigated over a **bring-your-own** RxNorm RRF release (`loadRxNormGraph` reads `RXNCONSO` concepts,
-`RXNREL` relationships, and `RXNSAT` NDC attributes). The engine bundles **zero** RxNorm content
-(roadmap §5); the graph is entirely the caller's release, and a resolution is release-scoped.
+`RXNREL` relationships, and `RXNSAT` NDC attributes). The engine bundles **zero** RxNorm content;
+the graph is entirely the caller's release, and a resolution is release-scoped.
 
 - **Direction is a documented trap, grounded firsthand.** RxNorm's `RXNREL` stores each relationship
   as *"the relationship which the **second** concept (`RXCUI2`) HAS TO the **first** (`RXCUI1`)"* (NLM
@@ -126,11 +126,10 @@ navigated over a **bring-your-own** RxNorm RRF release (`loadRxNormGraph` reads 
   candidate carries `approximate: true` and a derived score). A "no match" is an empty array, never a
   nearest guess.
 
-> **Content posture.** Phase 6 ships the graph *mechanism* over the real RRF format, grounded firsthand
-> on the RxNorm technical documentation; it does **not** bundle RxNorm content. The public-domain
-> Current Prescribable Content pack (bundleable per the licensing matrix) is deferred to the
-> content-packs phase (Phase 7) — a genuine, verbatim RxNorm release is required to bundle it, and it
-> is not fabricated to fill the gap.
+> **Content posture.** This release ships the graph *mechanism* over the real RRF format, grounded
+> firsthand on the RxNorm technical documentation; it does **not** bundle RxNorm content. The
+> public-domain Current Prescribable Content pack is not bundled either: bundling one requires a
+> genuine, verbatim RxNorm release, and none is fabricated to fill the gap.
 
 ## Liberal load, conservative assertion
 

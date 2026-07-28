@@ -1,12 +1,12 @@
 /**
- * The types for the **ValueSet binding layer** (roadmap Phase 3): the immutable {@link ValueSet}
+ * The types for the **ValueSet binding layer**: the immutable {@link ValueSet}
  * model, the `compose` component/filter shapes, the {@link ExpansionContext} that supplies the loaded
  * code systems and referenced value sets, and the fail-safe {@link ExpandResult} /
  * {@link ValueSetMembership} outcomes.
  *
  * The model is **content-agnostic and license-clean**: a `ValueSet` names codes by system URI and is
  * expanded over **consumer-supplied** {@link CodeSystem} releases — the engine ships **zero** encoded
- * value-set content (SNOMED/CPT/full-UMLS/VSAC value sets are strictly BYO, roadmap §5). The FHIR
+ * value-set content (SNOMED/CPT/full-UMLS/VSAC value sets are strictly BYO). The FHIR
  * operation shapes are grounded firsthand on the FHIR R4 Terminology Module
  * (`https://hl7.org/fhir/R4/valueset.html`, `https://hl7.org/fhir/R4/valueset-operation-expand.html`,
  * `https://hl7.org/fhir/R4/valueset-operation-validate-code.html`).
@@ -97,8 +97,8 @@ export interface ExpansionContains {
 
 /**
  * A **pre-computed** `ValueSet.expansion` — a cached membership snapshot, used as-is (extensional).
- * The engine never re-derives it; it only checks whether it is **complete** (roadmap §4.4 — a
- * truncated expansion must never read as full membership).
+ * The engine never re-derives it; it only checks whether it is **complete** (a truncated
+ * expansion must never read as full membership).
  */
 export interface ValueSetExpansion {
   /** The server-reported total membership, when present (FHIR `expansion.total`). */
@@ -139,7 +139,7 @@ export interface ValueSet {
  *
  * The engine makes **no network call** and holds no bundled content: everything intensional resolves
  * through this map, and a system or value set the caller did not supply becomes a typed
- * {@link DiagnosticCode.TERM_VALUESET_CANNOT_EXPAND}, never a fabricated member (roadmap §2, §4.4).
+ * {@link DiagnosticCode.TERM_VALUESET_CANNOT_EXPAND}, never a fabricated member.
  */
 export interface ExpansionContext {
   /** Loaded code-system releases, keyed by canonical URI (e.g. `"http://loinc.org"`). */
@@ -191,7 +191,7 @@ export interface ValueSetMemberDecided {
  * A **fail-safe undetermined** membership — the never-fabricate outcome for a value set that could
  * not be fully evaluated (a missing code system, a truncated expansion). The engine refuses to guess:
  * it returns neither `true` nor `false`, so a caller can never mistake "we could not check" for "not a
- * member" (roadmap §4.4 — a false "not a member" is a clinical error).
+ * member" (a false "not a member" is a clinical error).
  */
 export interface ValueSetMemberUndetermined {
   /** Discriminant: membership could not be decided. */

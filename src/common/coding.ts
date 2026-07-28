@@ -40,7 +40,7 @@ export interface Coding {
 /**
  * A concept described by one or more {@link Coding}s plus optional free text — FHIR R4
  * `CodeableConcept`. Included so the value layer is complete for downstream consumers even though
- * Phase 1's {@link ../conceptmap/translate.translate} operates on a single {@link Coding}.
+ * {@link ../conceptmap/translate.translate} operates on a single {@link Coding}.
  *
  * @example
  * ```ts

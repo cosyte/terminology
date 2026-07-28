@@ -1,5 +1,5 @@
 /**
- * The types for the **crosswalk resolvers** (roadmap Phase 5) — the CMS ICD-9↔ICD-10 **GEMs**
+ * The types for the **crosswalk resolvers** — the CMS ICD-9↔ICD-10 **GEMs**
  * (General Equivalence Mappings) and the NLM **SNOMED CT → ICD-10-CM complex map**.
  *
  * Both are the library's highest-risk surface, and their types are built around the stewards' own
@@ -13,8 +13,7 @@
  * - a 1:many source yields the **whole** ordered candidate set, never one confident pick;
  * - a context-dependent rule with no runtime context is a typed {@link ComplexMapContextRequired} —
  *   the rule + advice ride through, the engine never picks a branch it wasn't given the data for;
- * - all Map Advice / GEM flags ride through **verbatim** ("advice flags must not be swallowed",
- *   roadmap §4.1);
+ * - all Map Advice / GEM flags ride through **verbatim** (advice flags must not be swallowed);
  * - a directional map is **never inverted** (see {@link ../crosswalk/gems.invertGem}).
  *
  * @packageDocumentation
@@ -27,7 +26,7 @@ import type { Coding } from "../common/coding.js";
 /**
  * The **direction** of a loaded GEM file. CMS ships the forward (ICD-9→ICD-10, `…_I9gem.txt`) and
  * backward (ICD-10→ICD-9, `…_I10gem.txt`) maps as **separate, non-inverse artifacts** — a forward map
- * composed with a backward map is *"not a mirror image"* (roadmap §4.1). A `GemMap` therefore records
+ * composed with a backward map is *"not a mirror image"*. A `GemMap` therefore records
  * which direction it is and is only ever applied in that direction.
  */
 export type GemDirection = "9-to-10" | "10-to-9";
@@ -48,7 +47,7 @@ export interface GemFlags {
   /**
    * Position 2 — **no-map** flag. `true` when the source code has **no valid target** in the other
    * classification (the target field is the `NoDx`/`NoPCS` sentinel). A first-class typed outcome —
-   * surfaced as a {@link CrosswalkNoMap}, never a fabricated target (roadmap §4.1).
+   * surfaced as a {@link CrosswalkNoMap}, never a fabricated target.
    */
   readonly noMap: boolean;
   /**
@@ -105,7 +104,7 @@ export interface GemMap {
 
 /**
  * A surfaced, non-fatal GEM load warning — a malformed line that was **skipped**, reported with its
- * line number and a value-free structural reason. Liberal on load (roadmap §6, the parsers' posture).
+ * line number and a value-free structural reason. Liberal on load (the parsers' posture).
  */
 export interface GemLoadWarning {
   /** The stable diagnostic code for a skipped GEM row. */
@@ -157,8 +156,8 @@ export interface GemMatched {
 
 /**
  * One row of the SNOMED CT → ICD-10-CM **complex/extended map** refset — the caller-supplied,
- * SNOMED-licensed content the resolver runs over (**no SNOMED content is bundled**; roadmap §5). The
- * field names paraphrase the SNOMED RF2 extended-map refset columns.
+ * SNOMED-licensed content the resolver runs over (**no SNOMED content is bundled**). The field
+ * names paraphrase the SNOMED RF2 extended-map refset columns.
  */
 export interface ComplexMapEntry {
   /** The SNOMED CT source concept id (`referencedComponentId`), verbatim. */
@@ -182,7 +181,7 @@ export interface ComplexMapEntry {
   /**
    * The **map advice**, verbatim (pipe-delimited in the source) — steward instructions to a human
    * (`CONSIDER LATERALITY`, `EPISODE OF CARE INFORMATION NEEDED`, `THIS IS A MANIFESTATION CODE…`).
-   * Carried through untouched: advice flags must **never** be swallowed (roadmap §4.1).
+   * Carried through untouched: advice flags must **never** be swallowed.
    */
   readonly advice: string;
   /** The ICD-10-CM **map target** code, verbatim — **absent** for a No-Map / empty-target row. */
@@ -221,7 +220,7 @@ export interface ComplexMapLoadWarning {
 /**
  * The **caller-supplied patient context** an `IFA` rule is evaluated against. The resolver evaluates
  * only against what it is given: a rule needing context absent here surfaces as a
- * {@link ComplexMapContextRequired}, never a silently-picked branch (roadmap §4.1).
+ * {@link ComplexMapContextRequired}, never a silently-picked branch.
  */
 export interface PatientContext {
   /** The patient's age **in years**, when known (for `IFA … Age …` bands). */
@@ -276,7 +275,7 @@ export interface ComplexMapGroupNoMap {
 /**
  * A group whose winning path is a **context-dependent** `IFA` rule (or `447639009`/`447640006`
  * category) for which the caller supplied **no** matching context. The engine surfaces the rules +
- * advice and refuses to pick a branch (roadmap §4.1) — the never-fabricate rule for runtime context.
+ * advice and refuses to pick a branch — the never-fabricate rule for runtime context.
  */
 export interface ComplexMapContextRequired {
   /** Discriminant. */
@@ -304,7 +303,7 @@ export interface ComplexMapMatched {
 /**
  * A **No-Map** outcome — the source is present in the map but the steward declares it has no valid
  * target ("cannot be classified with available data"). A first-class typed result, **never** a
- * fabricated target (roadmap §4.1). Distinct from {@link CrosswalkUnmapped} (source absent entirely).
+ * fabricated target. Distinct from {@link CrosswalkUnmapped} (source absent entirely).
  */
 export interface CrosswalkNoMap {
   /** Discriminant: the source did not map. */

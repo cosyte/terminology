@@ -1,17 +1,17 @@
 /**
- * The types for the **RxNorm drug relationship graph** (roadmap Phase 6) — the ingredient / brand /
+ * The types for the **RxNorm drug relationship graph** — the ingredient / brand /
  * clinical-drug / dose-form graph navigated over a **caller-supplied** RxNorm RRF release.
  *
  * RxNorm is the US NLM's normalized drug nomenclature. Its concepts (`RXCUI`s) are typed by **term
  * type** ({@link TermType}: `IN` ingredient, `SCD` semantic clinical drug, `SBD` semantic branded
  * drug, `BN` brand name, `DF` dose form, …) and wired together by **directed relationships** carried
  * in `RXNREL.RRF` and labeled by a `RELA` (`has_ingredient`, `tradename_of`, `has_dose_form`,
- * `consists_of`, …). The graph these form is the whole point of this phase: resolve a drug to its
+ * `consists_of`, …). The graph these form is the whole point: resolve a drug to its
  * components and through them to its ingredient, a branded drug to its generic, a drug to its dose
  * form. Note that the ingredient edge is authored on the component rather than on the `SCD` itself
  * (see {@link ../rxnorm/navigate.ingredientsOf}).
  *
- * **The direction convention is a documented medication-safety trap** (roadmap §4.2 / §10 Q5), and it
+ * **The direction convention is a documented medication-safety trap**, and it
  * is grounded here firsthand on the NLM RxNorm Technical Documentation (§12.7) and the UMLS Reference
  * Manual: *"the direction of REL — the relationship which the SECOND concept or atom (with … RXCUI2
  * …) HAS TO the FIRST concept or atom (with … RXCUI1 …)."* So every `RXNREL` row `(RXCUI1, …, RELA,
@@ -22,9 +22,9 @@
  * fabricates** an `RXCUI` or a relationship absent from the loaded data — an absent concept is a typed
  * {@link RxNormUnknown}, an unresolvable NDC a typed {@link NdcUnmapped}, never a guess.
  *
- * **No RxNorm content is bundled** (roadmap §5): the engine ships the graph *machinery*; the caller
- * supplies the RRF release (the public-domain Current Prescribable Content, or the full BYO release).
- * Bundling the public-domain Prescribable pack is the separate content-packs phase (Phase 7).
+ * **No RxNorm content is bundled**: the engine ships the graph *machinery*; the caller
+ * supplies the RRF release (the public-domain Current Prescribable Content, or the full BYO
+ * release).
  *
  * @packageDocumentation
  */
@@ -101,7 +101,7 @@ export interface RxNormEdge {
 /**
  * A resolved **NDC → RXCUI** mapping (from an `RXNSAT.RRF` `ATN=NDC` attribute), carrying the
  * temporal {@link NdcStatus} and the **as-of release** it is valid for. NDC↔RXCUI is many:1 and
- * changes across releases (roadmap §4.2), so a resolution is never timeless — the release rides
+ * changes across releases, so a resolution is never timeless — the release rides
  * through on {@link asOf}.
  */
 export interface NdcResolution {
@@ -122,7 +122,7 @@ export interface NdcResolution {
  * / `UNKNOWN`). An NDC found in the loaded release's `RXNSAT` attributes is `active` **as of that
  * release**; `obsolete` / `alien` come from the RxNav NDC-history data (a differential / BYO source,
  * not the base RRF concept files) and are surfaced only when the caller supplies them — the engine
- * **never fabricates** a non-current status (roadmap §4.2).
+ * **never fabricates** a non-current status.
  */
 export type NdcStatus = "active" | "obsolete" | "alien" | "unknown";
 
@@ -157,8 +157,8 @@ export interface RxNormRelated {
 
 /**
  * A typed **unknown** navigation result — the queried `RXCUI` is **absent from the loaded graph**. A
- * first-class outcome, never a fabricated concept or an empty success (the never-fabricate invariant,
- * applied to the drug graph — roadmap §4.2). Distinct from a {@link RxNormRelated} with empty
+ * first-class outcome, never a fabricated concept or an empty success (the never-fabricate
+ * invariant, applied to the drug graph). Distinct from a {@link RxNormRelated} with empty
  * `targets`, which means "present, but no such relationship".
  */
 export interface RxNormUnknown {
@@ -174,7 +174,7 @@ export interface RxNormUnknown {
 export type RxNormNavResult = RxNormRelated | RxNormUnknown;
 
 /**
- * One **approximate**-match candidate (the opt-in, never-default path — roadmap §4.2). Every field is
+ * One **approximate**-match candidate (the opt-in, never-default path). Every field is
  * marked so a caller can never mistake it for an exact identity: {@link approximate} is always `true`
  * and {@link score} is the labeled, derived similarity. The concept itself is drawn verbatim from the
  * loaded release.
@@ -191,7 +191,7 @@ export interface RxNormApproximateMatch {
 /**
  * A surfaced, non-fatal RxNorm load warning: an `RXNCONSO` / `RXNREL` / `RXNSAT` row (or, for
  * `TERM_RXNORM_UNTYPED_CONCEPT`, an `RXCUI`) that was **skipped**, reported with its line number and
- * a value-free structural reason (liberal on load, roadmap §6). Never echoes a field value.
+ * a value-free structural reason (liberal on load). Never echoes a field value.
  */
 export interface RxNormLoadWarning {
   /**

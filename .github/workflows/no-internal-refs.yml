@@ -1,0 +1,88 @@
+name: Public-surface gate
+
+# Founder directive 2026-07-27: no internal project bookkeeping on any surface a consumer
+# reads. Item identifiers (`TERMINOLOGY-6`), phase and roadmap-section language
+# (`roadmap §4.1`), ADR numbers, meta-repo paths and process commentary belong in the
+# changeset, CHANGELOG.md, the commit, the PR and the roadmap, never in README.md,
+# docs-content/, the npm description, a JSDoc block a consumer's editor renders, or a
+# diagnostic message a consumer reads in their logs. The rule is written out in the
+# meta-repo's `documentation/conventions.md` ("No internal project bookkeeping on a public
+# surface"); `scripts/check-no-internal-refs.sh` is what enforces it.
+#
+# WHY A GATE AND NOT A NOTE. The founder, on the sweep that removed 149 of these across the
+# ecosystem: "it needs to not just be a memory note, but something that is addressed in the
+# workflow accordingly. This needs to not happen again." A sweep regresses the first time
+# someone writes `(roadmap §4.2)` into a module header; a job that reds does not. This
+# repository had no such gate until this file landed, on a package that is ALREADY
+# PUBLISHED to npm, so what regressed here would regress into a live tarball.
+#
+# WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
+#
+#   The reusable pipeline is not an option. `terminology`'s `ci` job calls
+#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no arbitrary
+#   repo script. Adding this there would also flip every other caller red on its next run:
+#   the measured backlog was 149 internal references across 11 repos, and remediating each
+#   is its own deliberate piece of work. A shared pipeline is the wrong place to land a rule
+#   most of its callers cannot yet satisfy.
+#
+#   Within this repo, keeping it out of ci.yml also keeps it cheap: this job is a checkout
+#   and a handful of greps over 9 markdown/JSON files and 38 source files, while ci.yml
+#   drives the full Node 22 + 24 matrix plus the release-dry-run job.
+#
+# NO MATRIX, DELIBERATELY. The script is bash + grep + awk with a pinned `LC_ALL`; nothing
+# in it moves between Node majors. The one Node dependency is reading `package.json`, and
+# the script refuses rather than skipping if `node` is absent. Because there is no matrix,
+# this job's check-run context is the bare job id, `no-internal-refs`. READ THE REAL NAME
+# OFF A LIVE CHECK RUN BEFORE REQUIRING IT IN A RULESET, never off this file's `name:`:
+# the workflow is titled "Public-surface gate" and emits the context `no-internal-refs`,
+# and requiring the title would silently protect nothing.
+#
+# WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
+# THIS rule says identifiers BELONG in the commit, the PR and the changeset, so a PR-text
+# half here would red on correct work. That is also why there is no `edited` trigger:
+# nothing here reads PR text, so retitling a PR cannot change the result.
+#
+# The other half of this rule, the one that keeps identifiers out of a published RELEASE
+# BODY, lives in the shared pipeline: `cosyte/.github` `scripts/release-notes.mjs assert`
+# re-reads the finished body bytes and refuses to publish a violating one. This job covers
+# the repo's own files; that one covers what gets published to the releases page. Note that
+# its INPUT is the first sentence of each changeset here, which this job treats as private:
+# open every changeset with a sentence that stands on its own once the identifier is gone.
+#
+# Run it locally with `pnpm check:no-internal-refs`, which is also on the meta-repo's
+# `scripts/verify.sh terminology` ladder.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The job id is the check-run context name a branch ruleset requires. Renaming it
+  # silently detaches the required check, so the ruleset stops protecting anything while
+  # still looking configured. Rename both together or neither.
+  no-internal-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # The script self-tests before it reports: it proves each rule still matches its own
+      # positive sample AND still lets through the reference material it was most likely to
+      # destroy. In a TERMINOLOGY package that negative half is the important one. A naive
+      # `WORD-N` shape rule matches 89 tokens on this tree and ALL 89 are the consumer's
+      # reference material -- `ICD-10-CM`, `ICD-9`, `RFC-4180`, and the UCUM expressions
+      # `OHM-1`, `CM-1` and `KG-1.S-2`, which are units with negative exponents. Two further
+      # assertions pin deliberate NON-catches: the bare `§12.7` citation of the NLM RxNorm
+      # Technical Documentation, and the fixed-width FIELD SLICE. It refuses to print OK
+      # from a scan that did not read all of its input. No `|| true`, no
+      # `continue-on-error`: a check that cannot fail is documentation.
+      - name: Check the public surface
+        run: bash scripts/check-no-internal-refs.sh

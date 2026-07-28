@@ -1,12 +1,12 @@
 /**
  * The RxNorm **term-type (`TTY`) vocabulary** relevant to the drug graph — the normal-form ladder and
  * the cross-link kinds — encoded as published identity facts (grounded firsthand on the NLM RxNorm
- * Technical Documentation, Appendix 5). **No RxNorm content is bundled** (roadmap §5): these are the
+ * Technical Documentation, Appendix 5). **No RxNorm content is bundled**: these are the
  * *labels*, not the drug list.
  *
  * The RxNorm normal-form graph runs `IN → SCDC → SCD → SBD` (ingredient → clinical-drug component →
  * semantic clinical drug → semantic branded drug), with `BN` (brand name) and `DF` (dose form) as
- * cross-links (roadmap §4.2).
+ * cross-links.
  *
  * **Appendix 5 splits these into two kinds, and the split is load-bearing.** A **defining** term type
  * (its "Normalized Names" table, `IN` … `DFG`) says what an `RXCUI` *is*. A **synonym** term type

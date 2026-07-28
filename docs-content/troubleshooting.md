@@ -78,17 +78,17 @@ context** can be PHI: never log the surrounding record.
 
 ## Known limitations (this release)
 
-> **Status:** `@cosyte/terminology` ships through **Phase 6** — the code-system identity resolver, the
-> ConceptMap `$translate` engine, the CodeSystem load layer with `$lookup` / `$validate-code`, the
-> ValueSet `compose` / `$expand` / binding operations, UCUM validation, the crosswalk resolvers, and
-> the RxNorm drug graph.
+> **Status:** `@cosyte/terminology` ships the code-system identity resolver, the ConceptMap
+> `$translate` engine, the CodeSystem load layer with `$lookup` / `$validate-code`, the ValueSet
+> `compose` / `$expand` / binding operations, UCUM validation, the crosswalk resolvers, and the
+> RxNorm drug graph.
 
 - **BYO data** — `$expand` and binding operate over the `CodeSystem` releases and referenced
   `ValueSet`s you supply in the `ExpansionContext`; an intensional part with no supplied code system is
   a typed `TERM_VALUESET_CANNOT_EXPAND`, never a fabricated member.
 - **Subsumption is the release's own hierarchy** — `is-a` / `descendent-of` read the loaded code
-  system's `parent` edges (nested `concept`s or an explicit `parent` property). Deep cross-release
-  subsumption is a later phase.
+  system's `parent` edges (nested `concept`s or an explicit `parent` property). Subsumption across
+  two separate releases is not computed.
 - **Intensional filters are best-effort** — `is-a` / `descendent-of` / `is-not-a` / `=` / `in` /
   `not-in` / `exists` are implemented; `regex` / `generalizes` surface as `TERM_VALUESET_CANNOT_EXPAND`.
 - **RxNorm graph is BYO** — `loadRxNormGraph` operates over the RxNorm RRF release you supply; the
@@ -98,8 +98,8 @@ context** can be PHI: never log the surrounding record.
   An `RXCUI` whose supplied atoms could not establish a term type is left out of the graph and
   reported as `TERM_RXNORM_UNTYPED_CONCEPT` on `graph.warnings`, never loaded under a synonym's
   `TTY`; check that list if a concept you expected reads as `TERM_RXNORM_UNKNOWN_RXCUI`.
-- **No bundled content packs yet** — the bundleable public-domain packs (RxNorm Prescribable,
-  ICD-10-CM, UCUM, LOINC) are a later phase (Phase 7); until then every release is bring-your-own.
+- **No bundled content packs** — the public-domain packs (RxNorm Prescribable, ICD-10-CM, UCUM,
+  LOINC) are not bundled; every code-system release is bring-your-own.
 - **No bundled SNOMED/CPT/UMLS/VSAC content** — ever; those are bring-your-own by license.
 
 The **API Reference** always reflects exactly what this release ships — treat it as the source of

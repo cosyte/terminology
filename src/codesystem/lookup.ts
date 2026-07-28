@@ -9,7 +9,7 @@
  *   `property` values (*"additional information about the code, including status"*).
  * - `$validate-code` returns `result` (*"True if the concept details supplied are valid"*).
  *
- * Both honor the **never-fabricate invariant** born in Phase 1, now applied to code identity: an
+ * Both honor the **never-fabricate invariant**, applied here to code identity: an
  * unknown code yields a typed `unknown` / `valid: false` — **never** a fabricated display and
  * **never** a guessed `valid: true`. A found-but-non-current concept (deprecated, or an ICD-10-CM
  * header) validates as present **but carries its status flag**, so a caller never treats it as clean.

@@ -8,7 +8,7 @@
  * is the terminology-engine analogue of a parser's lenient tokenizer — liberal on load.
  *
  * These helpers are **value-free**: they read structure, never log or echo field *values*, so a
- * code-in-context (which can be PHI, per the roadmap's PHI posture) never flows into a message.
+ * code-in-context (which can be PHI) never flows into a message.
  *
  * @packageDocumentation
  */

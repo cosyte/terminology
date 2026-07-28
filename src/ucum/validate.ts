@@ -1,9 +1,9 @@
 /**
- * The public **UCUM** surface (roadmap Phase 4): {@link validateUcum} (recognition + a canonical
+ * The public **UCUM** surface: {@link validateUcum} (recognition + a canonical
  * descriptor) and {@link ucumEqual} (are two expressions the *same unit*).
  *
  * Both are **recognition / validation / representation-canonicalization only** — never magnitude
- * conversion (roadmap §2/§4.3). The never-fabricate posture holds: an unparseable or unknown unit is
+ * conversion. The never-fabricate posture holds: an unparseable or unknown unit is
  * a typed {@link TERM_UCUM_INVALID} outcome carrying a value-free reason, **never** a guessed
  * "nearest" unit; and a special (non-linear) unit is never claimed equal to a linear one.
  *

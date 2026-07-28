@@ -4,8 +4,8 @@
  *
  * A code-system *identity* (the triple of canonical URI, OID, and HL7 v2 mnemonic that all name
  * the same terminology) is a **published fact**, not copyrighted content — so it is encoded here,
- * cited firsthand. This is the license line the roadmap draws: identities are facts we may encode;
- * the code *lists themselves* (SNOMED/CPT/LOINC content) are BYO and never bundled.
+ * cited firsthand. That is where the licensing line falls: identities are facts that may be
+ * encoded; the code *lists themselves* (SNOMED/CPT/LOINC content) are BYO and never bundled.
  *
  * **Every identity below is grounded firsthand against a primary source** (verified 2026-07-21):
  *
@@ -18,8 +18,8 @@
  * - HL7 Table 0396 (coding-system mnemonics) — the THO `v2-0396` code system — for the mnemonics
  *   (`LN`, `SCT`, `I10C`, `RXNORM`, `UCUM`, `C4`, `NDC`, `CVX`).
  *
- * Identities that could not be pinned to a primary source firsthand this pass are **omitted**, not
- * guessed (roadmap: "do not guess an identity") — notably ICD-9-CM and ICD-10-PCS, whose OID
+ * Identities that could not be pinned to a primary source firsthand are **omitted**, not
+ * guessed — notably ICD-9-CM and ICD-10-PCS, whose OID
  * assignments were ambiguous across sources.
  *
  * @packageDocumentation
