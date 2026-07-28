@@ -31,7 +31,11 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
   FHIR `CodeSystem` JSON); `lookup`/`validateCode` carry a `ConceptStatus` (deprecated /
   header-not-billable / obsolete / suppressed). Never-fabricate extends to code identity (unknown →
   typed `unknown`/`valid:false`, never a guessed display). Liberal on load: malformed rows → typed
-  warnings; unusable source → fatal `TERM_CODESYSTEM_MALFORMED`. Pre-alpha `0.0.x`, unpublished.
+  warnings; unusable source → fatal `TERM_CODESYSTEM_MALFORMED`. Pre-alpha `0.0.x`, **published on
+  npm** from a public repo. No version is quoted here on purpose, because a quoted one drifts and this
+  file has already been wrong about it; the registry is the authority, via
+  `npm view @cosyte/terminology version`. Visibility and publish state are independent in this org, so
+  never infer one from the other.
 - **Phase 3 shipped** (`TERMINOLOGY-3`): the **ValueSet binding layer** in `src/valueset/`.
   `loadValueSet` (conservative on load → fatal `TERM_VALUESET_MALFORMED`); `expand` over `compose`
   (`include`/`exclude`, explicit `concept` lists, whole-`system`, referenced value sets, and
@@ -108,6 +112,61 @@ a summary.
 - **Runtime deps:** **Zero.** Node stdlib only.
 - **License:** MIT.
 
+### Branch protection and Dependabot
+
+- **`main` is protected by a repository ruleset, `ci-required-checks`.** It requires
+  `ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)`, `ci / actionlint` and
+  `codeql / analyze (javascript-typescript)`, each pinned to the GitHub Actions app so a commit status
+  of the same name from another actor cannot satisfy it, and it blocks branch deletion and
+  force-push. Before this existed every check here was advisory on a published, public package.
+- **`scorecard` is deliberately NOT required.** It runs only on `push` to `main` and on a schedule,
+  never on `pull_request`, so requiring it would leave every PR pending forever. The `CodeQL` check
+  posted by the GitHub Advanced Security app is also not required: it reports alert state, not
+  whether the analysis job ran, which is what `codeql / analyze` already gates.
+- **Read `.github/workflows/ci.yml`'s job-name banner before renaming a job or splitting a step out
+  of `verify`.** A required job gates all of its steps, so promoting a step to its own job silently
+  un-requires it, and a renamed job leaves PRs pending rather than failing.
+- **▶ THE RULESET BLOCKS THE "Version Packages" PR, AND THAT IS EXPECTED. IT NEEDS ONE PUSH.**
+  Changesets opens the release PR as `github-actions[bot]` using the default `GITHUB_TOKEN`, and
+  GitHub does not start workflow runs for events raised by that token. So the version PR gets **zero
+  check runs**, not failing ones, and four required contexts that never arrive leave it `BLOCKED`
+  forever. `bypass_actors` is empty on purpose, so **not even a repo admin can merge past it.** The
+  fix is one commit onto `changeset-release/main`, which fires `pull_request: synchronize` under a
+  real user and produces all four checks:
+
+  ```bash
+  gh pr checkout <n> -R cosyte/terminology   # the "Version Packages" PR
+  git commit --allow-empty -m "chore: run CI on the version PR"
+  git push
+  ```
+
+  Do the push **last**, immediately before merging: if another changeset lands on `main` first, the
+  release workflow re-runs and the bot moves the branch head again, dropping the PR back to zero
+  checks. That is not the escape failing; repeat it.
+
+  This is deliberately the weaker-looking option: a bypass actor would fix it too, but it would mean a
+  human could merge a red PR, and the whole point here is that they cannot. `@cosyte/hl7` PR #61
+  merged exactly this way (`da5a1ce7 chore: run CI on the version PR`, which produced all four
+  required contexts green under an active `bypass_actors: []` ruleset) and its PR #63 sat `BLOCKED`
+  with 0 checks for want of it. **If you approve a release and the version PR looks stuck, it is
+  this. Do not delete the ruleset to unstick it.**
+
+- **Unproven, and stated as unproven: pull requests from FORKS.** This is a public repo with no
+  external contributors yet, so no fork PR has ever run here. Two things are expected to differ and
+  neither has been observed: a first-time contributor's workflows do not run until a maintainer
+  approves them, which looks identical to the version-PR trap above (zero checks, `BLOCKED`); and
+  `codeql / analyze` needs `security-events: write`, which a fork's `GITHUB_TOKEN` cannot be granted,
+  so that fourth context may fail or not report. Both are recoverable the same way and neither can
+  merge anything unreviewed, but do not tell a contributor this is fine until someone has watched a
+  real fork PR go green.
+
+- **Nothing in this repository can observe its own ruleset.** Delete it and every test here still
+  passes while these lines still claim protection. Verify with
+  `gh api repos/cosyte/terminology/rulesets`, not by reading this file.
+- **`.github/dependabot.yml`** watches `npm` (the single root `package.json` + `pnpm-lock.yaml`) and
+  `github-actions`. `package.json` also carries `pnpm.overrides`, which Dependabot does not manage;
+  when a bump makes one redundant, remove the override by hand.
+
 ## Engineering Guardrails
 
 - No `any`. No unjustified `as` casts. Use `unknown` and narrow.
@@ -120,8 +179,16 @@ a summary.
   emits spec-clean output).
 - Fatal errors only for unrecoverable structural corruption (Tier-3 codes). Everything else is a
   warning with a stable code + positional context.
-- Coverage: per-directory >= 90% (lines/branches/functions/statements), enforced by
-  `pnpm test:coverage`.
+- Coverage: global >= 90% (lines/branches/functions/statements), enforced by `pnpm test:coverage`.
+  **Per-directory thresholds do NOT cover every directory.** `vitest.config.ts` gates `common/`,
+  `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/` and `crosswalk/`. **`src/rxnorm/` is
+  ungated**, and it is the highest-clinical-risk directory in the package: the drug graph, whose
+  documented edge-direction trap a wrong branch would silently invert. It measures roughly **85 to
+  86% branches** (it moves run to run, which is itself worth a look), under the floor this line used
+  to claim outright, and passes only because the global threshold is carried by the gated directories.
+  Closing that is real drug-graph test work needing its own conformance review, not a CI chore.
+  `crosswalk/` was ungated for the same reason and turned out not to need it (~95% branches, 100%
+  lines, stable across runs), so it is gated now.
 
 ## Standing disciplines (every change)
 

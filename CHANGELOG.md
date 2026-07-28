@@ -9,8 +9,47 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ## [Unreleased]
 
-The first pre-alpha release (`0.0.1`) will ship the initial public API surface. The package begins
-its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until first alpha).
+### Fixed
+
+- **`VERSION` now reports the version you actually installed.** `@cosyte/terminology@0.0.1` shipped
+  exporting `VERSION === "0.0.0"`: `package.json` was bumped by Changesets, the constant in the source
+  was not. `docs-content/installation.md` documents printing exactly that constant as the install smoke
+  test, so the one check an installer is told to run was the one that lied. The constant now reads
+  `0.0.1`, and it can no longer drift: the release `version` script rewrites it from `package.json`, and
+  a test compares the two, so a skipped sync fails the build instead of publishing.
+- **Docs stated the wrong publish status in five places.** The README status block, the README install
+  note, `docs-content/intro.md`, `docs-content/installation.md`, and the project guide all said
+  `@cosyte/terminology` was "not yet published to npm" and told readers to consume it from source or a
+  workspace link. It has been on npm since `0.0.1`. All five now say the package is published, and
+  deliberately do not name a version: a version literal in prose is the same drift this release just
+  built a machine guard against, and the registry is the authority. (The historical `[0.0.1]` entry
+  below is left as written: it records what the docs said at the time, hours before the release
+  landed.)
+
+### Changed
+
+- **`VERSION` is declared `string` rather than the version literal.** Its emitted type was previously
+  narrowed to the exact release string, so every version bump was a `.d.ts` change and code comparing
+  `VERSION` against another string could be rejected by the type checker. Widening it makes the
+  declared type stable across releases. Runtime value is unchanged.
+
+### Security
+
+- **The CI checks that run on a pull request now block the merge.** Until now `@cosyte/terminology`
+  had no branch-protection ruleset at all, so `ci` (typecheck, lint, format, PHI scan, tests, coverage
+  gate, build, `attw`, dual ESM/CJS smoke) and CodeQL could all go red and the merge would still land
+  on `main`, and `main` publishes. A repository ruleset now requires those checks, restricted to the
+  GitHub Actions app so a status of the same name cannot be posted by anything else, and blocks branch
+  deletion and force-push on `main`. Scope of the claim: this makes a red check binding, it does not
+  make a check correct, and nothing inside this repository can observe the ruleset. See the note in
+  `.github/workflows/ci.yml` before splitting a required job.
+- **Dependency updates are now watched.** The repository had no Dependabot configuration, so its zero
+  open update PRs meant nothing was looking, not that nothing was stale.
+
+## [0.0.1] - 2026-07-21
+
+The first pre-alpha release. The package begins its public history at `0.0.x`, per the cosyte version
+ladder (`0.0.x` until first alpha).
 
 ### Security
 
@@ -242,8 +281,5 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
   `WARNING_CODES` entry, and the parse-oriented option/warning types). This package is an engine, not
   a parser; that placeholder surface never shipped.
 
-### Fixed
-
-### Security
-
-[Unreleased]: https://github.com/cosyte/terminology/commits/main
+[Unreleased]: https://github.com/cosyte/terminology/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/cosyte/terminology/releases/tag/v0.0.1

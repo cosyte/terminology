@@ -1,0 +1,43 @@
+version: 2
+
+# Nothing watched this repo's dependencies until CONSUMER-TIER-CI-BASELINE / DEPENDABOT-PR-QUEUE.
+# `@cosyte/terminology` is PUBLIC and PUBLISHED on npm (0.0.1), so "zero open Dependabot PRs"
+# here meant "nothing is looking", not "nothing is stale".
+#
+# Two ecosystems, because the repo has exactly two dependency surfaces. Swept, not assumed:
+#   npm             package.json + pnpm-lock.yaml at the root, the ONLY manifest in the repo
+#   github-actions  .github/workflows/*.yml
+# There is no third. No Dockerfile, no Terraform, no submodules of its own, no pnpm workspace,
+# no second package.json, no Python/Go/Rust manifest. The only other tracked non-source trees
+# are `vendor/ucum/` (verbatim UCUM release data, not a package) and `scripts/` (repo-local
+# TypeScript + shell, no manifest of their own).
+
+updates:
+  # npm. This package ships ZERO runtime dependencies by design -- `dependencies` is `{}` and
+  # stays that way (the zero-dep rule). So everything Dependabot can see here is a
+  # devDependency, and one group is the whole tree. The `npm` ecosystem covers pnpm:
+  # Dependabot infers the package manager from the lockfile, which is `pnpm-lock.yaml`.
+  #
+  # NOTE: package.json carries `pnpm.overrides` pinning esbuild and js-yaml above advisory
+  # ranges (SCAFFOLD-OVERRIDES-DRIFT). Dependabot does not manage those overrides -- if it
+  # proposes a bump that makes one redundant, the override is removed by hand, not silently
+  # left to pin a version backwards.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+
+  # Keep GitHub Actions references current. Stated honestly: all four workflows in this repo
+  # are today THIN CALLERS of `cosyte/.github/.github/workflows/*.yml@main`, and `@main` is a
+  # branch ref, so Dependabot has nothing to bump in them right now -- the pinned action SHAs
+  # live upstream in `cosyte/.github`, which has its own config. This entry is here so that the
+  # first repo-local job with a pinned `uses:` (the shape `hl7` already has) is watched from the
+  # moment it lands, rather than being remembered about later.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

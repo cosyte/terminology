@@ -9,8 +9,7 @@ sidebar_position: 1
 `@cosyte/terminology` is a zero-dependency TypeScript package for Node.js. It ships dual **ESM + CJS** builds with
 per-condition type declarations, so it works from either module system without configuration.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The command below is the shape it will
-> take at first publish; until then, consume it from source or a workspace link.
+> **Status:** pre-alpha (`0.0.x`), published on npm. The command below installs the real package.
 
 ## Prerequisites
 
