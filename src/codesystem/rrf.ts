@@ -27,7 +27,7 @@ import type { Concept, LoadWarning, Property, RrfSource } from "./types.js";
  * ```ts
  * import { parseRrfLine } from "@cosyte/terminology";
  *
- * parseRrfLine("314076|ENG|lisinopril 10 MG|"); // => ["314076", "ENG", "lisinopril 10 MG"]
+ * parseRrfLine("316151|ENG|lisinopril 10 MG|"); // => ["316151", "ENG", "lisinopril 10 MG"]
  * ```
  */
 export function parseRrfLine(line: string): readonly string[] {

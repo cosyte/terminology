@@ -1,7 +1,21 @@
 /**
  * Tests for RxNorm drug-graph navigation. Fixtures are **synthetic rows in the real RRF wire format**
  * — a small lisinopril graph (IN → SCDC → SCD → SBD, with BN + DF cross-links). No real RxNorm
- * content is bundled; RXCUIs and names are illustrative.
+ * content is bundled: the rows are assembled here, and only the public-domain RxNorm identifiers and
+ * normalized names are reused (roadmap §5).
+ *
+ * **Every identifier below names the concept its comment says it names, and every edge below is one
+ * RxNorm actually authors.** Both were checked against RxNav on 2026-07-28 (`/REST/rxcui/{id}/
+ * properties` for identity, `/REST/rxcui/{id}/related?rela={rela}` for the edge). That matters even
+ * though nothing here reaches a runtime: a fixture is read as a worked example, and a brand from one
+ * therapeutic class wearing another's name teaches the reader a drug fact that is false. This file
+ * previously carried four such claims: a `BN` for atorvastatin labelled as the lisinopril brand, two
+ * `SCD`s labelled `SBD` and `SCDC`, and an Oral Capsule dose form labelled "Oral Tablet".
+ *
+ * The **topology** is likewise RxNorm's own, matching `direction.test.ts`: `has_ingredient` runs
+ * `SCDC ⟶ IN` and `SBD ⟶ BN`, and there is **no** `SCD ⟶ IN` ingredient edge in any release. This
+ * file used to author one, which made the package's own suite model a graph the standard does not
+ * describe.
  */
 
 import { describe, it, expect } from "vitest";
@@ -23,26 +37,31 @@ import {
 import { only } from "../helpers.js";
 import { consoRow, relRow, satNdcRow } from "./fixtures.js";
 
-// A small, coherent synthetic drug graph.
+// A small, coherent synthetic drug graph. Each RXCUI is the concept its comment names (RxNav,
+// verified 2026-07-28). A wrong one here would be a false drug fact in the drug-graph suite.
 const IN = "29046"; // lisinopril (ingredient)
-const SCDC = "197884"; // lisinopril 10 MG (clinical component)
+const SCDC = "316151"; // lisinopril 10 MG (semantic clinical drug component)
 const SCD = "314076"; // lisinopril 10 MG Oral Tablet (semantic clinical drug)
-const SBD = "311354"; // "brand" 10 MG Oral Tablet (semantic branded drug)
-const BN = "153165"; // the brand name
-const DF = "316965"; // Oral Tablet (dose form)
+const SBD = "104377"; // lisinopril 10 MG Oral Tablet [Zestril] (semantic branded drug)
+const BN = "196472"; // Zestril (brand name)
+const DF = "317541"; // Oral Tablet (dose form)
 
 function graph(): RxNormGraph {
   const conso = [
     consoRow({ rxcui: IN, tty: "IN", str: "lisinopril" }),
     consoRow({ rxcui: SCDC, tty: "SCDC", str: "lisinopril 10 MG" }),
     consoRow({ rxcui: SCD, tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
-    consoRow({ rxcui: SBD, tty: "SBD", str: "Zestril 10 MG Oral Tablet" }),
+    consoRow({ rxcui: SBD, tty: "SBD", str: "lisinopril 10 MG Oral Tablet [Zestril]" }),
     consoRow({ rxcui: BN, tty: "BN", str: "Zestril" }),
     consoRow({ rxcui: DF, tty: "DF", str: "Oral Tablet" }),
   ].join("\n");
+  // The edges RxNorm authors for these six concepts, in the authored direction. There is no
+  // `SCD has_ingredient IN` row to author: the clinical drug reaches its ingredient through its
+  // component, and the branded drug's own has_ingredient edge lands on the brand name.
   const rel = [
-    relRow({ subject: SCD, rela: "has_ingredient", object: IN }),
-    relRow({ subject: SBD, rela: "has_ingredient", object: IN }),
+    relRow({ subject: SCDC, rela: "has_ingredient", object: IN }), // component -> ingredient
+    relRow({ subject: IN, rela: "ingredient_of", object: SCDC }), // the authored inverse row
+    relRow({ subject: SBD, rela: "has_ingredient", object: BN }), // branded drug -> brand name
     relRow({ subject: SCD, rela: "consists_of", object: SCDC }),
     relRow({ subject: SCD, rela: "has_dose_form", object: DF }),
     relRow({ subject: SBD, rela: "tradename_of", object: SCD }), // brand -> generic
@@ -53,12 +72,37 @@ function graph(): RxNormGraph {
 }
 
 describe("graph navigation — direction is the authored edge direction", () => {
-  it("resolves an SCD to its ingredient (has_ingredient)", () => {
-    const r = ingredientsOf(graph(), SCD);
+  it("resolves a clinical component to its ingredient (has_ingredient)", () => {
+    const r = ingredientsOf(graph(), SCDC);
     expect(r.found).toBe(true);
     if (!r.found) throw new Error("expected found");
     expect(r.targets.map((c) => c.rxcui)).toEqual([IN]);
     expect(only(r.targets).name).toBe("lisinopril");
+    expect(only(r.targets).tty).toBe("IN");
+  });
+
+  it("reaches a clinical drug's ingredient in two hops, because RxNorm authors no direct edge", () => {
+    // `SCD has_ingredient IN` does not exist in any release, so the direct query is an honest
+    // empty and the caller walks `SCD ⟶consists_of⟶ SCDC ⟶has_ingredient⟶ IN` deliberately.
+    const g = graph();
+    const direct = ingredientsOf(g, SCD);
+    if (!direct.found) throw new Error("expected found");
+    expect(direct.targets).toHaveLength(0);
+
+    const components = consistsOf(g, SCD);
+    if (!components.found) throw new Error("expected found");
+    const viaComponent = ingredientsOf(g, only(components.targets).rxcui);
+    if (!viaComponent.found) throw new Error("expected found");
+    expect(viaComponent.targets.map((c) => c.rxcui)).toEqual([IN]);
+  });
+
+  it("resolves a branded drug's direct ingredient edge to its brand name, typed as one", () => {
+    // RxNorm's own topology (Technical Documentation Appendix 1): the direct has_ingredient edge of
+    // a branded drug lands on its BN, not on the active ingredient.
+    const r = ingredientsOf(graph(), SBD);
+    if (!r.found) throw new Error("expected found");
+    expect(r.targets.map((c) => c.rxcui)).toEqual([BN]);
+    expect(only(r.targets).tty).toBe("BN");
   });
 
   it("resolves a branded drug to its generic (tradename_of), and generic to brand (has_tradename)", () => {
@@ -85,15 +129,21 @@ describe("graph navigation — direction is the authored edge direction", () => 
 
   it("never synthesizes an inverse: has_ingredient from the ingredient side yields empty, not the drug", () => {
     const g = graph();
-    // The ingredient has no authored outgoing has_ingredient / ingredient_of edge in this release.
-    const fromIngredient = relatedByRela(g, IN, RELA.HAS_INGREDIENT);
-    expect(fromIngredient.found).toBe(true);
-    if (!fromIngredient.found) throw new Error("expected found");
-    expect(fromIngredient.targets).toHaveLength(0); // honest empty, never the reverse edge
-    // Nor does querying the (unauthored) reverse predicate fabricate an edge.
+    // The ingredient carries the authored `ingredient_of` row, and it points back at the component.
     const reverse = relatedByRela(g, IN, RELA.INGREDIENT_OF);
+    expect(reverse.found).toBe(true);
     if (!reverse.found) throw new Error("expected found");
-    expect(reverse.targets).toHaveLength(0);
+    expect(reverse.targets.map((c) => c.rxcui)).toEqual([SCDC]);
+
+    // The presence of that row is exactly what could tempt a traversal into inventing its inverse.
+    // The ingredient authors no outgoing has_ingredient row, so the answer is an honest empty:
+    // never the component reported as the ingredient's own ingredient.
+    const fromIngredient = relatedByRela(g, IN, RELA.HAS_INGREDIENT);
+    if (!fromIngredient.found) throw new Error("expected found");
+    expect(fromIngredient.targets).toHaveLength(0);
+    const convenience = ingredientsOf(g, IN);
+    if (!convenience.found) throw new Error("expected found");
+    expect(convenience.targets).toHaveLength(0);
   });
 });
 

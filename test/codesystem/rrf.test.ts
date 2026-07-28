@@ -5,8 +5,8 @@ import { nth } from "../helpers.js";
 
 describe("parseRrfLine", () => {
   it("splits on pipe and drops the single reserved trailing pipe", () => {
-    expect(parseRrfLine("314076|ENG|lisinopril 10 MG|")).toStrictEqual([
-      "314076",
+    expect(parseRrfLine("316151|ENG|lisinopril 10 MG|")).toStrictEqual([
+      "316151",
       "ENG",
       "lisinopril 10 MG",
     ]);

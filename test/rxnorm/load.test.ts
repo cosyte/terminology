@@ -88,18 +88,20 @@ describe("loadRxNormGraph — RXNCONSO concepts", () => {
 
 describe("loadRxNormGraph — RXNREL edges (documented direction)", () => {
   it("normalizes a row to subject=RXCUI2, object=RXCUI1 (RELA is RXCUI2's relationship to RXCUI1)", () => {
-    // "SCD(314076) has_ingredient IN(29046)": the drug HAS the ingredient.
-    const rel = relRow({ subject: "314076", rela: "has_ingredient", object: "29046" });
+    // "SCDC(316151) has_ingredient IN(29046)": the component HAS the ingredient. This is the edge
+    // RxNorm authors. It authors no `SCD has_ingredient IN` row, so using one here would pin the
+    // column convention against a relationship that does not exist.
+    const rel = relRow({ subject: "316151", rela: "has_ingredient", object: "29046" });
     const g = loadRxNormGraph({
       conso: [
         consoRow({ rxcui: "29046", tty: "IN", str: "lisinopril" }),
-        consoRow({ rxcui: "314076", tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
+        consoRow({ rxcui: "316151", tty: "SCDC", str: "lisinopril 10 MG" }),
       ].join("\n"),
       rel,
     });
     expect(g.edgeCount).toBe(1);
-    const edge = only(g.edges.get("314076") ?? []);
-    expect(edge.subject).toBe("314076");
+    const edge = only(g.edges.get("316151") ?? []);
+    expect(edge.subject).toBe("316151");
     expect(edge.predicate).toBe("has_ingredient");
     expect(edge.object).toBe("29046");
     // The subject index is keyed on RXCUI2, so the ingredient (RXCUI1) has no outgoing edge here.

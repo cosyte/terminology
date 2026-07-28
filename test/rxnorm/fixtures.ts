@@ -7,6 +7,12 @@
  * (roadmap §5), and the *shipped* package bundles none of this (its `src/` examples use synthetic
  * `"1"`/`"2"`). NDCs here are synthetic placeholders. No patient data appears anywhere (not PHI).
  *
+ * **Where a real RXCUI appears, it must name the concept the comment says it names.** Illustrative is
+ * not a licence to be wrong: a fixture is read as a worked example, so a mislabelled identifier
+ * teaches a false drug fact even though no runtime consumes it. Check a new one against RxNav
+ * (`/REST/rxcui/{id}/properties`) before using it, and its edges against
+ * `/REST/rxcui/{id}/related?rela={rela}`. The topology is not guessable from the term types.
+ *
  * Column layouts are grounded firsthand on the NLM RxNorm Technical Documentation (see
  * `src/rxnorm/load.ts`): RXNCONSO 18 cols (`RXCUI`0 `SAB`11 `TTY`12 `STR`14 `SUPPRESS`16), RXNREL
  * 16 cols (`RXCUI1`0 `REL`3 `RXCUI2`4 `RELA`7), RXNSAT 13 cols (`RXCUI`0 `ATN`8 `SAB`9 `ATV`10).

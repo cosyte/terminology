@@ -211,8 +211,8 @@ function parseNdcs(
  *
  * // Synthetic rows in the RxNorm RRF wire format (no real RxNorm content is bundled).
  * const graph = loadRxNormGraph({
- *   conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n2|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
- *   // "SCD(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.
+ *   conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||",
+ *   // "SCDC(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.
  *   rel: "1|||RN|2|||has_ingredient|||RXNORM||||||",
  * });
  * graph.conceptCount; // => 2

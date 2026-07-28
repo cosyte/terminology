@@ -13,10 +13,16 @@
  *
  * So an `RXNREL.RRF` row is read **`RXCUI2 ⟶RELA⟶ RXCUI1`**, and {@link ../rxnorm/load.loadRxNormGraph}
  * normalizes every row to `subject = RXCUI2`, `predicate = RELA`, `object = RXCUI1`. Concretely, a
- * `has_ingredient` row places the **drug** in `RXCUI2` and the **ingredient** in `RXCUI1` (the drug
- * *has* the ingredient); a `tradename_of` row places the **branded** concept in `RXCUI2` and the
- * **generic** in `RXCUI1` (the brand *is a tradename of* the generic). Getting this backwards is a
- * wrong-medication bug, so the fixtures pin it against the doc's convention.
+ * `has_ingredient` row places the **having** concept in `RXCUI2` and what it *has* in `RXCUI1`; a
+ * `tradename_of` row places the **branded** concept in `RXCUI2` and the **generic** in `RXCUI1` (the
+ * brand *is a tradename of* the generic). Getting this backwards is a wrong-medication bug, so the
+ * fixtures pin it against the doc's convention.
+ *
+ * **Direction is not topology, and the topology is not the obvious one.** Knowing how to read a row
+ * does not tell you which rows exist. RxNorm authors `has_ingredient` from a clinical drug
+ * **component** (`SCDC ⟶ IN`) and from a **branded** drug to its **brand name** (`SBD ⟶ BN`); it
+ * authors **no** `SCD ⟶ IN` ingredient edge at all, so a clinical drug reaches its ingredient only
+ * through `consists_of`. See {@link ../rxnorm/navigate.ingredientsOf}.
  *
  * @packageDocumentation
  */
@@ -35,9 +41,15 @@
  * ```
  */
 export const RELA = {
-  /** `has_ingredient` — subject (a drug/component) *has ingredient* object (an `IN`/`PIN`). */
+  /**
+   * `has_ingredient`: subject *has ingredient* object. Authored `SCDC ⟶ IN` and `SBD ⟶ BN`; RxNorm
+   * authors no `SCD ⟶ IN` row.
+   */
   HAS_INGREDIENT: "has_ingredient",
-  /** `ingredient_of` — subject (an `IN`/`PIN`) *is an ingredient of* object (a drug/component). */
+  /**
+   * `ingredient_of`: subject (an `IN`/`PIN`) *is an ingredient of* object (a component, never a
+   * clinical drug).
+   */
   INGREDIENT_OF: "ingredient_of",
   /** `has_precise_ingredient` — subject *has precise ingredient* object (a `PIN`). */
   HAS_PRECISE_INGREDIENT: "has_precise_ingredient",

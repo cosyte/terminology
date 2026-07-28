@@ -83,9 +83,15 @@ navigated over a **bring-your-own** RxNorm RRF release (`loadRxNormGraph` reads 
   as *"the relationship which the **second** concept (`RXCUI2`) HAS TO the **first** (`RXCUI1`)"* (NLM
   RxNorm Technical Documentation §12.7; UMLS Reference Manual). So a row is read
   `RXCUI2 ⟶RELA⟶ RXCUI1`, and the loader normalizes every edge to `subject = RXCUI2`,
-  `object = RXCUI1`. A `has_ingredient` row therefore puts the **drug** in `RXCUI2` and the
-  **ingredient** in `RXCUI1`. Getting this backwards is a wrong-medication bug, so it is pinned by
-  fixtures.
+  `object = RXCUI1`. A `has_ingredient` row therefore puts the concept that *has* the ingredient in
+  `RXCUI2` and what it has in `RXCUI1`. Getting this backwards is a wrong-medication bug, so it is
+  pinned by fixtures.
+- **Direction is not topology.** Knowing how to read a row does not tell you which rows exist, and
+  RxNorm's ingredient topology is not the obvious one: `has_ingredient` is authored from a clinical
+  drug **component** (`SCDC ⟶ IN`) and from a **branded** drug to its **brand name** (`SBD ⟶ BN`).
+  There is **no** `SCD ⟶ IN` edge in any release, so `ingredientsOf` on a clinical drug answers with
+  an honest empty set and the ingredient is reached in two deliberate hops through `consists_of`
+  (`SCD ⟶ SCDC ⟶ IN`). Likewise `IN ingredient_of` reaches the component, never the clinical drug.
 - **Authored edges only — never inverted.** RxNorm ships both directions of an asymmetric
   relationship as separate rows, so `genericFor` follows the authored `tradename_of` and `brandsFor`
   follows the authored `has_tradename`; the engine **never** synthesizes a reverse edge. Convenience

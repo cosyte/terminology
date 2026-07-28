@@ -241,16 +241,45 @@ follows only **authored** edges — the engine never synthesizes an inverse.
 import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
 
 // Synthetic rows in the real RxNorm RRF wire format (RXNCONSO 18 cols, RXNREL 16 cols).
-// "SCD(2) has_ingredient IN(1)": the drug has the ingredient — subject=RXCUI2=2, object=RXCUI1=1.
+// "SCDC(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.
 const graph = loadRxNormGraph({
   conso:
     "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
-    "2|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
+    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||",
   rel: "1|||RN|2|||has_ingredient|||RXNORM||||||",
 });
 
 const r = ingredientsOf(graph, "2");
 r.found && r.targets[0]?.name; // => "lisinopril"
+```
+
+The ingredient edge is authored on the **component**, not on the clinical drug. That is RxNorm's own
+topology, not a simplification of the example. `has_ingredient` runs `SCDC ⟶ IN`, and a *branded*
+drug's `has_ingredient` edge lands on its **brand name** (`SBD ⟶ BN`), not on the active ingredient.
+RxNorm authors **no** `SCD ⟶ IN` edge, so asking a clinical drug for its ingredients is an honest
+empty answer rather than a guessed one; reach the ingredient in two deliberate hops through
+`consists_of`:
+
+```ts runnable
+import { loadRxNormGraph, consistsOf, ingredientsOf } from "@cosyte/terminology";
+
+const graph = loadRxNormGraph({
+  conso:
+    "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
+    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||\n" +
+    "3|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
+  rel: "1|||RN|2|||has_ingredient|||RXNORM||||||\n" + "2|||RN|3|||consists_of|||RXNORM||||||",
+});
+
+// The clinical drug carries no ingredient edge of its own.
+const direct = ingredientsOf(graph, "3");
+direct.found && direct.targets.length; // => 0
+
+// Hop 1: the drug's component. Hop 2: that component's ingredient.
+const parts = consistsOf(graph, "3");
+const component = parts.found ? parts.targets[0]?.rxcui : undefined;
+const viaComponent = ingredientsOf(graph, component ?? "");
+viaComponent.found && viaComponent.targets[0]?.name; // => "lisinopril"
 ```
 
 An `RXCUI` absent from the loaded release is a typed unknown — never a guessed concept:

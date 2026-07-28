@@ -128,8 +128,20 @@ dose-form graph. Relationships are read in RxNorm's documented direction (`RELA`
 the **second** `RXCUI` has to the **first**); navigation follows only authored edges — the engine
 never synthesizes an inverse, and never fabricates a concept, edge, or NDC.
 
+Authored edges only means the graph you get is RxNorm's, including where its shape surprises you:
+`has_ingredient` runs from a clinical drug **component** to the ingredient (`SCDC ⟶ IN`) and from a
+**branded** drug to its **brand name** (`SBD ⟶ BN`). RxNorm authors no ingredient edge on a clinical
+drug (`SCD`), so that query answers with an honest empty set rather than a guess, and the ingredient
+is reached in two deliberate hops through `consistsOf`.
+
 ```ts
-import { loadRxNormGraph, ingredientsOf, genericFor, resolveNdc } from "@cosyte/terminology";
+import {
+  loadRxNormGraph,
+  ingredientsOf,
+  consistsOf,
+  genericFor,
+  resolveNdc,
+} from "@cosyte/terminology";
 
 const graph = loadRxNormGraph({
   conso: rxnconsoRrf,
@@ -138,8 +150,10 @@ const graph = loadRxNormGraph({
   version: "RXNORM_2026AA",
 });
 
-ingredientsOf(graph, "314076"); // { found: true, targets: [ { rxcui: "29046", tty: "IN", name: "lisinopril", … } ] }
-genericFor(graph, "311354"); // an SBD → its SCD, via the authored tradename_of edge
+ingredientsOf(graph, "316151"); // an SCDC → { found: true, targets: [ { rxcui: "29046", tty: "IN", name: "lisinopril", … } ] }
+ingredientsOf(graph, "314076"); // an SCD → { found: true, targets: [] }, because no such edge is authored
+consistsOf(graph, "314076"); // → the SCDC, the first of the two hops to the ingredient
+genericFor(graph, "104377"); // an SBD → its SCD, via the authored tradename_of edge
 resolveNdc(graph, "00000000001"); // { resolved: true, rxcui: "314076", status: "active", asOf: "RXNORM_2026AA" }
 ingredientsOf(graph, "99999999"); // { found: false, code: "TERM_RXNORM_UNKNOWN_RXCUI" } — never a guess
 ```
