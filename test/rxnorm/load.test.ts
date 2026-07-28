@@ -16,10 +16,10 @@ describe("loadRxNormGraph — RXNCONSO concepts", () => {
       consoRow({ rxcui: "29046", tty: "IN", str: "lisinopril" }),
       // A non-RXNORM atom for the same RXCUI is ignored (silently, not a warning).
       consoRow({ rxcui: "29046", sab: "MSH", tty: "IN", str: "LISINOPRIL (MeSH)" }),
-      // A later RXNORM atom for an existing RXCUI does not overwrite the first.
+      // A later synonym-class atom never overwrites the concept's defining atom.
       consoRow({ rxcui: "29046", tty: "SY", str: "Prinivil ingredient" }),
       consoRow({ rxcui: "314076", tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
-      // An unknown TTY is skipped silently (not a drug-graph term type).
+      // An unknown TTY cannot type a concept; it is skipped, and SURFACED (never lost quietly).
       consoRow({ rxcui: "999", tty: "ZZZ", str: "not a drug type" }),
     ].join("\n");
     const g = loadRxNormGraph({ conso, rel: "", version: "RXNORM_2026AA" });
@@ -27,10 +27,11 @@ describe("loadRxNormGraph — RXNCONSO concepts", () => {
     expect(g.conceptCount).toBe(2);
     expect(g.version).toBe("RXNORM_2026AA");
     expect(g.concepts.get("29046")?.tty).toBe("IN");
-    expect(g.concepts.get("29046")?.name).toBe("lisinopril"); // first RXNORM atom won
+    expect(g.concepts.get("29046")?.name).toBe("lisinopril"); // first DEFINING atom won
     expect(g.concepts.get("314076")?.tty).toBe("SCD");
     expect(g.concepts.has("999")).toBe(false);
-    expect(g.warnings).toHaveLength(0);
+    // The one skipped RXCUI is reported rather than dropped (see test/rxnorm/term-types.test.ts).
+    expect(g.warnings.map((w) => w.code)).toStrictEqual(["TERM_RXNORM_UNTYPED_CONCEPT"]);
   });
 
   it("carries the suppressed flag verbatim, never hiding a suppressed concept", () => {

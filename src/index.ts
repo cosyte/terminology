@@ -281,7 +281,7 @@ export {
   type ApproximateMatchOptions,
 } from "./rxnorm/navigate.js";
 export { RELA, RELA_INVERSE, RXNORM_SYSTEM, type RelaName } from "./rxnorm/rela.js";
-export { TERM_TYPES, asTermType } from "./rxnorm/tty.js";
+export { TERM_TYPES, asTermType, isSynonymTermType } from "./rxnorm/tty.js";
 export type {
   TermType,
   RxNormConcept,

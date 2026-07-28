@@ -145,6 +145,16 @@ export const DIAGNOSTIC_CODES = {
    */
   TERM_RXNORM_MALFORMED_ROW: "TERM_RXNORM_MALFORMED_ROW",
   /**
+   * An `RXCUI` appeared in the release's `SAB=RXNORM` atoms but **none of them could establish its
+   * term type**, so it is **not** in the graph. Either every atom carried a synonym-class `TTY`
+   * (`PSN`/`SY`/`TMSY`, which Appendix 5 defines as a "synonym of another TTY" and which therefore
+   * types a *name* rather than a concept) or every atom carried a `TTY` this engine does not model.
+   * The concept is skipped rather than typed from a synonym atom: an absent concept is already a
+   * first-class typed answer (`TERM_RXNORM_UNKNOWN_RXCUI`), while a concept whose term type reads
+   * `TMSY` is a fabricated claim about what a drug *is* that a caller cannot detect.
+   */
+  TERM_RXNORM_UNTYPED_CONCEPT: "TERM_RXNORM_UNTYPED_CONCEPT",
+  /**
    * A RxNorm graph navigation was asked about an `RXCUI` **absent from the loaded release** — a
    * first-class typed outcome, never a fabricated concept and never an empty "success" (the
    * never-fabricate invariant, applied to the drug graph — roadmap §4.2). Distinct from a *present*

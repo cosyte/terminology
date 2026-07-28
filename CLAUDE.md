@@ -73,7 +73,9 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
     map content bundled (GEMs BYO now / a future public-domain pack; SNOMED BYO forever). Zero deps.
 - **Phase 6 shipped** (`TERMINOLOGY-6`): the **RxNorm drug relationship graph** in `src/rxnorm/`.
   `loadRxNormGraph` reads a **caller-supplied** RxNorm RRF release — `RXNCONSO` (concepts typed by
-  `TTY`: `IN`/`PIN`/`BN`/`SCD`/`SBD`/`SCDC`/`DF`/…), `RXNREL` (directed `RELA` edges), and optionally
+  `TTY`: the full Appendix 5 vocabulary, `IN`/`PIN`/`BN`/`SCD`/`SBD`/`SCDC`/`SCDF`/`SBDF`/`SCDFP`/
+  `SBDFP`/`SCDGP`/`DF`/…, and typed only from a **defining** atom, see the guardrail below),
+  `RXNREL` (directed `RELA` edges), and optionally
   `RXNSAT` (`ATN=NDC` attributes) — reusing the shared zero-dep RRF reader. The column layouts and the
   **edge-direction convention** are grounded firsthand on the NLM RxNorm Technical Documentation
   (§12.7) + UMLS Reference Manual: `RELA` is the relationship `RXCUI2` has to `RXCUI1`, so each row is
@@ -184,7 +186,7 @@ a summary.
   `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/`, `crosswalk/` **and `rxnorm/`**.
   `rxnorm/` was the last hold-out and the highest-clinical-risk directory in the package: the drug
   graph, whose documented edge-direction trap a wrong branch would silently invert. It measured 85 to
-  86% branches, under the floor, and the figure moved run to run. Both are fixed: it sits at 96.84%
+  86% branches, under the floor, and the figure moved run to run. Both are fixed: it sits at 97.02%
   branches / 100% lines, functions and statements. **The three branch arms still uncovered are
   provably unreachable** (two `?? ""` fallbacks guarding cells a row-length check already proved
   present, one divide-by-zero guard the function returns before), so do not chase them to 100.
@@ -207,6 +209,27 @@ a summary.
   `test/property/rxnorm.property.test.ts` **cannot** catch an inversion: they check navigation
   against the loaded graph's own edges, which stay self-consistent when the load flips. Do not
   weaken the pinned fixtures on the grounds that the property suite covers it.
+- **A concept is typed by a DEFINING atom, and the vocabulary is the FULL Appendix 5 one.** Both
+  halves were wrong at once and the combination was silent: `TERM_TYPES` modelled 18 of RxNorm's term
+  types (missing `SCDF`, `SBDF`, `SCDFP`, `SBDFP`, `SCDGP`; this file's own topology note already
+  named `SCDF` and `SBDF`), and `parseConso` typed each concept from the first _modelled_ atom in file
+  order, with `PSN`/`SY`/`TMSY` modelled. So `RXCUI 370659`, an `SCDF`, loaded as `TMSY` with zero
+  warnings and then answered `ingredientsOf` under that type. Appendix 5 splits the vocabulary into
+  "Normalized Names" and "Synonyms", and calls each of the latter a _"synonym of another TTY"_: a
+  synonym atom types a **name**, never a concept. So the defining atom wins wherever it sits, and an
+  `RXCUI` no defining atom could type is skipped and surfaced as `TERM_RXNORM_UNTYPED_CONCEPT` rather
+  than typed from a synonym. **Skipping is deliberate**: an absent concept is already a first-class
+  typed answer, while a concept whose `tty` reads `TMSY` is a fabricated claim a caller cannot detect.
+  Pinned in `test/rxnorm/term-types.test.ts`, including the case that needs no missing type at all (a
+  `PSN` before an `SCD`). `ingredientsOf` semantics are unchanged: it still follows authored edges
+  only.
+- **The PRECISE forms do not behave like their siblings, and this was checked per relation.** An
+  `SCDFP` reaches its basis-of-strength substance(s) by **`has_boss`**, not `has_precise_ingredient`,
+  and that edge is **one-to-many with mixed target types** (`2647752` returns an `IN` and two `PIN`s,
+  `2645758` an `IN` and a `PIN`), so do not write it down as "the `PIN`"; `SBDFP` and `SCDGP`
+  author **no** ingredient-bearing edge at all. Verified on RxNav for `2647092` / `2654917` /
+  `2660034`. `ingredientsOf` deliberately does not follow `has_boss` (basis-of-strength substance is
+  not the same assertion as an ingredient), and `RELA` deliberately does not gain a constant for it.
 - **Do not write those pairings down as a closed set, and do not name a term type you have not
   checked.** Both mistakes were made in this repo, in the slice that set out to fix exactly this
   class of defect. Verify identity with `https://rxnav.nlm.nih.gov/REST/rxcui/{id}/properties.json`

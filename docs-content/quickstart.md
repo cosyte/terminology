@@ -258,7 +258,14 @@ topology, not a simplification of the example. `has_ingredient` is authored from
 side (`SCDC`/`SCDF`/`SCDG`) to the ingredient `IN`, and from the **branded** side
 (`SBD`/`SBDC`/`SBDF`/`SBDG`) to the **brand name** `BN` rather than to the active ingredient. RxNorm
 authors **no** `SCD ⟶ IN` edge at all, so asking a clinical drug for its ingredients is an honest
-empty answer rather than a guessed one.
+empty answer rather than a guessed one. The **precise** forms (`SCDFP`, `SBDFP`, `SCDGP`) answer
+empty too: an `SCDFP` reaches its basis-of-strength substance(s) by `has_boss`, a one-to-many
+relation whose targets can be a `PIN` or a plain `IN` and which `ingredientsOf` does not follow, and the other two author no ingredient edge at all.
+
+A concept takes its term type from its **defining** atom, wherever that sits in `RXNCONSO`. `PSN`,
+`SY` and `TMSY` type a *name* rather than a concept, so they never establish one. An `RXCUI` no
+defining atom could type is left out of the graph and reported on `graph.warnings` as
+`TERM_RXNORM_UNTYPED_CONCEPT`, rather than surfacing under a term type it does not have.
 
 To reach an active ingredient, walk to the **clinical** component and take its edge. From an `SCD`
 that is two hops through `consists_of`:

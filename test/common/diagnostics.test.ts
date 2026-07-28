@@ -29,6 +29,7 @@ describe("diagnostic + fatal code registries", () => {
         "TERM_RXNORM_MALFORMED_ROW",
         "TERM_RXNORM_NDC_UNMAPPED",
         "TERM_RXNORM_UNKNOWN_RXCUI",
+        "TERM_RXNORM_UNTYPED_CONCEPT",
         "TERM_SYSTEM_UNRECOGNIZED",
         "TERM_TRANSLATE_UNMAPPED",
         "TERM_UCUM_INVALID",
