@@ -11,11 +11,11 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  *
  * `rxnorm/` used to be missing from the list, and it is the highest-clinical-risk directory in the
  * package: the drug graph, whose documented edge-direction convention a wrong branch would silently
- * invert. It is gated as of now, at 96.84% branches / 100% lines, functions and statements, with the
+ * invert. It is gated as of now, at 97.02% branches / 100% lines, functions and statements, with the
  * direction convention pinned per relation family in `test/rxnorm/direction.test.ts` (forward and
  * reverse, so an inversion cannot trade one green assertion for another).
  *
- * The remaining 3.16% of `rxnorm/` branches are three arms that cannot be reached from any input:
+ * The remaining 2.98% of `rxnorm/` branches are three arms that cannot be reached from any input:
  * two `?? ""` fallbacks in `load.ts` guarding cells the row-length check has already proven present,
  * and a divide-by-zero guard in `navigate.ts` whose zero case the function returns before. They are
  * artifacts of `noUncheckedIndexedAccess`, not untested behaviour, which is why the floor stays at

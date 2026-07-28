@@ -34,6 +34,11 @@
  * `RXNCONSO.RRF` `TTY` values relevant to the drug graph, grounded on the NLM RxNorm Technical
  * Documentation (Appendix 5). Carried verbatim on a {@link RxNormConcept}; the engine classifies but
  * never re-labels a concept.
+ *
+ * `PSN` / `SY` / `TMSY` are Appendix 5's **synonym** term types: each labels an alternate *name* on
+ * some other concept rather than a concept of its own, so they are part of this vocabulary but can
+ * never appear as a loaded {@link RxNormConcept.tty}. See
+ * {@link ../rxnorm/tty.isSynonymTermType}.
  */
 export type TermType =
   | "IN"
@@ -42,10 +47,15 @@ export type TermType =
   | "BN"
   | "SCDC"
   | "SBDC"
+  | "SCDF"
+  | "SBDF"
+  | "SCDFP"
+  | "SBDFP"
   | "SCD"
   | "SBD"
   | "SCDG"
   | "SBDG"
+  | "SCDGP"
   | "GPCK"
   | "BPCK"
   | "DF"
@@ -63,7 +73,10 @@ export type TermType =
 export interface RxNormConcept {
   /** The RxNorm concept unique identifier (`RXCUI`), verbatim. */
   readonly rxcui: string;
-  /** The concept's term type ({@link TermType}), verbatim from `RXNCONSO.TTY`. */
+  /**
+   * The concept's term type ({@link TermType}), verbatim from the `RXNCONSO.TTY` of a **defining**
+   * atom. Never a synonym-class `TTY` (`PSN`/`SY`/`TMSY`), which types a name rather than a concept.
+   */
   readonly tty: TermType;
   /** The concept's normalized name (`RXNCONSO.STR`), verbatim. */
   readonly name: string;
@@ -176,13 +189,17 @@ export interface RxNormApproximateMatch {
 }
 
 /**
- * A surfaced, non-fatal RxNorm load warning — a malformed `RXNCONSO` / `RXNREL` / `RXNSAT` row that
- * was **skipped**, reported with its line number and a value-free structural reason (liberal on load,
- * roadmap §6). Never echoes a field value.
+ * A surfaced, non-fatal RxNorm load warning: an `RXNCONSO` / `RXNREL` / `RXNSAT` row (or, for
+ * `TERM_RXNORM_UNTYPED_CONCEPT`, an `RXCUI`) that was **skipped**, reported with its line number and
+ * a value-free structural reason (liberal on load, roadmap §6). Never echoes a field value.
  */
 export interface RxNormLoadWarning {
-  /** The stable diagnostic code for a skipped RxNorm row. */
-  readonly code: "TERM_RXNORM_MALFORMED_ROW";
+  /**
+   * The stable diagnostic code for the skip. `TERM_RXNORM_MALFORMED_ROW` is a structurally unusable
+   * row; `TERM_RXNORM_UNTYPED_CONCEPT` is an `RXCUI` no defining atom could type. Both are in the
+   * package-wide {@link ../common/diagnostics.DIAGNOSTIC_CODES} registry, which documents each.
+   */
+  readonly code: "TERM_RXNORM_MALFORMED_ROW" | "TERM_RXNORM_UNTYPED_CONCEPT";
   /** Which source file the fault was in. */
   readonly file: "RXNCONSO" | "RXNREL" | "RXNSAT";
   /** The 1-based source line the fault was found on. */

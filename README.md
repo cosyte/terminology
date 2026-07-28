@@ -135,8 +135,18 @@ than to the active ingredient. RxNorm authors no ingredient edge on a clinical d
 so that query answers with an honest empty set rather than a guess. To reach an active ingredient,
 walk to the **clinical** component and take its edge: `consistsOf` then `ingredientsOf`. From an
 `SBD`, `consistsOf` returns both its branded component (`SBDC`, whose ingredient edge is the brand
-name again) and the clinical `SCDC`; it is the `SCDC` that leads to the `IN`. Read the `tty` of what
-comes back rather than assuming it.
+name again) and the clinical `SCDC`; it is the `SCDC` that leads to the `IN`. The **precise** forms
+(`SCDFP`, `SBDFP`, `SCDGP`) carry no ingredient edge at all: an `SCDFP` instead reaches its
+basis-of-strength substances by `has_boss`, a one-to-many relation with a different meaning whose
+targets can be a `PIN` or a plain `IN`, and which `ingredientsOf` does not follow. Read the `tty` of
+what comes back rather than assuming it.
+
+A concept is typed by its **defining** atom, whichever line of `RXNCONSO` that sits on. `PSN`, `SY`
+and `TMSY` type a _name_ rather than a concept, so they never establish an `RXCUI`'s term type. An
+`RXCUI` no defining atom could type is left out of the graph and reported as
+`TERM_RXNORM_UNTYPED_CONCEPT` on `graph.warnings`, rather than loaded under a synonym's term type:
+a concept that answers with a term type it does not have is a fabricated claim about a drug, and
+this engine refuses instead.
 
 ```ts
 import {

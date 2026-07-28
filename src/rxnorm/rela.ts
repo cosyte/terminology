@@ -22,8 +22,11 @@
  * does not tell you which rows exist. RxNorm authors `has_ingredient` from the **clinical** side
  * (`SCDC`/`SCDF`/`SCDG`) to an `IN`, and from the **branded** side (`SBD`/`SBDC`/`SBDF`/`SBDG`) to a
  * `BN` rather than to the active ingredient; it authors **no** `SCD ⟶ IN` ingredient edge at all, so
- * a clinical drug reaches its ingredient only through `consists_of`. Treat those pairings as the ones
- * RxNorm authors, not as a closed set, and read the `TTY` of what a traversal returns. See
+ * a clinical drug reaches its ingredient only through `consists_of`. The **precise** forms
+ * (`SCDFP`/`SBDFP`/`SCDGP`) carry no `has_ingredient` row either: an `SCDFP` instead reaches its
+ * basis-of-strength substances by `has_boss` (one-to-many, and its targets can be a `PIN` or a plain
+ * `IN`), and the other two author no ingredient-bearing edge at all. Treat those pairings as the
+ * ones RxNorm authors, not as a closed set, and read the `TTY` of what a traversal returns. See
  * {@link ../rxnorm/navigate.ingredientsOf}.
  *
  * @packageDocumentation

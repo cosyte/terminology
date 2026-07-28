@@ -95,6 +95,9 @@ context** can be PHI: never log the surrounding record.
   engine bundles **no** RxNorm content. NDC↔RXCUI resolution is release-scoped and carries the as-of
   release; obsolete/alien NDC statuses come from RxNav NDC-history data (a differential source), not the
   base RRF concept files, and are never fabricated. Approximate matching is opt-in and always labeled.
+  An `RXCUI` whose supplied atoms could not establish a term type is left out of the graph and
+  reported as `TERM_RXNORM_UNTYPED_CONCEPT` on `graph.warnings`, never loaded under a synonym's
+  `TTY`; check that list if a concept you expected reads as `TERM_RXNORM_UNKNOWN_RXCUI`.
 - **No bundled content packs yet** — the bundleable public-domain packs (RxNorm Prescribable,
   ICD-10-CM, UCUM, LOINC) are a later phase (Phase 7); until then every release is bring-your-own.
 - **No bundled SNOMED/CPT/UMLS/VSAC content** — ever; those are bring-your-own by license.

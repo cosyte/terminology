@@ -94,8 +94,20 @@ navigated over a **bring-your-own** RxNorm RRF release (`loadRxNormGraph` reads 
   honest empty set, and an active ingredient is reached by walking to the **clinical** component and
   taking its edge (`SCD ⟶ SCDC ⟶ IN`; from an `SBD`, `consists_of` returns the `SBDC` as well as the
   `SCDC`, and it is the `SCDC` that leads to the `IN`). Likewise `IN ingredient_of` reaches components
-  and dose forms, never the clinical drug. Read the `tty` of what a traversal returns rather than
+  and dose forms, never the clinical drug. The **precise** forms (`SCDFP`/`SBDFP`/`SCDGP`) carry no
+  ingredient edge either: an `SCDFP` reaches its basis-of-strength substance(s) by `has_boss`, a
+  one-to-many relation whose targets can be a `PIN` or a plain `IN` and which `ingredientsOf` does
+  not follow, and the other two author none at all. Read the `tty` of what a traversal returns rather than
   assuming it from the one you queried.
+- **A concept is typed by its defining atom, never by file position.** An `RXCUI` carries one
+  defining atom (its normalized name: `IN`, `SCD`, `SCDF`, `BN`, and so on) plus any number of
+  synonym atoms, whose `TTY` (`PSN`, `SY`, `TMSY`) the NLM defines as a *"synonym of another TTY"*: it
+  types a **name**, not a concept. RxNorm documents no ordering between an `RXCUI`'s atoms, so the
+  loader takes the defining one wherever it sits and never falls back to a synonym. An `RXCUI` that no
+  defining atom could type is left out of the graph and surfaced as `TERM_RXNORM_UNTYPED_CONCEPT`.
+  Refusing is the safer direction: an absent concept is already a first-class typed answer
+  (`TERM_RXNORM_UNKNOWN_RXCUI`), while a concept whose `tty` reads `TMSY` is a fabricated claim about
+  what the drug is, and a caller cannot tell it from a real one.
 - **Authored edges only — never inverted.** RxNorm ships both directions of an asymmetric
   relationship as separate rows, so `genericFor` follows the authored `tradename_of` and `brandsFor`
   follows the authored `has_tradename`; the engine **never** synthesizes a reverse edge. Convenience

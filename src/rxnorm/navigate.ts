@@ -120,6 +120,13 @@ export function relatedByRela(
  * - a **clinical drug** (`SCD`) carries **no** `has_ingredient` edge at all. RxNorm authors none, in
  *   any release, so this honestly returns found-with-empty-targets rather than walking a path on the
  *   caller's behalf.
+ * - the **precise** forms (`SCDFP`, `SBDFP`, `SCDGP`) carry **neither** edge, so this returns
+ *   found-with-empty-targets for them too. They do **not** behave like their non-precise siblings:
+ *   an `SCDFP` reaches its basis-of-strength substance(s) by `has_boss`, a one-to-many relation with
+ *   a different meaning whose targets can be a `PIN` or a plain `IN`, and which this function
+ *   deliberately does not follow; an `SBDFP` and an
+ *   `SCDGP` author no ingredient-bearing edge at all and are reached instead through `form_of` /
+ *   `tradename_of` / `isa`.
  *
  * Those pairings are the ones RxNorm authors, not a closed set a caller may rely on: check the
  * returned `TTY` rather than assuming it from the one you queried.
