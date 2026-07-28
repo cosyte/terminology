@@ -130,6 +130,21 @@ describe("NDC resolution — temporal, release-scoped, never a guess", () => {
     expect(r.asOf).toBe("RXNORM_2026AA");
   });
 
+  it("omits the as-of release when the loaded release declared no version, never inventing one", () => {
+    const g = loadRxNormGraph({
+      conso: consoRow({ rxcui: SCD, tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
+      rel: "",
+      sat: satNdcRow({ rxcui: SCD, ndc: "00000000001" }),
+    });
+    const r = resolveNdc(g, "00000000001");
+    if (!r.resolved) throw new Error("expected resolved");
+    expect(r.rxcui).toBe(SCD);
+    // An NDC mapping is release-scoped, so with no release to scope it to the field is absent
+    // rather than filled with a plausible-looking label.
+    expect(r.asOf).toBeUndefined();
+    expect("asOf" in r).toBe(false);
+  });
+
   it("an unknown NDC is a typed unmapped, never a guessed RXCUI", () => {
     const r = resolveNdc(graph(), "99999999999");
     expect(r.resolved).toBe(false);
@@ -156,6 +171,23 @@ describe("approximate match — opt-in, explicitly labeled, never the default", 
   it("an empty query and a no-match query both yield an empty array (never a nearest guess)", () => {
     expect(approximateMatch(graph(), "")).toHaveLength(0);
     expect(approximateMatch(graph(), "zzzz qqqq wwww", { minScore: 0.9 })).toHaveLength(0);
+  });
+
+  it("scores a concept whose name carries no matchable tokens at zero, never at a floor", () => {
+    // A caller-supplied release can carry a degenerate name. It must not be scored as similar to
+    // everything (an empty token set overlaps nothing), and it must not crash the comparison.
+    const g = loadRxNormGraph({
+      conso: [
+        consoRow({ rxcui: SCD, tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
+        consoRow({ rxcui: DF, tty: "DF", str: "---" }),
+      ].join("\n"),
+      rel: "",
+    });
+    const r = approximateMatch(g, "lisinopril", { minScore: 0 });
+    const degenerate = r.find((m) => m.concept.rxcui === DF);
+    expect(degenerate?.score).toBe(0);
+    // At the default threshold it is not a candidate at all.
+    expect(approximateMatch(g, "lisinopril").some((m) => m.concept.rxcui === DF)).toBe(false);
   });
 
   it("respects the limit", () => {

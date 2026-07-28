@@ -55,6 +55,35 @@ describe("loadRxNormGraph — RXNCONSO concepts", () => {
     expect(only(g.warnings).line).toBe(2);
     expect(only(g.warnings).detail).not.toContain("aspirin");
   });
+
+  it("skips and surfaces an RXNCONSO row whose RXCUI is blank, never a concept keyed on nothing", () => {
+    const conso = [
+      consoRow({ rxcui: "1", tty: "IN", str: "aspirin" }),
+      consoRow({ rxcui: "", tty: "IN", str: "nameless" }),
+    ].join("\n");
+    const g = loadRxNormGraph({ conso, rel: "" });
+    expect(g.conceptCount).toBe(1);
+    expect(g.concepts.has("")).toBe(false);
+    expect(only(g.warnings).file).toBe("RXNCONSO");
+    expect(only(g.warnings).line).toBe(2);
+    expect(only(g.warnings).detail).toContain("RXCUI");
+    expect(only(g.warnings).detail).not.toContain("nameless"); // value-free
+  });
+
+  it("loads a row truncated after its usable columns, defaulting the absent SUPPRESS to not-suppressed", () => {
+    // A row that reaches STR(14) but stops before SUPPRESS(16). It is usable, so it is kept rather
+    // than dropped (liberal on load), and the absent suppression flag is read as not-suppressed
+    // rather than guessed the other way.
+    const truncated = consoRow({ rxcui: "1", tty: "IN", str: "aspirin" })
+      .split("|")
+      .slice(0, 16)
+      .join("|");
+    const g = loadRxNormGraph({ conso: `${truncated}|`, rel: "" });
+    expect(g.conceptCount).toBe(1);
+    expect(g.concepts.get("1")?.name).toBe("aspirin");
+    expect(g.concepts.get("1")?.suppressed).toBe(false);
+    expect(g.warnings).toHaveLength(0);
+  });
 });
 
 describe("loadRxNormGraph — RXNREL edges (documented direction)", () => {
@@ -111,6 +140,57 @@ describe("loadRxNormGraph — RXNSAT NDC attributes", () => {
   it("is a no-op NDC index when sat is not supplied", () => {
     const g = loadRxNormGraph({ conso: "", rel: "" });
     expect(g.ndcs.size).toBe(0);
+  });
+
+  it("keeps the first mapping when an NDC recurs, and steps over blank lines", () => {
+    // RRF carries one row per attribute assertion, so the same NDC can appear more than once. The
+    // first mapping wins, so a later row cannot silently re-point a dispensed NDC at a different
+    // drug. Blank lines between rows are structure, not a malformed row, and raise no warning.
+    const sat = [
+      satNdcRow({ rxcui: "314076", ndc: "00000000001" }),
+      "",
+      satNdcRow({ rxcui: "29046", ndc: "00000000001" }),
+    ].join("\n");
+    const g = loadRxNormGraph({
+      conso: [
+        consoRow({ rxcui: "314076", tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
+        consoRow({ rxcui: "29046", tty: "IN", str: "lisinopril" }),
+      ].join("\n"),
+      rel: "",
+      sat,
+    });
+    expect(g.ndcs.size).toBe(1);
+    expect(g.ndcs.get("00000000001")?.rxcui).toBe("314076");
+    expect(g.warnings).toHaveLength(0);
+  });
+
+  it("surfaces a structurally short RXNSAT row as a warning rather than a partial mapping", () => {
+    const g = loadRxNormGraph({ conso: "", rel: "", sat: "314076|2|3" });
+    expect(g.ndcs.size).toBe(0);
+    expect(only(g.warnings).file).toBe("RXNSAT");
+    expect(only(g.warnings).code).toBe("TERM_RXNORM_MALFORMED_ROW");
+    expect(only(g.warnings).line).toBe(1);
+  });
+
+  it("surfaces an ATN=NDC row missing its NDC or its RXCUI, never a half-built drug mapping", () => {
+    const sat = [
+      satNdcRow({ rxcui: "314076", ndc: "" }), // NDC attribute with no value
+      satNdcRow({ rxcui: "", ndc: "00000000002" }), // NDC value attached to no concept
+    ].join("\n");
+    const g = loadRxNormGraph({
+      conso: consoRow({ rxcui: "314076", tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
+      rel: "",
+      sat,
+    });
+    expect(g.ndcs.size).toBe(0);
+    expect(g.warnings).toHaveLength(2);
+    for (const w of g.warnings) {
+      expect(w.file).toBe("RXNSAT");
+      expect(w.code).toBe("TERM_RXNORM_MALFORMED_ROW");
+      expect(w.detail).not.toContain("00000000002"); // value-free
+    }
+    expect(nth(g.warnings, 0).line).toBe(1);
+    expect(nth(g.warnings, 1).line).toBe(2);
   });
 });
 

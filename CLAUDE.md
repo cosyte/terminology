@@ -180,15 +180,30 @@ a summary.
 - Fatal errors only for unrecoverable structural corruption (Tier-3 codes). Everything else is a
   warning with a stable code + positional context.
 - Coverage: global >= 90% (lines/branches/functions/statements), enforced by `pnpm test:coverage`.
-  **Per-directory thresholds do NOT cover every directory.** `vitest.config.ts` gates `common/`,
-  `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/` and `crosswalk/`. **`src/rxnorm/` is
-  ungated**, and it is the highest-clinical-risk directory in the package: the drug graph, whose
-  documented edge-direction trap a wrong branch would silently invert. It measures roughly **85 to
-  86% branches** (it moves run to run, which is itself worth a look), under the floor this line used
-  to claim outright, and passes only because the global threshold is carried by the gated directories.
-  Closing that is real drug-graph test work needing its own conformance review, not a CI chore.
-  `crosswalk/` was ungated for the same reason and turned out not to need it (~95% branches, 100%
-  lines, stable across runs), so it is gated now.
+  **Per-directory thresholds now cover every source directory.** `vitest.config.ts` gates `common/`,
+  `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/`, `crosswalk/` **and `rxnorm/`**.
+  `rxnorm/` was the last hold-out and the highest-clinical-risk directory in the package: the drug
+  graph, whose documented edge-direction trap a wrong branch would silently invert. It measured 85 to
+  86% branches, under the floor, and the figure moved run to run. Both are fixed: it sits at 96.84%
+  branches / 100% lines, functions and statements. **The three branch arms still uncovered are
+  provably unreachable** (two `?? ""` fallbacks guarding cells a row-length check already proved
+  present, one divide-by-zero guard the function returns before), so do not chase them to 100.
+- **Coverage that rests on a fast-check draw is not coverage.** The `rxnorm/` figure moved because
+  fast-check takes a fresh random seed every run and this repo pins none, so any arm reached only by
+  a generated input is covered by chance. Several `src/rxnorm/` arms were in that state, including
+  the never-fabricate guard for an edge into a concept the caller's release did not ship. They now
+  have deterministic tests, and the check that they do is
+  `vitest run --coverage --exclude 'test/property/**'` reporting the same per-directory figures as
+  the full suite. Run that comparison before trusting a per-directory number here, and **do not pin
+  the fast-check seed** to hold a figure still: cover the arm instead.
+- **The edge-direction convention is pinned per relation family, forward _and_ reverse**, in
+  `test/rxnorm/direction.test.ts`. Inverting it in the loader reds 19 tests; swapping a single
+  navigation helper reds 3. That file also encodes the topology RxNorm actually authors, which is
+  **not** the obvious one: `has_ingredient` runs `SCDC -> IN` and `SBD -> BN`, there is **no**
+  `SCD has_ingredient IN` edge, and `IN ingredient_of` reaches the component, never the clinical
+  drug. The property tests in `test/property/rxnorm.property.test.ts` **cannot** catch an inversion:
+  they check navigation against the loaded graph's own edges, which stay self-consistent when the
+  load flips. Do not weaken the pinned fixtures on the grounds that the property suite covers it.
 
 ## Standing disciplines (every change)
 

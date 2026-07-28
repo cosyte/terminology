@@ -72,9 +72,7 @@ function cell(cells: readonly string[], index: number): string | undefined {
 /** Parse `RXNCONSO.RRF` into the `RXCUI → concept` map (first `SAB=RXNORM` drug-graph atom wins). */
 function parseConso(content: string, warnings: RxNormLoadWarning[]): Map<string, RxNormConcept> {
   const concepts = new Map<string, RxNormConcept>();
-  const lines = content.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i] ?? "";
+  for (const [i, raw] of content.split(/\r?\n/).entries()) {
     if (raw === "") continue;
     const cells = parseRrfLine(raw);
     // Need at least through STR(14) to be a usable concept row.
@@ -125,9 +123,7 @@ function parseRel(
 ): { edges: Map<string, RxNormEdge[]>; edgeCount: number } {
   const edges = new Map<string, RxNormEdge[]>();
   let edgeCount = 0;
-  const lines = content.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i] ?? "";
+  for (const [i, raw] of content.split(/\r?\n/).entries()) {
     if (raw === "") continue;
     const cells = parseRrfLine(raw);
     if (cells.length <= REL.RELA) {
@@ -165,9 +161,7 @@ function parseNdcs(
   warnings: RxNormLoadWarning[],
 ): Map<string, { rxcui: string; status: NdcStatus }> {
   const ndcs = new Map<string, { rxcui: string; status: NdcStatus }>();
-  const lines = content.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i] ?? "";
+  for (const [i, raw] of content.split(/\r?\n/).entries()) {
     if (raw === "") continue;
     const cells = parseRrfLine(raw);
     if (cells.length <= SAT.ATV) {
