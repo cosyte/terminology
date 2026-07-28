@@ -197,8 +197,14 @@ a summary.
   the full suite. Run that comparison before trusting a per-directory number here, and **do not pin
   the fast-check seed** to hold a figure still: cover the arm instead.
 - **The edge-direction convention is pinned per relation family, forward _and_ reverse**, in
-  `test/rxnorm/direction.test.ts`. Inverting it in the loader reds 24 tests; swapping a single
-  navigation helper reds 3. That file also encodes the topology RxNorm actually authors, which is
+  `test/rxnorm/direction.test.ts`. Inverting it in the loader reds tests in **four files at once** —
+  `direction`, `navigate`, `load`, and the executable docs. **Do not quote a count from this file.**
+  It said 19, then 24; a re-measure by a second reader on the same commit said 26, and an under-count
+  makes the tripwire read as permissive. Re-measure instead: flip `subject: rxcui2` to `rxcui1` in
+  `src/rxnorm/load.ts`, **delete `dist/`**, run the full suite, restore. Deleting `dist/` is the part
+  people miss: the doc-agreement suite runs against the built artifact, so a stale build hides its
+  failures and flatters the number. That file also encodes the topology RxNorm actually authors,
+  which is
   **not** the obvious one: `has_ingredient` is authored from the **clinical** side
   (`SCDC`/`SCDF`/`SCDG`) to the `IN` and from the **branded** side (`SBD`/`SBDC`/`SBDF`/`SBDG`) to
   the `BN` rather than to the active ingredient; there is **no** `SCD has_ingredient IN` edge; and
@@ -214,6 +220,14 @@ a summary.
   **active** ingredient is also not one recipe: from an `SCD` it is `consists_of` then
   `has_ingredient`, but an `SBD`'s `consists_of` returns its `SBDC` as well as the `SCDC`, and only
   the `SCDC` leads to the `IN`.
+- **`TERM_TYPES` is narrower than the graph the docs describe, and that gap is silent.** `SCDF`,
+  `SBDF`, `SCDFP`, `SBDFP` and `SCDGP` are real RxNorm drug-graph term types that author
+  `has_ingredient`, `has_dose_form` and `has_tradename` rows, and none of them is in `TERM_TYPES`, so
+  `asTermType` returns `undefined` and `load.ts` **skips the concept with no warning**. Loading a
+  real full release therefore loses every `SCDF`/`SBDF` concept quietly. It is fail-safe in outcome
+  (a typed `TERM_RXNORM_UNKNOWN_RXCUI`, never a wrong drug), which is why it is not urgent, but it is
+  lossy-without-warning and it is why `ingredientsOf`'s JSDoc names the two gaps explicitly. Widening
+  `TermType`, or warning on the skip, is a behaviour change and wants its own slice.
 
 ## Standing disciplines (every change)
 
