@@ -1,12 +1,12 @@
 /**
- * The types for the **CodeSystem load layer** and the FHIR `$lookup` / `$validate-code` operations
- * (roadmap Phase 2): the immutable {@link CodeSystem} model, the per-concept {@link ConceptStatus},
+ * The types for the **CodeSystem load layer** and the FHIR `$lookup` / `$validate-code`
+ * operations: the immutable {@link CodeSystem} model, the per-concept {@link ConceptStatus},
  * and the discriminated {@link CodeSystemSource} union the loaders accept.
  *
  * The model is **content-agnostic**: it is fed a code system's *release* (a consumer-supplied RRF,
  * CSV, fixed-width file, or FHIR `CodeSystem` JSON) and answers the two identity questions. It ships
- * **zero copyrighted content** — every concept comes from the caller's data (roadmap §5, the BYO-data
- * posture). The FHIR operation shapes are grounded firsthand on the FHIR R4 Terminology Module
+ * **zero copyrighted content** — every concept comes from the caller's data (the BYO-data posture).
+ * The FHIR operation shapes are grounded firsthand on the FHIR R4 Terminology Module
  * (`https://hl7.org/fhir/R4/codesystem-operation-lookup.html`,
  * `https://hl7.org/fhir/R4/codesystem-operation-validate-code.html`).
  *
@@ -39,7 +39,7 @@ export type ConceptActivity =
 
 /**
  * The status flags a `$lookup`/`$validate-code` carries on a concept — the safety surface that stops
- * a non-current or non-billable code from being presented as clean (roadmap §4.4). Present only when
+ * a non-current or non-billable code from being presented as clean. Present only when
  * the loaded release supplied status information; the engine never fabricates a status.
  */
 export interface ConceptStatus {
@@ -288,8 +288,8 @@ export interface FixedWidthFieldMap {
 /**
  * A **fixed-width** source (slice by column) — e.g. the ICD-10-CM order file. Fully parameterized:
  * the consumer supplies the field slices (see {@link ICD10CM_ORDER_FILE_FIELDS} for the documented
- * ICD-10-CM preset, which they confirm against their release's README — the byte offsets are a
- * flagged open question in the roadmap). BYO.
+ * ICD-10-CM preset, which they confirm against their release's README, since the byte offsets are
+ * not confirmed against an authoritative machine-readable source). BYO.
  */
 export interface FixedWidthSource {
   /** Discriminant. */

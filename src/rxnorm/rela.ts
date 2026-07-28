@@ -3,9 +3,9 @@
  * built on — encoded here as published identity facts (like the code-system OID↔URI facts in
  * {@link ../systems/registry}), grounded firsthand on the NLM RxNorm Technical Documentation and the
  * UMLS Reference Manual. **No RxNorm content is bundled** — only the relationship *names* and the
- * *rule* for reading a row's direction (roadmap §5).
+ * *rule* for reading a row's direction.
  *
- * **The direction rule (roadmap §4.2 / §10 Q5 — a documented medication-safety trap).** From the
+ * **The direction rule (a documented medication-safety trap).** From the
  * RxNorm Technical Documentation (§12.7) and the UMLS Reference Manual, verbatim: *"the direction of
  * REL — the relationship which the SECOND concept or atom (with … RXCUI2 …) HAS TO the FIRST concept
  * or atom (with … RXCUI1 …)."* The doc's worked example — a row with `RXCUI1=1155862`, `RELA=isa`,

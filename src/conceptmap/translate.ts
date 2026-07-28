@@ -4,15 +4,14 @@
  *
  * Given a source {@link Coding} and a loaded {@link ConceptMap}, it returns the declared target
  * code(s) with their FHIR relationship and the map's provenance — or, when the source does not map,
- * a **typed {@link TranslateUnmapped}**. This slice births the invariants every later phase
- * inherits:
+ * a **typed {@link TranslateUnmapped}**. Two invariants govern it:
  *
  * 1. **Never fabricate.** An unmapped source yields a surfaced `unmapped` result — never a guessed
  *    target. Every target returned is drawn verbatim from the map; the engine invents nothing.
  * 2. **Never invert.** Translation reads the map in its authored direction only: a source coding is
  *    matched against `group.element.code` (the source side) and **never** against target codes. A
  *    directional map therefore cannot be run backwards — reverse translation requires an explicit
- *    inverse map (a later phase), it is never synthesized here.
+ *    inverse map; it is never synthesized here.
  *
  * @packageDocumentation
  */

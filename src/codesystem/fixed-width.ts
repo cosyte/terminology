@@ -5,9 +5,8 @@
  *
  * The documented ICD-10-CM preset is {@link ICD10CM_ORDER_FILE_FIELDS} — the position-15 flag
  * (0-based char index 14) is `1` for a **billable/valid** code and `0` for a **header** (grounded on
- * the CMS/CDC order-file layout). Per the roadmap's flagged open question (§10 #4), a consumer should
- * confirm the exact offsets against their release's README before relying on the preset — which is
- * exactly why the reader takes the slices as a parameter.
+ * the CMS/CDC order-file layout). Confirm the exact offsets against your release's README before
+ * relying on the preset — which is exactly why the reader takes the slices as a parameter.
  *
  * **Liberal on load:** a line too short to contain the code slice, or with an empty code, is skipped
  * and surfaced as a `TERM_FIXED_WIDTH_MALFORMED` warning.
@@ -56,8 +55,9 @@ export function sliceField(line: string, slice: FieldSlice): string {
  * - property `shortDescription` — the 60-char short description.
  *
  * Grounded on the CMS/CDC order-file layout; **verify against your release's README** before relying
- * on the exact offsets (roadmap §10 #4 — the CDC PDF resisted authoritative decode). The reader takes
- * the layout as a parameter precisely so this preset is a starting point, not a hardcoded assumption.
+ * on the exact offsets, which are not confirmed against an authoritative machine-readable source.
+ * The reader takes the layout as a parameter precisely so this preset is a starting point, not a
+ * hardcoded assumption.
  */
 export const ICD10CM_ORDER_FILE_FIELDS: FixedWidthFieldMap = Object.freeze({
   code: Object.freeze({ start: 6, end: 13 }),

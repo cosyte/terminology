@@ -1,11 +1,11 @@
 /**
  * Status interpretation shared by the loaders — the {@link defaultStatusMapper} that turns a raw
  * steward status token into a normalized {@link ConceptActivity}, and {@link makeStatus} which
- * assembles the frozen {@link ConceptStatus} (attaching the stable diagnostic code for the concerns
- * the roadmap names: deprecated and header-not-billable).
+ * assembles the frozen {@link ConceptStatus} (attaching the stable diagnostic code for the two
+ * concerns it distinguishes: deprecated and header-not-billable).
  *
  * The mapper is deliberately **conservative**: it recognizes only the tokens grounded in the format
- * docs (LOINC `STATUS` lifecycle values, RxNorm/UMLS `SUPPRESS` values — roadmap §4.4/§11), and maps
+ * docs (LOINC `STATUS` lifecycle values and RxNorm/UMLS `SUPPRESS` values), and maps
  * everything else to `unknown` — a non-active state carrying the raw token, **never** a guessed
  * clean-active. Every loader lets the consumer override it for a release with bespoke semantics.
  *
@@ -60,7 +60,7 @@ export const defaultStatusMapper: StatusMapper = (raw: string): ConceptActivity 
 /**
  * Assemble a frozen {@link ConceptStatus} from a normalized activity, carrying the raw token and (for
  * classification systems) the billable flag, and attaching the stable diagnostic code for the two
- * concerns the roadmap names — `TERM_CONCEPT_DEPRECATED` and `TERM_CONCEPT_HEADER_NOT_BILLABLE`.
+ * concerns it distinguishes — `TERM_CONCEPT_DEPRECATED` and `TERM_CONCEPT_HEADER_NOT_BILLABLE`.
  *
  * @param activity - The normalized activity.
  * @param raw - The verbatim steward token, if any (omitted from the result when empty).

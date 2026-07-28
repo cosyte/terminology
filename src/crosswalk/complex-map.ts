@@ -1,7 +1,7 @@
 /**
- * The **SNOMED CT → ICD-10-CM complex-map** resolver (roadmap Phase 5) — a rule-based, **BYO**
- * resolver over the caller-supplied complex/extended-map refset. **No SNOMED CT content is bundled**
- * (roadmap §5): the engine ships the rule machinery; the caller supplies the map rows from their own
+ * The **SNOMED CT → ICD-10-CM complex-map** resolver — a rule-based, **BYO**
+ * resolver over the caller-supplied complex/extended-map refset. **No SNOMED CT content is
+ * bundled**: the engine ships the rule machinery; the caller supplies the map rows from their own
  * SNOMED-licensed release.
  *
  * The map is *"semi-automated"* by the steward's own statement — 1:many, context-dependent, with
@@ -14,7 +14,7 @@
  * - **Context it wasn't given, it never guesses.** If deciding a group requires an `IFA` predicate
  *   (an age band, a gender) the caller left unspecified, the group is a typed
  *   {@link ComplexMapContextRequired} carrying the candidate rules + advice — never a silently-picked
- *   branch (roadmap §4.1).
+ *   branch.
  * - **No-Map is typed.** A `447638001` "cannot be classified" row (or an empty target) is a typed
  *   No-Map, never a fabricated code.
  * - **Advice rides through verbatim.** `CONSIDER LATERALITY`, `EPISODE OF CARE INFORMATION NEEDED`,
@@ -142,7 +142,7 @@ function parseRf2(content: string): {
  * Liberal on load: a structurally unusable RF2 *row* is skipped and surfaced as a warning; only an
  * unusable *source* (empty content, header missing required columns) is a fatal
  * {@link FATAL_CODES.TERM_CROSSWALK_MALFORMED}. Ships **no** SNOMED content — the rows are the
- * caller's, under their own licence (roadmap §5).
+ * caller's, under their own licence.
  *
  * @param input - Structured `rows`, or a raw RF2 extended-map refset `content`.
  * @returns The immutable {@link ComplexMap}.
@@ -254,7 +254,7 @@ function evaluateConjunct(clause: string, context: PatientContext): RuleMatch {
  * results combined **fail-safe**: `no-match` if *any* conjunct is a no-match; `unknown` (→
  * context-required) if any needed conjunct is `unknown` and none is a no-match; `match` **only** when
  * *every* conjunct matches. A conjunct is never dropped, so a rule is never confidently applied while
- * one of its conditions is undecided (roadmap §4.1 — context is never guessed).
+ * one of its conditions is undecided (context is never guessed).
  *
  * The split is on an uppercase `AND` that begins a new `IFA` clause, so a lowercase `and` (or an
  * uppercase `AND`) inside a concept's term description never falsely splits the rule.

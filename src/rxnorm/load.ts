@@ -1,5 +1,5 @@
 /**
- * The **RxNorm drug graph loader** (roadmap Phase 6) — build an immutable {@link RxNormGraph} from a
+ * The **RxNorm drug graph loader** — build an immutable {@link RxNormGraph} from a
  * **caller-supplied** RxNorm RRF release (`RXNCONSO.RRF` + `RXNREL.RRF`, and optionally `RXNSAT.RRF`
  * for NDC attributes). Reuses the shared, zero-dep {@link ../codesystem/rrf.parseRrfLine} (pipe split,
  * reserved trailing pipe) — the same RRF reader the CodeSystem layer uses.
@@ -30,11 +30,11 @@
  * whose `tty` reads `"TMSY"` is a fabricated claim about what the drug *is*, indistinguishable from a
  * real one.
  *
- * **Liberal on load** (roadmap §6): a structurally unusable *row* (too few columns, missing a required
+ * **Liberal on load**: a structurally unusable *row* (too few columns, missing a required
  * value) is **skipped and surfaced** as a `TERM_RXNORM_MALFORMED_ROW` warning, never a partial
  * concept/edge, never a crash. Rows that are simply *not of interest* (a non-`RXNORM` atom, an
  * atom-level relationship, a non-`NDC` attribute) are skipped **silently** — they are expected, not
- * faults. Ships **no** RxNorm content: every concept/edge is the caller's release (roadmap §5).
+ * faults. Ships **no** RxNorm content: every concept/edge is the caller's release.
  *
  * @packageDocumentation
  */
@@ -62,7 +62,7 @@ const SAT = { RXCUI: 0, ATN: 8, ATV: 10 } as const;
 
 /**
  * A raw RxNorm RRF release, BYO. The caller supplies the public-domain Current Prescribable Content
- * subset or the full (licensed) release; the engine bundles **no** RxNorm content (roadmap §5).
+ * subset or the full (licensed) release; the engine bundles **no** RxNorm content.
  */
 export interface RxNormGraphSource {
   /** The raw `RXNCONSO.RRF` content (pipe-delimited concept/atom names). */
@@ -253,7 +253,7 @@ function parseNdcs(
  * Parses `RXNCONSO` (concepts), `RXNREL` (directed edges, normalized to the documented direction), and
  * — when supplied — `RXNSAT` (NDC attributes). Liberal on load: a structurally unusable row is a
  * skipped, surfaced {@link RxNormLoadWarning}, never partial. Ships **no** RxNorm content — the graph
- * is entirely the caller's release (roadmap §5).
+ * is entirely the caller's release.
  *
  * A concept is typed only by a **defining** atom, never by a synonym-class one and never by file
  * order; an `RXCUI` no defining atom could type is skipped and surfaced as

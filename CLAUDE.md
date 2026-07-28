@@ -250,3 +250,72 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md` 
    `[Unreleased]` entry per meaningful change. Renaming a stable warning code is a **breaking change**.
 3. **Crew + knowledgebase loop** — if this parser's public API or warning codes change, flag/update
    the matching `crew` healthcare skill + the KB product doc.
+4. **No internal project bookkeeping on a public surface** (founder directive, 2026-07-27). What a
+   consumer reads (`README.md`, `docs-content/`, the npm `description`, a release body, and the
+   JSDoc that compiles into `dist/index.d.ts` / `dist/index.d.cts` and renders on hover) says what
+   the software does and what changed. Item identifiers (`TERMINOLOGY-6`), phase and
+   roadmap-section language (`roadmap §4.1`, `Phase 7`), ADR numbers, meta-repo paths and "how this
+   got built" commentary belong in the changeset, `CHANGELOG.md`, the commit, the PR and the
+   roadmap. Gated by `pnpm check:no-internal-refs` and
+   `.github/workflows/no-internal-refs.yml` (check-run context **`no-internal-refs`**, no matrix).
+
+   **▶ THE GATE KEYS ON KNOWN PROJECT PREFIXES, NEVER THE `WORD-N` SHAPE, AND THIS IS THE REPO
+   WHERE THAT MATTERS MOST.** A terminology package's entire subject matter is hyphenated uppercase
+   tokens. Measured on `1158f96`: a shape rule matches **89 tokens and all 89 are the consumer's
+   reference material**: `ICD-10-CM` (53), `ICD-9`, `ICD-10`, `RFC-4180`, `ICD-9-CM`,
+   `ICD-10-PCS`, and the UCUM expressions `OHM-1`, `CM-1`, `KG-1.S-2`. **The UCUM ones are units
+   with negative exponents**, so a shape rule does not merely delete a citation, it rewrites a
+   unit's dimension in the package whose job is to say what a unit means. The prefix-keyed rule
+   matches **zero**. Never re-key it on `WORD-N`, and never add `CM`, `KG` or `ICD` as a prefix.
+
+   **▶ RULE 4's DETERMINER CLASS IS NARROWED HERE AND MUST NOT BE "RESYNCED" BACK.** `the` and
+   `each` are removed, because a fixed-width order file's **field slice** is this package's public
+   API (`ICD10CM_ORDER_FILE_FIELDS`, `FixedWidthFieldSlice`) and the reader's word, not our unit of
+   work. The sibling pattern was wrong **8 times out of 9** on this tree. `FIELD_SLICE_SAMPLE` in
+   the script asserts that no rule matches the real phrasings, so restoring `the` reds instead of
+   sending someone to rewrite the documentation of a byte layout.
+
+   **▶ THE BARE `§` NON-CATCH IS A DECISION, PINNED BY A SELF-TEST.** `(§12.7)` is how this package
+   cites the **NLM RxNorm Technical Documentation**, the normative source for the `RXNREL`
+   edge-direction convention, the thing a consumer most needs in order to check us on a
+   medication-safety-critical claim. Five such citations are live. A bare-`§` rule was refused;
+   `BARE_SECTION_SAMPLE` asserts no rule matches one, so reopening it has to be deliberate.
+
+   **▶ THE GATE CATCHES IDENTIFIERS, NOT ENGLISH ABOUT OUR PROCESS. A ZERO FROM A RULE SET IS NOT A
+   ZERO.** Clause-terminal `phase` ("bundling the pack is a later phase.") is deliberately uncaught,
+   because determiner-plus-`phase` collides with the clinical vocabulary this package documents
+   (`acute phase reactant` is a LOINC analyte class; `luteal phase` is a SNOMED CT finding). It was
+   cleared by hand from the README, `docs-content/troubleshooting.md` (a page published to
+   docs.cosyte.com), and the concept-map, crosswalk, module and RxNorm reference doc comments.
+   **Record the places, not a tally**: a line can be caught by the line pass, by the
+   paragraph-reflow pass, or by a different rule on the same line, so "how many did no rule catch"
+   has no stable answer, and three drafts of this note quoted three different numbers before a
+   refuter refuted two of them.
+
+   **▶ CUT THE CLAIM, NOT THE QUALIFIER THAT BOUNDS IT.** Stripping a citation is a deletion; the
+   temptation to improve the sentence around it is how a hygiene sweep ships a new falsehood, and in
+   this package that risk is clinical. Almost every doc sentence here is a **scoped** claim one
+   deleted qualifier away from a guarantee the code does not provide: no SNOMED CT / RxNorm / LOINC
+   content is bundled, the engine refuses to pick a branch rather than guess one, `ingredientsOf`
+   deliberately does not follow the PRECISE forms' `has_boss` edge. Two sentences in this sweep were
+   **restated rather than cut** for exactly that reason: deep subsumption (now "subsumption across
+   two separate releases is not computed", verified against `src/valueset/filters.ts`) and the
+   ICD-10-CM order-file offsets (now "not confirmed against an authoritative machine-readable
+   source"). Verify against the code, twice.
+
+   **▶ THE SCANNER MUST BE THE SCANNER IT THINKS IT IS.** An agent-harness shell on a developer box
+   defines `grep` as a **function** re-executing ugrep with `-G --ignore-files --hidden -I` fixed.
+   `-I` skips a file it judges binary **silently**: no stderr, so nothing refuses, and grep's exit
+   1 is indistinguishable from an honest no-match. Measured: a file with one NUL byte then a real
+   violation reads 0 matches / exit 1 through the wrapper, 1 match / exit 0 through `/usr/bin/grep`.
+   The script `unset -f`s it and **asserts** the fix with a binary probe (SELF-TEST ZERO); both
+   halves are proven, not argued. Also: `--ignore-files` honours `.gitignore`, and **`dist/` is
+   gitignored**, so a _recursive_ sweep of the built declarations through such a wrapper can report
+   zero over a dirty surface. Take `dist` figures with **explicit file operands** or name the real
+   binary. Verify NUL and em-dash sweeps with `od -An -tx1 -v`, never with a `grep` pipeline whose
+   exit status is lost.
+
+   **A NEW REQUIRED CONTEXT BLOCKS ANY PR THAT PREDATES ITS WORKFLOW.** A branch cut before
+   `.github/workflows/no-internal-refs.yml` existed cannot emit `no-internal-refs`, so its PR sits
+   pending rather than failing. That is the documented price of requiring a context, not a defect:
+   rebase the branch. Expect it every time a context is added here.

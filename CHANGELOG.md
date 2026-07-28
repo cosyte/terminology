@@ -60,6 +60,14 @@ has_ingredient IN`). RxNorm authors no such relationship in any release: the ing
   the clinical one leads to the `IN`. The quickstart carries new executable examples of both
   traversals, so the guidance is checked against the shipped code rather than asserted in prose.
   Behaviour is unchanged: no loader, navigation or resolution result differs.
+- **The npm description described a different package.** `@cosyte/terminology` shipped to the
+  registry describing itself as a "Terminology parser, serializer, and builder ... lenient on parse,
+  spec-clean on emit" - unmodified scaffold boilerplate, still in use by the packages that really
+  are parsers. This one is explicitly **not** a parser, mirrors the FHIR Terminology Module rather
+  than a parser API, and has neither a serializer nor a builder. The most-read line of a published
+  package therefore named three things it does not have and omitted what it does. The description
+  and the `parser` / `serializer` keywords now say what the engine is and what it operates over.
+
 - **`VERSION` now reports the version you actually installed.** `@cosyte/terminology@0.0.1` shipped
   exporting `VERSION === "0.0.0"`: `package.json` was bumped by Changesets, the constant in the source
   was not. `docs-content/installation.md` documents printing exactly that constant as the install smoke
@@ -76,6 +84,50 @@ has_ingredient IN`). RxNorm authors no such relationship in any release: the ing
   landed.)
 
 ### Changed
+
+- **Internal project bookkeeping is gone from every surface a consumer reads, and a gate now keeps
+  it out.** Per the founder directive of 2026-07-27, what a consumer reads says what the software
+  does and what changed; item identifiers, phase and roadmap-section language, ADR numbers and
+  meta-repo paths belong in this file, the changeset, the commit and the roadmap. Measured on
+  `1158f96` with the final rule set: the public markdown carried 10 lines across four
+  `docs-content/` pages, `src/` doc comments produced 154 gate hits across 28 of the 38 source
+  files (91 from the line pass and 63 from the paragraph-reflow pass, which re-reports all but one
+  of the same places), and the npm `description`/`keywords` and `src/` string literals carried
+  none. The doc comments are the
+  surface that matters most and the one no docs review looks at: they compile verbatim into
+  `dist/index.d.ts` and `dist/index.d.cts`, so **89 lines of the published declaration files**
+  carried this text into every consumer's editor. All are now zero.
+
+  Two shapes no rule catches were cleared by hand, and they are recorded as places rather than as a
+  count: clause-terminal uses of "phase" (in the README, the troubleshooting page, and the
+  concept-map, crosswalk, module and RxNorm reference docs), and two bare roadmap-section citations
+  written without the word "roadmap" next to them. **A zero from a rule set is not a zero**, which
+  is why the by-hand half is stated at all.
+
+  Two statements were **restated rather than deleted**, because removing the planning pointer alone
+  would have widened each into a capability the code does not provide: subsumption is documented as
+  not computed across two separate releases (it reads the loaded system's own `parent` edges), and
+  the `ICD10CM_ORDER_FILE_FIELDS` preset is documented as not confirmed against an authoritative
+  machine-readable source. The NLM RxNorm Technical Documentation citations were
+  deliberately left standing: they are the normative grounding for the `RXNREL` edge-direction
+  convention, and a rule keyed on `§` alone would have deleted the reference a consumer needs in
+  order to check that direction. A self-test now asserts that no rule matches them, so closing that
+  gap has to be a decision.
+
+- **`pnpm check:no-internal-refs` is a new repository gate, and it runs in its own CI job.** It
+  scans `README.md`, `LICENSE`, `docs-content/`, the npm `description` and `keywords`, `src/` doc
+  comments and `src/` string literals, line by line and paragraph-joined, and refuses to report
+  green from a scan that did not read all of its input. It deliberately does **not** scan
+  `CHANGELOG.md`, `.changeset/`, `CLAUDE.md` or `//` comments, which is where the identifiers
+  belong. Its rules key on known project prefixes and never on the `WORD-N` shape: measured here, a
+  shape rule matches 89 hyphenated uppercase tokens on this tree and **all 89 are the consumer's
+  reference material** (`ICD-10-CM`, `ICD-9`, `RFC-4180`, and the UCUM expressions `OHM-1`, `CM-1`
+  and `KG-1.S-2`, which are units with negative exponents), while the prefix-keyed rule matches
+  none. Negative self-tests pin that, so a later simplification reds instead of silently deleting a
+  code system's identifier from a terminology engine's documentation. One rule diverges from the
+  sibling copies on the same reasoning: the "unit of work" rule no longer keys on "the", because a
+  fixed-width order file's **field slice** is this package's public API and the sibling pattern was
+  wrong eight times out of nine here.
 
 - **The RxNorm drug graph's edge direction is now pinned by tests in both directions.** RxNorm
   relationships are directional, and reading one backwards is a wrong-medication defect rather than a

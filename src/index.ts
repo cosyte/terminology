@@ -8,14 +8,14 @@
  * *content* (SNOMED/CPT/full-LOINC/UMLS are strictly BYO); code-system *identities* (OID ↔ URI) are
  * published facts, encoded here and cited firsthand.
  *
- * **Phase 1** ships exactly the surface `@cosyte/transform` pins:
+ * **Code-system identity and ConceptMap translation:**
  *
  * - {@link resolveSystem} — the code-system identity / canonical-URI resolver (mnemonic | OID → URI).
  * - {@link loadConceptMap} + {@link translate} — the ConceptMap `$translate` engine, with the
  *   **never-fabricate / never-invert** invariants: an unmapped source is a typed
  *   {@link TranslateUnmapped}, never a guessed target; a directional map is never run backwards.
  *
- * **Phase 2** adds the CodeSystem load layer and the FHIR `$lookup` / `$validate-code` operations:
+ * **The CodeSystem load layer**, with the FHIR `$lookup` / `$validate-code` operations:
  *
  * - {@link loadCodeSystem} — load a **consumer-supplied** release (RRF / CSV / fixed-width / FHIR
  *   `CodeSystem` JSON) into an immutable model. Ships the engine, **never** copyrighted content.
@@ -25,7 +25,7 @@
  * The never-fabricate invariant holds here too: an unknown code is a typed `unknown` / `valid: false`,
  * never a fabricated display or a guessed `valid: true`.
  *
- * **Phase 3** adds the ValueSet binding layer — FHIR `$expand` / `$validate-code` over a `compose`:
+ * **The ValueSet binding layer** — FHIR `$expand` / `$validate-code` over a `compose`:
  *
  * - {@link loadValueSet} — load a **consumer-supplied** FHIR `ValueSet` (intensional `compose` and/or
  *   a pre-computed `expansion`) into an immutable model.
@@ -35,8 +35,8 @@
  * - {@link validateCodeInValueSet} — binding membership, returning a **decided** `result` only when
  *   proven and a typed `undetermined` otherwise (a truncated expansion never reads as complete).
  *
- * **Phase 4** adds the **UCUM** unit layer — a hand-rolled UCUM grammar parser + validation +
- * representation canonicalization (recognition only, **no** magnitude conversion):
+ * **The UCUM unit layer** — a hand-rolled UCUM grammar parser + validation + representation
+ * canonicalization (recognition only, **no** magnitude conversion):
  *
  * - {@link validateUcum} — is a string a valid UCUM unit; if so, its canonical descriptor. An
  *   invalid unit is a typed `TERM_UCUM_INVALID`, never a guessed "nearest" unit.
@@ -45,8 +45,8 @@
  * - {@link parseUcum} / {@link reduce} / {@link loadUcumEssence} — the underlying grammar parser,
  *   dimensional reducer, and the in-memory model of the vendored, verbatim UCUM table.
  *
- * **Phase 5** adds the **crosswalk resolvers** — the never-fabricate/never-invert invariant applied
- * to the published, directional reference maps (roadmap §4.1, the safety crown):
+ * **The crosswalk resolvers** — the never-fabricate/never-invert invariant applied to the
+ * published, directional reference maps:
  *
  * - {@link loadGems} + {@link applyGem} — the CMS **ICD-9↔ICD-10 GEMs** (public-domain reference
  *   mappings), honoring the steward's Approximate / No-Map / Combination (scenario→choice-list) flags.
@@ -58,12 +58,12 @@
  * - {@link invertGem} — the never-invert refusal made a first-class, thrown contract
  *   ({@link FATAL_CODES.TERM_MAP_NOT_INVERTIBLE}).
  *
- * **Phase 6** adds the **RxNorm drug relationship graph** — ingredient / brand / clinical-drug /
- * dose-form navigation over a **caller-supplied** RxNorm RRF release (roadmap §4.2):
+ * **The RxNorm drug relationship graph** — ingredient / brand / clinical-drug / dose-form
+ * navigation over a **caller-supplied** RxNorm RRF release:
  *
  * - {@link loadRxNormGraph} — load `RXNCONSO` (concepts, typed by `TTY`), `RXNREL` (directed `RELA`
  *   edges, normalized to the documented `RXCUI2 ⟶RELA⟶ RXCUI1` direction), and optionally `RXNSAT`
- *   (NDC attributes) into an immutable graph. Ships **no** RxNorm content — BYO release (roadmap §5).
+ *   (NDC attributes) into an immutable graph. Ships **no** RxNorm content — BYO release.
  * - {@link ingredientsOf} / {@link genericFor} / {@link brandsFor} / {@link doseFormsOf} /
  *   {@link consistsOf} / {@link relatedByRela} — graph navigation following **authored** edges only
  *   (the engine never synthesizes an inverse). An absent `RXCUI` is a typed {@link RxNormUnknown}.
@@ -72,10 +72,9 @@
  * - {@link approximateMatch} — the **opt-in, explicitly labeled** similarity path (never the default,
  *   never an exact code assertion).
  *
- * Deferred to later phases: the bundleable public-domain content packs, including the RxNorm Current
- * Prescribable Content pack and a GEM pack (the content-packs phase, Phase 7). The GEMs and the
- * Prescribable subset are public-domain, so a caller may supply them today (BYO); SNOMED/CPT/full-UMLS
- * content stays BYO permanently (a licensing wall — roadmap §5).
+ * The public-domain content packs are not bundled. The GEMs and the RxNorm Current Prescribable
+ * subset are public-domain, so a caller may supply them today (BYO); SNOMED/CPT/full-UMLS content
+ * stays BYO permanently, behind a licensing wall.
  *
  * @packageDocumentation
  */

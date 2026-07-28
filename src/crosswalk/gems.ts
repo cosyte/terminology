@@ -1,5 +1,5 @@
 /**
- * The CMS **ICD-9 ↔ ICD-10 GEMs** (General Equivalence Mappings) loader + applier (roadmap Phase 5).
+ * The CMS **ICD-9 ↔ ICD-10 GEMs** (General Equivalence Mappings) loader + applier.
  *
  * The GEMs are **CMS/NCHS public-domain** (US-government work) reference mappings between the ICD-9-CM
  * and ICD-10-CM diagnosis classifications. CMS is emphatic about what they are — *"GEMs are not
@@ -17,8 +17,7 @@
  * - **Directional, never inverted.** The forward (9→10) and backward (10→9) files are **separate,
  *   non-inverse** artifacts; {@link invertGem} refuses to synthesize one from the other.
  *
- * The engine ships **no GEM content**: the caller supplies the public-domain GEM file (BYO — roadmap
- * §2/§5). Bundling the public-domain packs is the separate content-packs phase.
+ * The engine ships **no GEM content**: the caller supplies the public-domain GEM file (BYO).
  *
  * @packageDocumentation
  */
@@ -85,7 +84,7 @@ function decodeFlags(raw: string): GemFlags | undefined {
  * malformed 5-digit flag) is **skipped and surfaced** as a {@link GemLoadWarning}, never a
  * partially-parsed entry. An unusable *source* is not possible here (an all-malformed file loads to an
  * empty map with warnings) — there is no fatal for GEM load. Ships **no** GEM content: the entries are
- * the caller's public-domain file (roadmap §5).
+ * the caller's public-domain file.
  *
  * @param source - The {@link GemSource} (raw content + direction + version).
  * @returns The immutable {@link GemMap}.
@@ -247,7 +246,7 @@ export function applyGem(map: GemMap, source: string): GemApplyResult {
  *
  * The never-invert invariant made explicit and discoverable: a forward GEM (9→10) is **not** the
  * inverse of the backward GEM (10→9) — CMS ships them as separate artifacts and *"forward and
- * backward mappings are not simply the reverse"* (roadmap §4.1). To resolve the other direction, load
+ * backward mappings are not simply the reverse"*. To resolve the other direction, load
  * the other file with {@link loadGems}; the engine never synthesizes an inverse.
  *
  * @param map - The map an inversion was (incorrectly) requested for.

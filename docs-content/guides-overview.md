@@ -9,11 +9,9 @@ sidebar_position: 1
 Task-oriented recipes — "how do I X?" — for `@cosyte/terminology`. Each guide is a short,
 copy-pasteable answer to one real integration question.
 
-> **Status:** this package ships **Phases 1–6** (the identity resolver, the ConceptMap `$translate`
-> engine, the CodeSystem `$lookup`/`$validate-code` loaders, ValueSet `$expand`/binding, UCUM
-> validation, the crosswalk resolvers, and the RxNorm drug graph). Guides are added as the engine
-> ships real capability; a guide is only written once the behavior it documents is shipped and its
-> runnable example passes the doc/code-agreement check.
+> **Status:** this package ships the identity resolver, the ConceptMap `$translate` engine, the
+> CodeSystem `$lookup`/`$validate-code` loaders, ValueSet `$expand`/binding, UCUM validation, the
+> crosswalk resolvers, and the RxNorm drug graph.
 
 ## Available now
 
@@ -30,12 +28,5 @@ copy-pasteable answer to one real integration question.
   ingredient, a brand to its generic, or an NDC to its `RXCUI`, over a BYO RxNorm RRF release, never
   fabricating an edge.
 
-## Planned guides
-
-As later phases land, expect recipes such as:
-
-- **Bundleable public-domain content packs** — ICD-10-CM, RxNorm Current Prescribable Content, UCUM,
-  and LOINC (with its notice), plus LOINC parts/hierarchy (Phase 7).
-
-Until then, the [Quickstart](./quickstart) covers the one-line calls, and the **API Reference**
-documents every shipped export.
+The [Quickstart](./quickstart) covers the one-line calls, and the **API Reference** documents every
+shipped export.

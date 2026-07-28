@@ -1,11 +1,11 @@
 /**
- * **Dimensional reduction** of a parsed UCUM unit (roadmap Phase 4): reduce an expression to its
+ * **Dimensional reduction** of a parsed UCUM unit: reduce an expression to its
  * canonical base-unit form — a scalar factor times a map of the seven UCUM base dimensions
  * (`m s g rad K C cd`), recursively substituting each atom's essence definition down to base units.
  *
  * This is **representation** canonicalization, not magnitude *conversion*: it answers "are these two
  * expressions the same unit" (`N` ≡ `kg.m/s2`, `mmol/L` ≡ `mmol.L-1`), never "what is 5 mg/dL in
- * mmol/L" (that needs an analyte's molar mass — refused, roadmap §2/§4.3). **Special** units (`Cel`,
+ * mmol/L" (that needs an analyte's molar mass, which the engine refuses). **Special** units (`Cel`,
  * `B`, `[pH]`) are non-linear and carry no factor/dimension — they reduce to an opaque normalized
  * form and are never equated with a linear unit. **Arbitrary** units (`[IU]`, `[arb'U]`) are modeled
  * as their own dimension axis, so they cancel with themselves but convert to nothing else.

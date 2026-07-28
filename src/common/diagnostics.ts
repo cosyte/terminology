@@ -10,7 +10,7 @@
  *
  * **Value-free by construction.** A diagnostic carries a stable code plus, at most, a
  * code + system + version — **never** a surrounding patient identifier or clinical narrative. A
- * code *in patient context* can be PHI (roadmap §7), so messages describe *structure* (a resource
+ * code *in patient context* can be PHI, so messages describe *structure* (a resource
  * path, a code system), never echo arbitrary input *values*.
  *
  * @packageDocumentation
@@ -86,13 +86,13 @@ export const DIAGNOSTIC_CODES = {
    * code system was not supplied, an unresolvable referenced value set, or a `filter` operator the
    * engine does not implement. Surfaced as a typed outcome that marks the expansion **incomplete**;
    * the engine **never** fabricates a member and **never** returns a silently-empty "no members"
-   * answer for a part it could not compute (roadmap §4.4 — a false "not a member" is a clinical error).
+   * answer for a part it could not compute (a false "not a member" is a clinical error).
    */
   TERM_VALUESET_CANNOT_EXPAND: "TERM_VALUESET_CANNOT_EXPAND",
   /**
    * A **pre-computed** `ValueSet.expansion` is **incomplete** — its `total` exceeds the number of
-   * `contains` entries, or it is flagged too-costly (the VSAC `$expand` >1200-code truncation hazard,
-   * roadmap §4.4). The engine **never treats a truncated expansion as complete membership**: a code
+   * `contains` entries, or it is flagged too-costly (the VSAC `$expand` >1200-code truncation
+   * hazard). The engine **never treats a truncated expansion as complete membership**: a code
    * absent from a truncated expansion is `undetermined`, never a confident "not a member".
    */
   TERM_VALUESET_EXPANSION_TRUNCATED: "TERM_VALUESET_EXPANSION_TRUNCATED",
@@ -100,7 +100,7 @@ export const DIAGNOSTIC_CODES = {
    * A UCUM unit expression is **not valid** — it does not parse against the UCUM grammar, or it
    * names an atom absent from the vendored UCUM table. A **first-class typed outcome, never an
    * error and never a guess**: {@link validateUcum} returns `{ valid: false, reason }`, never a
-   * coerced or "nearest" unit (the never-fabricate invariant, applied to units — roadmap §4.3). The
+   * coerced or "nearest" unit (the never-fabricate invariant, applied to units). The
    * `reason` is value-free (a grammar fault or an unknown-atom shape), never PHI.
    */
   TERM_UCUM_INVALID: "TERM_UCUM_INVALID",
@@ -108,7 +108,7 @@ export const DIAGNOSTIC_CODES = {
    * A crosswalk source code has an **authored No-Map** — the steward declares it has no valid target
    * in the other classification (a GEM `NoDx`/`NoPCS` sentinel, or a SNOMED complex-map `447638001`
    * "cannot be classified" category). A **first-class typed outcome, never an error and never a
-   * guess** (the never-fabricate invariant, applied to crosswalks — roadmap §4.1). Distinct from
+   * guess** (the never-fabricate invariant, applied to crosswalks). Distinct from
    * {@link TERM_CROSSWALK_UNMAPPED}: the source *is* in the map, and the map says "no target".
    */
   TERM_CROSSWALK_NO_MAP: "TERM_CROSSWALK_NO_MAP",
@@ -122,7 +122,7 @@ export const DIAGNOSTIC_CODES = {
   /**
    * A SNOMED→ICD-10-CM complex-map group's decision needs **patient context** (an `IFA` age band or
    * gender) the caller did not supply. The engine surfaces the candidate rules + advice and **refuses
-   * to pick a branch** it lacks the data for (roadmap §4.1) — never a silently-chosen target.
+   * to pick a branch** it lacks the data for — never a silently-chosen target.
    */
   TERM_CROSSWALK_CONTEXT_REQUIRED: "TERM_CROSSWALK_CONTEXT_REQUIRED",
   /**
@@ -157,14 +157,14 @@ export const DIAGNOSTIC_CODES = {
   /**
    * A RxNorm graph navigation was asked about an `RXCUI` **absent from the loaded release** — a
    * first-class typed outcome, never a fabricated concept and never an empty "success" (the
-   * never-fabricate invariant, applied to the drug graph — roadmap §4.2). Distinct from a *present*
+   * never-fabricate invariant, applied to the drug graph). Distinct from a *present*
    * concept that simply has no edge of the requested relationship (that is a found result with empty
    * targets).
    */
   TERM_RXNORM_UNKNOWN_RXCUI: "TERM_RXNORM_UNKNOWN_RXCUI",
   /**
    * An NDC could **not be resolved** to any `RXCUI` in the loaded RxNorm release — a typed, surfaced
-   * absence, never a guessed `RXCUI`. NDC↔RXCUI is many:1 and temporal (roadmap §4.2), so a resolution
+   * absence, never a guessed `RXCUI`. NDC↔RXCUI is many:1 and temporal, so a resolution
    * is always release-scoped; an NDC not present in the loaded release is this diagnostic.
    */
   TERM_RXNORM_NDC_UNMAPPED: "TERM_RXNORM_NDC_UNMAPPED",
@@ -216,7 +216,7 @@ export const FATAL_CODES = {
   /**
    * An **inversion** of a directional crosswalk was requested — a forbidden operation. The GEMs and
    * the SNOMED→ICD-10-CM map are authoritative in **one direction only**; a forward map is not the
-   * inverse of the backward map (roadmap §4.1). Thrown by {@link ../crosswalk/gems.invertGem} so the
+   * inverse of the backward map. Thrown by {@link ../crosswalk/gems.invertGem} so the
    * never-invert refusal is a first-class, discoverable contract rather than a silent absence.
    */
   TERM_MAP_NOT_INVERTIBLE: "TERM_MAP_NOT_INVERTIBLE",

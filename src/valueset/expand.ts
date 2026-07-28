@@ -5,7 +5,7 @@
  * `https://hl7.org/fhir/R4/valueset.html#compose`):
  *
  * - A **pre-computed** `expansion` is used as-is (extensional), and its completeness is checked — a
- *   truncated snapshot is flagged, never treated as full membership (roadmap §4.4).
+ *   truncated snapshot is flagged, never treated as full membership.
  * - An intensional `compose` is expanded over **consumer-supplied** {@link ../codesystem/types.CodeSystem}
  *   releases: the union of `include` components minus the union of `exclude` components. Each component
  *   selects by explicit `concept`, by `filter` (subsumption + property predicates), by the whole

@@ -1,8 +1,8 @@
 /**
  * The **RFC-4180 CSV** reader — the one release format that needs real quote handling (LOINC's
  * `Loinc.csv`). Fields may be quoted with `"`; inside a quoted field a literal quote is escaped as
- * `""`, and commas and newlines are data. Hand-rolled, zero-dep (roadmap §1: the CSV surface is small
- * and well-specified enough to hand-roll rather than pull a dependency).
+ * `""`, and commas and newlines are data. Hand-rolled, zero-dep (the CSV surface is small and
+ * well-specified enough to hand-roll rather than pull a dependency).
  *
  * **Liberal on load:** a data row with too few fields to reach a configured column is **skipped and
  * surfaced** as a `TERM_CSV_MALFORMED` warning; an unterminated final quote is surfaced too — never a
