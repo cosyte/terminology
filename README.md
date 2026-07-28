@@ -10,7 +10,7 @@ recognition consume. It ships the **engine, never copyrighted terminology conten
 full LOINC/UMLS, and VSAC value sets are strictly bring-your-own; code-system _identities_ (OID ↔
 canonical URI) are published facts, grounded firsthand and encoded.
 
-> **Status:** pre-alpha (`0.0.x`), **not yet published to npm.** The **engine is complete** — every
+> **Status:** pre-alpha (`0.0.x`), **published on npm.** The **engine is complete** — every
 > operation below ships today. What is still to come is bundled _content_, not capability. The surface:
 >
 > - the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
@@ -37,8 +37,8 @@ canonical URI) are published facts, grounded firsthand and encoded.
 
 ## Install
 
-> **Not on npm yet.** `@cosyte/terminology` is pre-alpha and **unpublished** — the command below is how
-> you will install it once the first `0.0.x` release lands. Until then the package is source-only.
+> **On npm.** `@cosyte/terminology` is **published**, on the pre-alpha `0.0.x` ladder. The command
+> below installs the real package; the registry, not this page, is the authority on the exact version.
 
 ```bash
 npm install @cosyte/terminology
