@@ -122,10 +122,7 @@ export function relatedByRela(
  *   caller's behalf.
  *
  * Those pairings are the ones RxNorm authors, not a closed set a caller may rely on: check the
- * returned `TTY` rather than assuming it from the one you queried. Note also that `SCDF` and `SBDF`
- * are **not** among the term types this engine models
- * ({@link ../rxnorm/tty.TERM_TYPES}), so concepts of those types are skipped at load and a query
- * against one is a typed unknown rather than an ingredient answer.
+ * returned `TTY` rather than assuming it from the one you queried.
  *
  * **To reach an active ingredient, walk to the CLINICAL component and take its edge.** From an `SCD`
  * that is `SCD ⟶consists_of⟶ SCDC ⟶has_ingredient⟶ IN`, i.e. {@link consistsOf} then
