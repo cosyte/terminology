@@ -4,9 +4,9 @@
  * code systems and referenced value sets, and the fail-safe {@link ExpandResult} /
  * {@link ValueSetMembership} outcomes.
  *
- * The model is **content-agnostic and license-clean**: a `ValueSet` names codes by system URI and is
- * expanded over **consumer-supplied** {@link CodeSystem} releases — the engine ships **zero** encoded
- * value-set content (SNOMED/CPT/full-UMLS/VSAC value sets are strictly BYO). The FHIR
+ * The model is **content-agnostic**: a `ValueSet` names codes by system URI and is expanded over
+ * **consumer-supplied** {@link CodeSystem} releases — the engine ships **zero** encoded value-set
+ * content (SNOMED CT / CPT / LOINC / UMLS / VSAC value sets are strictly BYO). The FHIR
  * operation shapes are grounded firsthand on the FHIR R4 Terminology Module
  * (`https://hl7.org/fhir/R4/valueset.html`, `https://hl7.org/fhir/R4/valueset-operation-expand.html`,
  * `https://hl7.org/fhir/R4/valueset-operation-validate-code.html`).
@@ -137,7 +137,8 @@ export interface ValueSet {
  * {@link CodeSystem} releases (for intensional `filter`/`system` includes) and any referenced
  * {@link ValueSet}s (for `compose.include.valueSet`), each keyed by its **canonical URL**.
  *
- * The engine makes **no network call** and holds no bundled content: everything intensional resolves
+ * The engine makes **no network call** and holds no bundled code-system release: everything
+ * intensional resolves
  * through this map, and a system or value set the caller did not supply becomes a typed
  * {@link DiagnosticCode.TERM_VALUESET_CANNOT_EXPAND}, never a fabricated member.
  */

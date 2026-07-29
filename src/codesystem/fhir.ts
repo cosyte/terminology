@@ -1,5 +1,5 @@
 /**
- * The **FHIR R4 `CodeSystem`** JSON loader — the native, license-clean model. Reads the untrusted
+ * The **FHIR R4 `CodeSystem`** JSON loader — the native, consumer-supplied model. Reads the untrusted
  * resource into the engine's {@link Concept} map, flattening nested `concept` hierarchies and mapping
  * the standard concept properties to {@link ConceptStatus}.
  *

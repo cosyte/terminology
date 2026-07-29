@@ -5,8 +5,9 @@
  * Hand-rolled, **zero-dependency** scanning of a known-well-formed document (not a general XML
  * parser): the essence file is a flat, regular list of `<prefix>` / `<base-unit>` / `<unit>`
  * elements. Parsed **once**, lazily, and cached — the engine reads no file at runtime; the table is
- * a pure transform of the embedded verbatim content (a permitted UCUM use, not a derivative — see
- * `vendor/ucum/NOTICE.md`).
+ * a pure in-process transform of the embedded verbatim content, never serialized or distributed. The
+ * UCUM table is copyright © Regenstrief Institute, Inc. and is bundled verbatim — see
+ * `vendor/ucum/NOTICE.md`, which ships with this package.
  *
  * @packageDocumentation
  */

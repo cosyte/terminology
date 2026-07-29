@@ -15,9 +15,35 @@ system (`resolveSystem`) or translates it through a supplied ConceptMap (`transl
 typed diagnostic, not a crash) and **conservative on assertion** (an unmapped source is a typed,
 surfaced `unmapped`, never a guess; a directional map is never inverted).
 
-**Licensing is the load-bearing constraint.** Ship the **engine only** — **zero bundled copyrighted
-terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-system _identities_
-(OID ↔ canonical URI) are published facts, encoded and cited firsthand. See the roadmap §5 matrix.
+**Licensing is the load-bearing constraint.** Ship the **engine only** — **no bundled code-system
+release** (SNOMED CT / CPT / LOINC / UMLS / VSAC are strictly BYO). Code-system _identities_
+(OID ↔ canonical URI) are published identifiers, encoded and cited firsthand. See the roadmap §5
+matrix.
+
+**▶ THE PACKAGE IS NOT CONTENT-FREE, AND SAYING SO WAS A LIVE DEFECT ON A PUBLISHED VERSION.** These
+things ARE bundled and every public claim must be scoped around them: the **UCUM unit table**
+(`ucum-essence.xml` v2.2, © Regenstrief Institute, Inc., verbatim, embedded byte-for-byte in `dist`),
+the **code-system identity pairings**, and the **SNOMED CT concepts the crosswalk resolver names** —
+`MAP_CATEGORIES` _and_ the two gender findings `248152002` / `248153007` defined in
+`src/crosswalk/complex-map.ts`, which ship with their descriptions in a `dist/index.d.ts` `@example`.
+**DO NOT WRITE THIS LIST DOWN AS A CLOSED SET.** A draft of this slice called it "three things …
+exact rather than approximate" and a refuter falsified it from `dist` in one grep, because the gender
+concepts were missed. Count from the build, not from this paragraph.
+
+`0.0.1` shipped "zero copyrighted terminology content is bundled" on the README, in
+`dist/index.d.ts`, and on docs.cosyte.com, while `dist` carried the Regenstrief table and
+`vendor/ucum/NOTICE.md` was **not in `files`** — so the attribution never reached the tarball and the
+README pointed at a file the package did not contain. Never write an **unscoped** "no content" claim
+here. Say **"no code-system release"**, and name what is bundled with its copyright.
+
+**The claim lives in TWO places that must move together:** `README.md` **and** the JSDoc in `src/`
+that compiles into `dist/index.d.ts` / `dist/index.d.cts`. A first attempt fixed one and not the
+other, made the README and the declaration file contradict each other, and was reverted to base
+verbatim rather than shipped. Change both, rebuild, and read the built artifact.
+
+**State facts, never legal conclusions.** Say what is distributed and under whose copyright. Do not
+write that a use is "permitted", that a posture is "license-clean", or invent licence terms — three
+such phrases were live and were cut. If a claim cannot be made true by scoping it, **cut it**.
 
 ## Status
 
@@ -90,8 +116,10 @@ terminology content** (SNOMED/CPT/full-LOINC/UMLS/VSAC are strictly BYO). Code-s
   only — **zero RxNorm content bundled**; the public-domain Current Prescribable Content pack is
   deferred to Phase 7 (a genuine verbatim release could not be obtained in the sandbox; fabricating it
   would breach never-fabricate). Zero deps.
-- **Deferred to later phases:** bundleable public-domain packs — RxNorm Prescribable Content,
-  ICD-10-CM, UCUM, LOINC (with notice) + LOINC parts/hierarchy, incl. a GEM pack (P7).
+- **Deferred to later phases:** bundleable content packs — RxNorm Prescribable Content, ICD-10-CM,
+  LOINC (with notice) + LOINC parts/hierarchy, incl. a GEM pack (P7). **UCUM is NOT on this list: its
+  table is already bundled** (verbatim, embedded in `dist`) — it was listed here as deferred while it
+  was in fact shipping, which is the same defect the licensing note above records.
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

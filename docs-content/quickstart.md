@@ -28,7 +28,7 @@ isUnknownSystem(loinc) ? "?" : loinc.url; // => "http://loinc.org"
 ## Translate a code through a ConceptMap
 
 Feed the engine a standard FHIR `ConceptMap` resource, then translate a `Coding` through it. The
-data is **bring-your-own** — the engine never ships copyrighted map content.
+data is **bring-your-own** — the engine ships no map content.
 
 ```ts runnable
 import { loadConceptMap, translate } from "@cosyte/terminology";
@@ -69,7 +69,7 @@ result.unmapped; // => true
 ## Look up a code in a code system
 
 Load a **consumer-supplied** release (RRF, CSV, fixed-width, or a FHIR `CodeSystem` JSON — the engine
-ships zero copyrighted content) and resolve a code to its display and status. An unknown code is a
+ships no code-system release) and resolve a code to its display and status. An unknown code is a
 typed `{ found: false }`, never a fabricated display.
 
 ```ts runnable
@@ -209,7 +209,9 @@ invertGem(gems); // throws TERM_MAP_NOT_INVERTIBLE
 ## Resolve a SNOMED CT → ICD-10-CM complex map (BYO)
 
 The NLM SNOMED→ICD-10-CM map is *rule-based* and **context-dependent**. The engine ships the rule
-machinery; the map rows are **yours** (SNOMED is licensed — the engine bundles zero SNOMED content).
+machinery; the map rows are **yours** (SNOMED CT is licensed — the engine bundles no SNOMED CT refset
+or release, only the individual concepts the resolver names: the map categories and the two gender
+findings).
 Each map group resolves against the patient context you supply; a rule needing context you did **not**
 supply is surfaced as `context-required`, never a guessed branch.
 

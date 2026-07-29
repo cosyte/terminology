@@ -5,7 +5,7 @@
  *
  * The model is **content-agnostic**: it is fed a code system's *release* (a consumer-supplied RRF,
  * CSV, fixed-width file, or FHIR `CodeSystem` JSON) and answers the two identity questions. It ships
- * **zero copyrighted content** — every concept comes from the caller's data (the BYO-data posture).
+ * **no code-system release** — every concept comes from the caller's data (the BYO-data posture).
  * The FHIR operation shapes are grounded firsthand on the FHIR R4 Terminology Module
  * (`https://hl7.org/fhir/R4/codesystem-operation-lookup.html`,
  * `https://hl7.org/fhir/R4/codesystem-operation-validate-code.html`).
@@ -309,7 +309,7 @@ export interface FixedWidthSource {
 }
 
 /**
- * A **FHIR R4 `CodeSystem`** JSON source (native, license-clean model). The consumer supplies the
+ * A **FHIR R4 `CodeSystem`** JSON source (native, consumer-supplied model). The consumer supplies the
  * untrusted resource; nested `concept` hierarchies are flattened, and the standard `inactive` /
  * `deprecated` concept properties are read into {@link ConceptStatus}.
  */

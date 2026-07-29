@@ -1,8 +1,11 @@
 /**
  * The **SNOMED CT → ICD-10-CM complex-map** resolver — a rule-based, **BYO**
- * resolver over the caller-supplied complex/extended-map refset. **No SNOMED CT content is
+ * resolver over the caller-supplied complex/extended-map refset. **No SNOMED CT refset or release is
  * bundled**: the engine ships the rule machinery; the caller supplies the map rows from their own
- * SNOMED-licensed release.
+ * SNOMED CT release. (Individual SNOMED CT concepts this resolver *names* are bundled: the
+ * map-category concepts a row's `mapCategoryId` refers to — see
+ * {@link ../crosswalk/categories.MAP_CATEGORIES} — and the two gender findings a gender `IFA` rule
+ * is written against.)
  *
  * The map is *"semi-automated"* by the steward's own statement — 1:many, context-dependent, with
  * first-class No-Map states. The resolver honours that:

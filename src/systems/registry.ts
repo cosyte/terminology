@@ -3,9 +3,9 @@
  * ecosystem uses.
  *
  * A code-system *identity* (the triple of canonical URI, OID, and HL7 v2 mnemonic that all name
- * the same terminology) is a **published fact**, not copyrighted content — so it is encoded here,
- * cited firsthand. That is where the licensing line falls: identities are facts that may be
- * encoded; the code *lists themselves* (SNOMED/CPT/LOINC content) are BYO and never bundled.
+ * the same terminology) is a **published identifier** for the system, not the system's code list — so
+ * it is encoded here, cited firsthand. That is where the line falls: identities are encoded; the code
+ * *lists themselves* (SNOMED CT / CPT / LOINC content) are BYO and never bundled.
  *
  * **Every identity below is grounded firsthand against a primary source** (verified 2026-07-21):
  *
