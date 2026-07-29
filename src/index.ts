@@ -4,9 +4,10 @@
  *
  * Unlike its sibling `@cosyte/*` packages, this is **not a wire-format parser**: it mirrors the
  * **FHIR Terminology Module** (`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating
- * over **consumer-supplied** FHIR resources. It ships the *engine*, never copyrighted terminology
- * *content* (SNOMED/CPT/full-LOINC/UMLS are strictly BYO); code-system *identities* (OID ↔ URI) are
- * published facts, encoded here and cited firsthand.
+ * over **consumer-supplied** FHIR resources. It ships the *engine* and **no code-system release**
+ * (SNOMED CT / CPT / LOINC / UMLS / RxNorm are strictly BYO). It is not content-free: see
+ * **What is bundled** at the end of this note for the UCUM unit table, the code-system *identities*
+ * (OID ↔ URI) and the SNOMED CT concepts the crosswalk resolver names, each with its copyright.
  *
  * **Code-system identity and ConceptMap translation:**
  *
@@ -18,7 +19,7 @@
  * **The CodeSystem load layer**, with the FHIR `$lookup` / `$validate-code` operations:
  *
  * - {@link loadCodeSystem} — load a **consumer-supplied** release (RRF / CSV / fixed-width / FHIR
- *   `CodeSystem` JSON) into an immutable model. Ships the engine, **never** copyrighted content.
+ *   `CodeSystem` JSON) into an immutable model. Ships the loader; **no code-system release**.
  * - {@link lookup} — code → display + properties, carrying status (deprecated / header-not-billable).
  * - {@link validateCode} — is a code a valid member of the system, with its status flags.
  *
@@ -52,7 +53,7 @@
  *   mappings), honoring the steward's Approximate / No-Map / Combination (scenario→choice-list) flags.
  *   A No-Map source is a typed {@link CrosswalkNoMap}; a 1:many source returns the full candidate set.
  * - {@link loadComplexMap} + {@link applyComplexMap} — the NLM **SNOMED CT → ICD-10-CM complex map**
- *   (BYO, SNOMED-licensed content — **zero bundled**), evaluating Map Group / Priority / `IFA` Rule /
+ *   (BYO — **no SNOMED CT refset bundled**), evaluating Map Group / Priority / `IFA` Rule /
  *   Advice / Category against caller-supplied {@link PatientContext}; a rule needing context the
  *   caller lacks is a typed {@link ComplexMapContextRequired}, never a guessed branch.
  * - {@link invertGem} — the never-invert refusal made a first-class, thrown contract
@@ -72,9 +73,28 @@
  * - {@link approximateMatch} — the **opt-in, explicitly labeled** similarity path (never the default,
  *   never an exact code assertion).
  *
- * The public-domain content packs are not bundled. The GEMs and the RxNorm Current Prescribable
- * subset are public-domain, so a caller may supply them today (BYO); SNOMED/CPT/full-UMLS content
- * stays BYO permanently, behind a licensing wall.
+ * **What is bundled.** No code-system release is. What is bundled includes the following, named with
+ * its copyright:
+ *
+ * - the **UCUM unit table** (`ucum-essence.xml`, version 2.2, revision-date 2024-06-17) — copyright
+ *   ©1999–2024 Regenstrief Institute, Inc., all rights reserved, reproduced **verbatim** under the
+ *   UCUM Copyright Notice and License (https://ucum.org/license), embedded byte-for-byte in the
+ *   published build and parsed at runtime; no modified or derivative copy is distributed. The UCUM
+ *   Specification is provided "as is" **without warranty of any kind** — see the License for the
+ *   full disclaimer. The complete notice ships with this package at `vendor/ucum/NOTICE.md`.
+ * - the **code-system identity facts** ({@link SYSTEM_IDENTITIES}) — OID ↔ canonical-URI pairings,
+ *   which identify the systems rather than listing any system's codes.
+ * - the **SNOMED CT concepts the crosswalk resolver names**, each with its description: the four
+ *   map-category concepts ({@link MAP_CATEGORIES}) a complex-map row's `mapCategoryId` refers to, and
+ *   the two gender findings (`248152002` Female, `248153007` Male) a gender `IFA` rule is written
+ *   against. SNOMED CT is copyright © International Health Terminology Standards Development
+ *   Organisation.
+ *
+ * The content packs that would change this (the CMS GEM files, the RxNorm Current Prescribable
+ * subset) are not bundled; a caller supplies them, as they do a SNOMED CT, CPT, LOINC, UMLS or VSAC
+ * release, under whatever terms its steward sets. This states what is distributed and under whose
+ * copyright; it is not legal advice, and makes no claim about whether a particular use is permitted
+ * to you.
  *
  * @packageDocumentation
  */

@@ -98,9 +98,16 @@ context** can be PHI: never log the surrounding record.
   An `RXCUI` whose supplied atoms could not establish a term type is left out of the graph and
   reported as `TERM_RXNORM_UNTYPED_CONCEPT` on `graph.warnings`, never loaded under a synonym's
   `TTY`; check that list if a concept you expected reads as `TERM_RXNORM_UNKNOWN_RXCUI`.
-- **No bundled content packs** — the public-domain packs (RxNorm Prescribable, ICD-10-CM, UCUM,
-  LOINC) are not bundled; every code-system release is bring-your-own.
-- **No bundled SNOMED/CPT/UMLS/VSAC content** — ever; those are bring-your-own by license.
+- **No bundled code-system release** — every code-system release is bring-your-own, including the
+  content packs (RxNorm Prescribable, ICD-10-CM) and SNOMED CT / CPT / LOINC / UMLS / VSAC.
+- **What *is* bundled**: the UCUM unit table (`ucum-essence.xml` v2.2, copyright © Regenstrief
+  Institute, Inc., reproduced verbatim under <https://ucum.org/license>; notice at
+  `vendor/ucum/NOTICE.md`, which ships with the package), the code-system identity pairings, and the
+  SNOMED CT concepts the crosswalk resolver names — the map-category concepts and the two gender
+  findings (SNOMED CT is copyright © International Health Terminology Standards Development
+  Organisation). So the UCUM operations and `resolveSystem` work with no release at all; `$lookup`,
+  `$validate-code`, `$expand`, `$translate` and the crosswalk and RxNorm resolvers need one you
+  supply.
 
 The **API Reference** always reflects exactly what this release ships — treat it as the source of
 truth over any prose above.

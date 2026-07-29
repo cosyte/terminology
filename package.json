@@ -51,7 +51,8 @@
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "vendor/ucum/NOTICE.md"
   ],
   "sideEffects": false,
   "publishConfig": {

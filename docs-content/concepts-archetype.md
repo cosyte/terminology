@@ -14,11 +14,15 @@ resolvers) speak the FHIR shape every downstream tool already understands.
 
 ## Bring-your-own data, engine-only
 
-The engine ships **no copyrighted terminology content**. You feed it standard FHIR resources — a
-`ConceptMap`, and later a `CodeSystem`/`ValueSet` — and it answers questions over them. SNOMED CT,
-CPT, the full UMLS/RxNorm release, and VSAC value sets are **strictly consumer-supplied** (a licensing
-wall, not a feature gap). What the engine *does* encode is code-system **identity** — the OID ↔
-canonical-URI ↔ mnemonic facts — because an identity is a published fact, not content.
+The engine ships **no code-system release**. You feed it standard FHIR resources — a `ConceptMap`, and
+later a `CodeSystem`/`ValueSet` — and it answers questions over them. SNOMED CT, CPT, LOINC, the
+UMLS/RxNorm release, and VSAC value sets are **strictly consumer-supplied** (a licensing wall, not a
+feature gap). Bundled, and named with their copyright, are the UCUM unit table (copyright ©1999–2024
+Regenstrief Institute, Inc., verbatim under <https://ucum.org/license>; notice shipped at
+`vendor/ucum/NOTICE.md`), the SNOMED CT concepts the crosswalk resolver names — the map-category
+concepts and the two gender findings (SNOMED CT is copyright © International Health Terminology
+Standards Development Organisation) — and the code-system **identities**, the OID ↔ canonical-URI ↔
+mnemonic pairings, which identify the systems rather than listing any system's codes.
 
 ## The never-fabricate invariant
 
@@ -59,7 +63,9 @@ map is *"semi-automated."* The resolvers honour that.
   choice list); a `NoDx` **No-Map** source is the typed `TERM_CROSSWALK_NO_MAP`, distinct from a
   source simply **absent** from the file (`TERM_CROSSWALK_UNMAPPED`).
 - **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` / `applyComplexMap`) — **BYO** (SNOMED is
-  licensed; the engine bundles **zero** SNOMED content, only the rule machinery). A source's **map
+  licensed; the engine bundles **no** SNOMED CT refset or release — it bundles the rule machinery and
+  the individual concepts that machinery names, the map categories and the two gender findings).
+  A source's **map
   groups** are an AND (a manifestation code *and* an etiology code → two groups); within a group,
   **priorities** are an if-then-else chain of `IFA` rules evaluated against caller-supplied
   `PatientContext` (age band, gender). A group whose decision needs context the caller did **not**

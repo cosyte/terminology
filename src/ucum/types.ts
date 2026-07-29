@@ -6,8 +6,9 @@
  * "is this a valid UCUM expression" and "are these two expressions the same unit", and it
  * canonicalizes a unit's *representation*. It performs **no magnitude conversion** (`mg/dL` →
  * `mmol/L` needs an analyte's molar mass — a clinical computation the engine refuses). The tables
- * are the vendored, verbatim UCUM `ucum-essence.xml`, transformed
- * to an in-memory model at runtime; the engine ships **no derivative** of the UCUM table.
+ * are the UCUM `ucum-essence.xml`, **bundled verbatim** in this package (copyright © Regenstrief
+ * Institute, Inc. — see `vendor/ucum/NOTICE.md`) and transformed to an in-memory model at runtime;
+ * the engine ships **no derivative** of the UCUM table.
  *
  * @packageDocumentation
  */

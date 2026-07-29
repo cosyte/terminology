@@ -156,7 +156,7 @@ export interface GemMatched {
 
 /**
  * One row of the SNOMED CT → ICD-10-CM **complex/extended map** refset — the caller-supplied,
- * SNOMED-licensed content the resolver runs over (**no SNOMED content is bundled**). The field
+ * SNOMED-licensed content the resolver runs over (**no SNOMED CT refset is bundled**). The field
  * names paraphrase the SNOMED RF2 extended-map refset columns.
  */
 export interface ComplexMapEntry {

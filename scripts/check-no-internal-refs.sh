@@ -172,6 +172,13 @@
 #   * LICENSE              shipped inside the npm tarball
 #   * docs-content/        every tracked file, including sidebars.json: this is the
 #                          content published to docs.cosyte.com.
+#   * vendor/ucum/NOTICE.md
+#                          the UCUM attribution notice. IN SCOPE BECAUSE IT NOW SHIPS:
+#                          it is named in package.json's `files`, so a consumer receives
+#                          it in the tarball, and unlike the rest of vendor/ the prose is
+#                          OURS. It was out of scope while it stayed behind in the repo.
+#                          The tripwire below is what forced this entry rather than
+#                          anyone remembering: adding the `files` line reds the gate.
 #   * package.json         the npm-visible metadata ONLY (`description`, `keywords`),
 #                          extracted and scanned as text. Named explicitly by the
 #                          convention. The rest of package.json is not public prose, and
@@ -198,9 +205,12 @@
 #   * phi-scan-overrides.md
 #                          the audit log for fixture-level PHI-scan bypasses. Internal
 #                          compliance bookkeeping, not consumer documentation.
-#   * vendor/              the vendored, verbatim `ucum-essence.xml` source data and its
-#                          provenance notes. It is upstream's text, not ours to sweep, and
-#                          it ships no prose of our authorship.
+#   * vendor/ EXCEPT NOTICE.md
+#                          the vendored, verbatim `ucum-essence.xml` and
+#                          `UcumFunctionalTests.xml` source data. It is upstream's text,
+#                          not ours to sweep, and sweeping it would be the one edit the
+#                          UCUM License forbids. NOTICE.md is carved OUT of this exclusion
+#                          and scanned (above) — it is our prose and it now ships.
 #   * CLAUDE.md, .github/, .changeset/, scripts/, test/
 #                          internal by definition, or code rather than prose.
 #   * src/ DOC COMMENTS    IN SCOPE, as a THIRD PASS at the bottom of this file, with its
@@ -1138,7 +1148,7 @@ fail_with_hits() {
 cd "$(git rev-parse --show-toplevel)"
 
 # The public surface, as paths. Each is justified in the SCAN SURFACE note at the top.
-SURFACE_PATHS=(README.md LICENSE docs-content)
+SURFACE_PATHS=(README.md LICENSE docs-content vendor/ucum/NOTICE.md)
 
 # Every named surface path must still be tracked. Without this, renaming or deleting
 # README.md makes the gate scan less and still print OK, which is the same silent-green
@@ -1172,9 +1182,9 @@ command -v node >/dev/null || {
 }
 UNKNOWN_TARBALL_DOCS=$(node -e '
   const pkg = JSON.parse(require("fs").readFileSync("package.json", "utf8"));
-  // Scanned by this gate:            README.md, LICENSE
+  // Scanned by this gate:            README.md, LICENSE, vendor/ucum/NOTICE.md
   // Excluded deliberately, reasons in SCAN SURFACE: CHANGELOG.md, dist
-  const known = new Set(["README.md", "LICENSE", "CHANGELOG.md", "dist"]);
+  const known = new Set(["README.md", "LICENSE", "CHANGELOG.md", "dist", "vendor/ucum/NOTICE.md"]);
   process.stdout.write((pkg.files ?? []).filter((f) => !known.has(f)).join(" "));
 ')
 if [ -n "$UNKNOWN_TARBALL_DOCS" ]; then

@@ -4,6 +4,9 @@ This directory contains **verbatim, unmodified** third-party artifacts vendored 
 `@cosyte/terminology`. They are reproduced here under their own licenses; the notices below are
 required by those licenses. `@cosyte/terminology`'s own code is MIT (see the repo `LICENSE`).
 
+**This file ships inside the npm tarball** (`package.json`'s `files` names it), so the notices below
+travel with the package that carries the UCUM table.
+
 ## `ucum-essence.xml` — the UCUM unit table
 
 > The Unified Code for Units of Measure (UCUM), also known as the "UCUM Specification," is
@@ -25,10 +28,10 @@ Works from the UCUM tables or specification. Accordingly:
   (only the mechanical wrapping needed to make it a TypeScript string literal is added; the UCUM
   content itself is untouched). The engine parses that verbatim string at runtime to build its
   in-memory lookup table. The lookup table is an ephemeral transform used solely to *interact with*
-  UCUM (a permitted use); no modified or derivative copy of the UCUM table is distributed.
-- **Flagged for counsel** (roadmap §5.3): whether a mechanically-derived in-memory table counts as
-  a "Derivative Work" is a permissive reading, not a verbatim license clause. The conservative,
-  license-clean posture we ship is: distribute the table **verbatim**, transform only at runtime.
+  UCUM; no modified or derivative copy of the UCUM table is distributed.
+- What is **distributed** is the table verbatim, and nothing else derived from it. The in-memory
+  lookup table exists only for the lifetime of a process that has already loaded the verbatim copy;
+  it is never serialized, written out, or published.
 
 Disclaimer of warranties: the UCUM Specification is provided "as is" without warranty of any kind;
 see the License for the full disclaimer.
@@ -39,6 +42,7 @@ see the License for the full disclaimer.
 > Lloyd Mackenzie, Vladimir Alexiev).
 
 Reproduced verbatim under the Eclipse Public License v1.0
-(<https://www.eclipse.org/legal/epl-v10.html>). Used **only** as a test fixture — it is not part of
-the published npm package (`package.json#files` ships `dist` only). Conformance is declared against
-the most recent history entry in the file (3-Feb 2021).
+(<https://www.eclipse.org/legal/epl-v10.html>). Used **only** as a test fixture — it is **not** part
+of the published npm package: `package.json`'s `files` does not name it, and unlike the unit table it
+is not embedded in the build. Conformance is declared against the most recent history entry in the
+file (3-Feb 2021).

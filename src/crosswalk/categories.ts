@@ -1,10 +1,10 @@
 /**
  * Steward-defined **map category** and **map-relationship** identifiers the crosswalk resolvers carry
  * through verbatim — the SNOMED CT complex-map `mapCategoryId` concepts and the map-correlation
- * concepts. These are **published SNOMED CT metadata identifiers** (concept ids in the SNOMED CT
- * Model Component module), encoded here as identity facts (like the code-system OID↔URI facts in
- * {@link ../systems/registry}); **no SNOMED CT content is bundled** — a caller still supplies the map
- * refset itself under their own SNOMED licence (the BYO posture).
+ * concepts. These are SNOMED CT metadata concepts, and **they are bundled**: the four ids below and
+ * their steward descriptions ship inside this package. SNOMED CT is copyright © International Health
+ * Terminology Standards Development Organisation. **No SNOMED CT refset or release is bundled** — a
+ * caller still supplies the map refset itself under their own SNOMED CT licence (the BYO posture).
  *
  * The category on a resolved SNOMED→ICD-10-CM map row is the steward telling the caller *how much to
  * trust the target*: a `447638001` "cannot be classified" row is a **No-Map**, a `447640006`
@@ -17,8 +17,10 @@
 
 /**
  * The SNOMED CT complex-map **map category** concept ids — the `mapCategoryId` column of the
- * SNOMED→ICD-10-CM extended-map refset. Encoded as published identity facts; carried through a
- * resolution verbatim so a caller sees the steward's own trust signal.
+ * SNOMED→ICD-10-CM extended-map refset. These four SNOMED CT concepts — id and steward description —
+ * are **bundled** in this package (SNOMED CT is copyright © International Health Terminology
+ * Standards Development Organisation); carried through a resolution verbatim so a caller sees the
+ * steward's own trust signal.
  *
  * @example
  * ```ts
@@ -62,6 +64,6 @@ export const ICD9CM_SYSTEM = "http://hl7.org/fhir/sid/icd-9-cm";
 
 /**
  * The canonical code-system URI for **SNOMED CT** — the source system of the SNOMED→ICD-10-CM complex
- * map. Recognised by URI only; **no SNOMED CT content is bundled**.
+ * map. Recognised by URI only; **no SNOMED CT refset or release is bundled**.
  */
 export const SNOMEDCT_SYSTEM = "http://snomed.info/sct";

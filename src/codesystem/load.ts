@@ -2,8 +2,8 @@
  * {@link loadCodeSystem} — the single entry point that dispatches a {@link CodeSystemSource} to the
  * right reader (RRF / CSV / fixed-width / FHIR) and assembles the immutable {@link CodeSystem}.
  *
- * The engine is **content-agnostic and license-clean**: it loads a *consumer-supplied* release and
- * ships **zero** copyrighted content. The loaded model is deep-frozen and keyed by code
+ * The engine is **content-agnostic**: it loads a *consumer-supplied* release and ships
+ * **no code-system release** of its own. The loaded model is deep-frozen and keyed by code
  * for O(1) {@link lookup}/{@link validateCode}.
  *
  * @packageDocumentation

@@ -11,6 +11,49 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **The package claimed to bundle no copyrighted content while bundling the UCUM table, and its
+  attribution never reached the tarball** (`TERMINOLOGY-LICENSING-ACCURACY`). Four statements shipped
+  in `0.0.1`, live on the registry and on docs.cosyte.com, that the tree falsifies:
+  1. the unscoped "**zero copyrighted terminology content is bundled**" claim (README, the JSDoc
+     compiled into `dist/index.d.ts` / `dist/index.d.cts`, and four `docs-content/` pages) is
+     falsified by `ucum-essence.xml` — copyright Regenstrief Institute, Inc. — being embedded
+     byte-for-byte in `dist/index.mjs` and `dist/index.cjs`. The vendored XML carries no copyright
+     line of its own, so the shipped copy asserted nothing;
+  2. `vendor/ucum/NOTICE.md` was **absent from `package.json`'s `files`**, so the attribution never
+     reached a consumer and the README pointed at a file the package did not contain. Measured by
+     packing the base tree: 10 files, no `NOTICE.md`;
+  3. `src/crosswalk/categories.ts` bundles four SNOMED CT map-category concepts — id **and** steward
+     description — in the same doc comment that said "no SNOMED CT content is bundled";
+  4. the README listed **LOINC** among "public-domain content packs" one line before listing it as
+     copyrighted, and listed **UCUM** among packs that "are not bundled" while bundling it.
+
+  Founder call 2026-07-29: keep the bundled table, make the claim true. Every consumer surface now
+  says **"no code-system release is bundled"** and then names what is: the UCUM unit table
+  (`ucum-essence.xml` v2.2, copyright ©1999–2024 Regenstrief Institute, Inc., verbatim under the UCUM
+  Copyright Notice and License, with its warranty disclaimer), the code-system identity pairings, and
+  the SNOMED CT concepts the crosswalk resolver names — the four map-category concepts **and** the two
+  gender findings (`248152002` / `248153007`) a gender `IFA` rule is written against, each with its
+  description (copyright © International Health Terminology Standards Development Organisation).
+  `vendor/ucum/NOTICE.md` is now in `files` and the packed tarball carries it, which also repairs the
+  dangling README pointer. On the README, the declaration files and the docs intro the list is written
+  as **open** ("includes the following"); a draft instead called it "three things … exact rather than
+  approximate", and that self-certification was falsified from `dist` in one grep by the gender
+  findings it had missed.
+
+  The README and the `src/` doc comments were corrected **together** and the built declaration files
+  read back, because fixing one and not the other is what made the previous attempt contradict itself
+  and forced a revert to base. Legal conclusions were **cut** rather than reworded, measured on the
+  base across `README.md`, `docs-content/`, `src/` and `vendor/`: **"license-clean" ×5**
+  (`src/codesystem/fhir.ts`, `src/codesystem/load.ts`, `src/codesystem/types.ts`,
+  `src/valueset/types.ts`, `vendor/ucum/NOTICE.md`) and a **permitted-use assertion ×2**
+  (`src/ucum/essence.ts`, `vendor/ucum/NOTICE.md`). All seven are now zero. The docs state what is
+  distributed and under whose copyright, and say plainly that this is not legal advice. The gate's own
+  tarball
+  drift tripwire caught the new public surface: `vendor/ucum/NOTICE.md` is now scanned by
+  `check:no-internal-refs`, and the internal roadmap citation it carried was removed before it shipped.
+
+  No runtime behaviour changes.
+
 - **A RxNorm concept could load under a term type it does not have.** `loadRxNormGraph` recognized 18
   of RxNorm's term types and typed each concept from whichever recognized `RXNCONSO` atom appeared
   first in the file. Five real term types were not among the 18 (`SCDF`, `SBDF`, `SCDFP`, `SBDFP`,
