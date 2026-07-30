@@ -101,7 +101,7 @@ context** can be PHI: never log the surrounding record.
 - **No bundled code-system release** — every code-system release is bring-your-own, including the
   content packs (RxNorm Prescribable, ICD-10-CM) and SNOMED CT / CPT / LOINC / UMLS / VSAC.
 - **What *is* bundled**: the UCUM unit table (`ucum-essence.xml` v2.2, copyright © Regenstrief
-  Institute, Inc., reproduced verbatim under <https://ucum.org/license>; notice at
+  Institute, Inc., reproduced verbatim under [https://ucum.org/license](https://ucum.org/license); notice at
   `vendor/ucum/NOTICE.md`, which ships with the package), the code-system identity pairings, and the
   SNOMED CT concepts the crosswalk resolver names — the map-category concepts and the two gender
   findings (SNOMED CT is copyright © International Health Terminology Standards Development

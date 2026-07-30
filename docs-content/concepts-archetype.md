@@ -18,7 +18,7 @@ The engine ships **no code-system release**. You feed it standard FHIR resources
 later a `CodeSystem`/`ValueSet` — and it answers questions over them. SNOMED CT, CPT, LOINC, the
 UMLS/RxNorm release, and VSAC value sets are **strictly consumer-supplied** (a licensing wall, not a
 feature gap). Bundled, and named with their copyright, are the UCUM unit table (copyright ©1999–2024
-Regenstrief Institute, Inc., verbatim under <https://ucum.org/license>; notice shipped at
+Regenstrief Institute, Inc., verbatim under [https://ucum.org/license](https://ucum.org/license); notice shipped at
 `vendor/ucum/NOTICE.md`), the SNOMED CT concepts the crosswalk resolver names — the map-category
 concepts and the two gender findings (SNOMED CT is copyright © International Health Terminology
 Standards Development Organisation) — and the code-system **identities**, the OID ↔ canonical-URI ↔
