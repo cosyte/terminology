@@ -11,6 +11,24 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **Three published documentation pages carried a link form that MDX cannot compile, and it stopped
+  docs.cosyte.com building for every package** (`TERMINOLOGY-MDX-AUTOLINK`). `docs-content/intro.md`,
+  `troubleshooting.md` and `concepts-archetype.md` linked the UCUM licence as the CommonMark autolink
+  `<https://ucum.org/license>`. `cosyte/docs` compiles fetched content as **MDX**, which is stricter:
+  it reads the `<` as the start of an element, `https` as a tag name and `:` as a namespace separator,
+  then fails on the `/` with `Unexpected character '/' (U+002F) before local name`. Docusaurus SSG
+  failure is **global**, so three lines in this package's tarball did not degrade one page, they
+  stopped the whole documentation site deploying, for all nine packages it hosts. It went live when
+  `0.0.2` published (2026-07-29T19:20Z) and broke the next push to that repository's `main`.
+  Rewritten as `[https://ucum.org/license](https://ucum.org/license)`, which renders identically and
+  is the form MDX's own error message recommends. **No engine behaviour, API surface or bundled
+  content changes.**
+  `README.md`, `vendor/ucum/NOTICE.md` and `scripts/generate-ucum-essence-data.ts` use the same
+  autolink form and are **deliberately untouched**: verified against the published `0.0.2` assets,
+  `docs-content.tar.gz` ships only the narrative pages plus `sidebars.json` and `source.tar.gz` ships
+  only `package.json` + `src/`, so nothing outside `docs-content/` reaches MDX, and the form renders
+  correctly on GitHub and the registry where those files are actually read.
+
 - **The package claimed to bundle no copyrighted content while bundling the UCUM table, and its
   attribution never reached the tarball** (`TERMINOLOGY-LICENSING-ACCURACY`). Four statements shipped
   in `0.0.1`, live on the registry and on docs.cosyte.com, that the tree falsifies:
@@ -125,6 +143,18 @@ has_ingredient IN`). RxNorm authors no such relationship in any release: the ing
   built a machine guard against, and the registry is the authority. (The historical `[0.0.1]` entry
   below is left as written: it records what the docs said at the time, hours before the release
   landed.)
+
+### Added
+
+- **A gate over `docs-content/` that fails on an MDX-hostile link form**
+  (`test/docs-content-mdx-safety.test.ts`). A published release is immutable and the documentation
+  site re-fetches it indefinitely, so a bad link in a tarball cannot be recalled: fixing this
+  repository's `main` does nothing for the version that shipped it. The gate reports the offending
+  file and line with the replacement form, runs inside the required `ci / verify` context (so it
+  cannot be silently un-required by being split into its own job), and carries a **self-test** proving
+  the matcher can see a real autolink, so a green result cannot come from a pattern that matches
+  nothing. It reads bytes directly rather than shelling out to `grep`, which this repository has
+  already been burned by. Scoped to `docs-content/` only, for the reason above.
 
 ### Changed
 

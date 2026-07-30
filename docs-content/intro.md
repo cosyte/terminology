@@ -17,7 +17,7 @@ value sets are strictly bring-your-own. It is not content-free, though. What is 
 following, with its copyright:
 
 - the **UCUM unit table** (`ucum-essence.xml` v2.2), copyright ©1999–2024 Regenstrief Institute, Inc.,
-  reproduced verbatim under the UCUM Copyright Notice and License (<https://ucum.org/license>) and
+  reproduced verbatim under the UCUM Copyright Notice and License ([https://ucum.org/license](https://ucum.org/license)) and
   embedded byte-for-byte in the published build. The UCUM Specification is provided "as is" without
   warranty of any kind; the full notice ships with the package at `vendor/ucum/NOTICE.md`;
 - the code-system **identities** (the OID ↔ canonical-URI pairings), encoded and grounded firsthand
