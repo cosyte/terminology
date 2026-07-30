@@ -6,8 +6,9 @@
  * **FHIR Terminology Module** (`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating
  * over **consumer-supplied** FHIR resources. It ships the *engine* and **no code-system release**
  * (SNOMED CT / CPT / LOINC / UMLS / RxNorm are strictly BYO). It is not content-free: see
- * **What is bundled** at the end of this note for the UCUM unit table, the code-system *identities*
- * (OID ↔ URI) and the SNOMED CT concepts the crosswalk resolver names, each with its copyright.
+ * **What is bundled** at the end of this note, which includes the UCUM unit table, the code-system
+ * *identities* (OID ↔ URI), the SNOMED CT concepts the crosswalk resolver names and RxNorm's
+ * relationship and term-type names, each with its copyright.
  *
  * **Code-system identity and ConceptMap translation:**
  *
@@ -64,7 +65,7 @@
  *
  * - {@link loadRxNormGraph} — load `RXNCONSO` (concepts, typed by `TTY`), `RXNREL` (directed `RELA`
  *   edges, normalized to the documented `RXCUI2 ⟶RELA⟶ RXCUI1` direction), and optionally `RXNSAT`
- *   (NDC attributes) into an immutable graph. Ships **no** RxNorm content — BYO release.
+ *   (NDC attributes) into an immutable graph. Ships **no** RxNorm release — BYO.
  * - {@link ingredientsOf} / {@link genericFor} / {@link brandsFor} / {@link doseFormsOf} /
  *   {@link consistsOf} / {@link relatedByRela} — graph navigation following **authored** edges only
  *   (the engine never synthesizes an inverse). An absent `RXCUI` is a typed {@link RxNormUnknown}.
@@ -87,8 +88,21 @@
  * - the **SNOMED CT concepts the crosswalk resolver names**, each with its description: the four
  *   map-category concepts ({@link MAP_CATEGORIES}) a complex-map row's `mapCategoryId` refers to, and
  *   the two gender findings (`248152002` Female, `248153007` Male) a gender `IFA` rule is written
- *   against. SNOMED CT is copyright © International Health Terminology Standards Development
- *   Organisation.
+ *   against. Further SNOMED CT identifiers, and ICD-10-CM codes, appear in the API documentation
+ *   examples, which are distributed in the compiled declaration files and in the build's
+ *   sourcemaps. SNOMED CT is copyright © International Health Terminology Standards
+ *   Development Organisation.
+ * - the **RxNorm relationship and term-type names** the drug-graph API is written against: the
+ *   relationship names in {@link RELA} / {@link RELA_INVERSE} (`has_ingredient`, `tradename_of`, …),
+ *   and the term-type codes in {@link TERM_TYPES}, each with its name as published by the U.S.
+ *   National Library of Medicine (`SCD` reads "Semantic Clinical Drug"). Individual RxNorm
+ *   identifiers also appear in the API documentation examples, with their RxNorm names and term
+ *   types (for instance `RXCUI` `316151`, "lisinopril 10 MG"), and in `README.md` as well as the
+ *   places named above. RxNorm is produced by the National Library of Medicine; no RxNorm release
+ *   is bundled.
+ *
+ * The `LICENSE` file that ships with this package carries the MIT text for the package's own code
+ * and a third-party notices section naming each of the above.
  *
  * The content packs that would change this (the CMS GEM files, the RxNorm Current Prescribable
  * subset) are not bundled; a caller supplies them, as they do a SNOMED CT, CPT, LOINC, UMLS or VSAC

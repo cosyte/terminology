@@ -19,3 +19,86 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+================================================================================
+THIRD-PARTY MATERIALS
+================================================================================
+
+The MIT license above covers Cosyte's own code. This repository and the published
+npm package also distribute third-party materials. Those materials stay under
+their own copyright and license terms, and the MIT grant above does not extend to
+them. What is distributed includes the following.
+
+1. The UCUM unit table (vendor/ucum/ucum-essence.xml)
+
+   The Unified Code for Units of Measure (UCUM), also known as the "UCUM
+   Specification," is copyright (c) 1999-2024, Regenstrief Institute, Inc. All
+   rights reserved.
+
+   Version 2.2, revision-date 2024-06-17, is reproduced verbatim under the UCUM
+   Copyright Notice and License, https://ucum.org/license, and is embedded
+   byte-for-byte in the published build. That License grants a worldwide,
+   non-exclusive, no-charge, royalty-free, revocable license to reproduce,
+   publicly display, publicly perform and distribute the Work, and it permits
+   developing and commercializing software that interoperates with UCUM. It does
+   not permit using the Work to develop or promulgate a different standard, and it
+   does not permit derivative works: the content may not be modified and its
+   meaning must remain unchanged. This copy is unmodified, and no derivative of it
+   is distributed.
+
+   Disclaimer of warranties: the UCUM Specification is provided "as is" without
+   warranty of any kind. See the License at the URL above for the full disclaimer.
+
+   The complete notice ships inside this package at vendor/ucum/NOTICE.md. That
+   file, not this summary, is the notice, and it is the copy to read.
+
+2. The UCUM functional-test suite (vendor/ucum/UcumFunctionalTests.xml)
+
+   Copyright (c) 2008-2009 Grahame Grieve and other contributors (Gunther Schadow,
+   Lloyd Mackenzie, Vladimir Alexiev), reproduced verbatim under the Eclipse
+   Public License v1.0, https://www.eclipse.org/legal/epl-v10.html. It is used
+   only as a test fixture in this repository: package.json's "files" does not name
+   it, so it is not distributed in the npm package.
+
+3. Code-system identity facts (SYSTEM_IDENTITIES)
+
+   The OID and canonical-URI pairings, names and mnemonics for the code systems
+   the resolver recognizes. These identify the systems; no system's code list is
+   distributed.
+
+4. SNOMED CT concept identifiers named by the crosswalk resolver
+
+   SNOMED CT identifiers are distributed with their descriptions: the complex-map
+   category concepts in MAP_CATEGORIES (447637006, 447638001, 447639009,
+   447640006) that a map row's mapCategoryId refers to, and the gender findings
+   248152002 (Female) and 248153007 (Male) that a gender IFA rule is written
+   against. Further SNOMED CT identifiers, and ICD-10-CM codes, appear in the API
+   documentation examples, which are distributed in the compiled declaration
+   files (dist/index.d.ts, dist/index.d.cts) and in the build's sourcemaps, whose
+   sourcesContent carries every source comment verbatim.
+   SNOMED CT is copyright (c) International Health Terminology Standards
+   Development Organisation. No SNOMED CT release or refset is distributed; you
+   supply the map rows under your own SNOMED CT licence.
+
+5. RxNorm relationship and term-type names (RELA, RELA_INVERSE, TERM_TYPES)
+
+   The drug-graph API is written against RxNorm's own vocabulary, and those names
+   are distributed: the relationship names in RELA and RELA_INVERSE
+   (has_ingredient, ingredient_of, tradename_of, and the rest), and the term-type
+   codes in TERM_TYPES, each with its name as published by the U.S. National
+   Library of Medicine ("SCD" reads "Semantic Clinical Drug"). Individual RxNorm
+   identifiers also appear in the API documentation examples, with their RxNorm
+   names and term types (for instance RXCUI 316151, "lisinopril 10 MG"), and in
+   README.md as well as the declaration files and sourcemaps named above. RxNorm
+   is produced by the National Library of Medicine. No RxNorm release is
+   distributed; you supply it.
+
+Beyond what is named above, no code-system release is distributed with this
+package. SNOMED CT, CPT, LOINC, UMLS and RxNorm releases, the CMS GEM files, the
+NLM complex-map refset and VSAC value sets are all supplied by the caller, under
+whatever terms their steward sets.
+
+This section states what is distributed and under whose copyright. It is not legal
+advice, and it makes no claim about whether any particular use of these materials
+is permitted to you.

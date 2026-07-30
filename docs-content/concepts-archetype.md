@@ -17,12 +17,15 @@ resolvers) speak the FHIR shape every downstream tool already understands.
 The engine ships **no code-system release**. You feed it standard FHIR resources — a `ConceptMap`, and
 later a `CodeSystem`/`ValueSet` — and it answers questions over them. SNOMED CT, CPT, LOINC, the
 UMLS/RxNorm release, and VSAC value sets are **strictly consumer-supplied** (a licensing wall, not a
-feature gap). Bundled, and named with their copyright, are the UCUM unit table (copyright ©1999–2024
-Regenstrief Institute, Inc., verbatim under [https://ucum.org/license](https://ucum.org/license); notice shipped at
+feature gap). What is bundled, named with its copyright, includes the UCUM unit table (copyright
+©1999–2024 Regenstrief Institute, Inc., verbatim under [https://ucum.org/license](https://ucum.org/license); notice shipped at
 `vendor/ucum/NOTICE.md`), the SNOMED CT concepts the crosswalk resolver names — the map-category
 concepts and the two gender findings (SNOMED CT is copyright © International Health Terminology
-Standards Development Organisation) — and the code-system **identities**, the OID ↔ canonical-URI ↔
-mnemonic pairings, which identify the systems rather than listing any system's codes.
+Standards Development Organisation) — the code-system **identities**, the OID ↔ canonical-URI ↔
+mnemonic pairings, which identify the systems rather than listing any system's codes, and RxNorm's
+relationship and term-type names (`RELA`, `RELA_INVERSE`, `TERM_TYPES`), published by the U.S.
+National Library of Medicine. Individual SNOMED CT, ICD-10-CM and RxNorm identifiers also appear in
+the API documentation examples. The full list is in the package's `LICENSE`.
 
 ## The never-fabricate invariant
 
@@ -82,7 +85,7 @@ crosswalk never invents a target, and "No-Map" is a first-class typed outcome, n
 RxNorm's drug graph — ingredient (`IN`) → clinical-drug component (`SCDC`) → semantic clinical drug
 (`SCD`) → semantic branded drug (`SBD`), with brand (`BN`) and dose-form (`DF`) cross-links — is
 navigated over a **bring-your-own** RxNorm RRF release (`loadRxNormGraph` reads `RXNCONSO` concepts,
-`RXNREL` relationships, and `RXNSAT` NDC attributes). The engine bundles **zero** RxNorm content;
+`RXNREL` relationships, and `RXNSAT` NDC attributes). The engine bundles **no** RxNorm release;
 the graph is entirely the caller's release, and a resolution is release-scoped.
 
 - **Direction is a documented trap, grounded firsthand.** RxNorm's `RXNREL` stores each relationship
@@ -133,7 +136,8 @@ the graph is entirely the caller's release, and a resolution is release-scoped.
   nearest guess.
 
 > **Content posture.** This release ships the graph *mechanism* over the real RRF format, grounded
-> firsthand on the RxNorm technical documentation; it does **not** bundle RxNorm content. The
+> firsthand on the RxNorm technical documentation; it bundles RxNorm's relationship and term-type
+> *names* but **no** RxNorm release. The
 > public-domain Current Prescribable Content pack is not bundled either: bundling one requires a
 > genuine, verbatim RxNorm release, and none is fabricated to fill the gap.
 

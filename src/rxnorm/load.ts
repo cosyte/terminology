@@ -34,7 +34,7 @@
  * value) is **skipped and surfaced** as a `TERM_RXNORM_MALFORMED_ROW` warning, never a partial
  * concept/edge, never a crash. Rows that are simply *not of interest* (a non-`RXNORM` atom, an
  * atom-level relationship, a non-`NDC` attribute) are skipped **silently** — they are expected, not
- * faults. Ships **no** RxNorm content: every concept/edge is the caller's release.
+ * faults. Ships **no** RxNorm release: every concept/edge is the caller's.
  *
  * @packageDocumentation
  */
@@ -62,7 +62,7 @@ const SAT = { RXCUI: 0, ATN: 8, ATV: 10 } as const;
 
 /**
  * A raw RxNorm RRF release, BYO. The caller supplies the public-domain Current Prescribable Content
- * subset or the full (licensed) release; the engine bundles **no** RxNorm content.
+ * subset or the full (licensed) release; the engine bundles **no** RxNorm release.
  */
 export interface RxNormGraphSource {
   /** The raw `RXNCONSO.RRF` content (pipe-delimited concept/atom names). */
@@ -252,7 +252,7 @@ function parseNdcs(
  *
  * Parses `RXNCONSO` (concepts), `RXNREL` (directed edges, normalized to the documented direction), and
  * — when supplied — `RXNSAT` (NDC attributes). Liberal on load: a structurally unusable row is a
- * skipped, surfaced {@link RxNormLoadWarning}, never partial. Ships **no** RxNorm content — the graph
+ * skipped, surfaced {@link RxNormLoadWarning}, never partial. Ships **no** RxNorm release — the graph
  * is entirely the caller's release.
  *
  * A concept is typed only by a **defining** atom, never by a synonym-class one and never by file
@@ -265,7 +265,7 @@ function parseNdcs(
  * ```ts
  * import { loadRxNormGraph } from "@cosyte/terminology";
  *
- * // Synthetic rows in the RxNorm RRF wire format (no real RxNorm content is bundled).
+ * // Synthetic rows in the RxNorm RRF wire format (no RxNorm release is bundled).
  * const graph = loadRxNormGraph({
  *   conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||",
  *   // "SCDC(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.

@@ -11,6 +11,58 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **`LICENSE` was unqualified MIT over a tree that also distributes third-party material**
+  (`TERMINOLOGY-LICENSE-THIRD-PARTY`, residuals 1 and 2 of `TERMINOLOGY-RESIDUALS`). The README had
+  already grown a "What is bundled" carve-out; the licence file had not, so the two consumer-facing
+  licence statements disagreed. The MIT text is unchanged and still covers this package's own code.
+  A `THIRD-PARTY MATERIALS` section is appended, stating for each item what is distributed and under
+  whose copyright: the **UCUM unit table** (`ucum-essence.xml` v2.2, revision-date 2024-06-17,
+  copyright 1999-2024 Regenstrief Institute, Inc., verbatim under the UCUM Copyright Notice and
+  License, embedded byte-for-byte in the build) with its grant recorded as **revocable**, its
+  no-different-standard and no-derivative-works restrictions, its warranty disclaimer and a pointer
+  to `vendor/ucum/NOTICE.md`, which ships in the tarball and remains the notice of record; the
+  **UCUM functional-test suite** (EPL v1.0, repository-only, not distributed on npm);
+  **`SYSTEM_IDENTITIES`**; the **SNOMED CT identifiers the crosswalk resolver names**; and
+  **RxNorm's relationship and term-type names**. The notice itself is deliberately untouched: it was
+  verified against `ucum.org/license` on 2026-07-30 and already carries all four things the licence
+  requires of a distributor.
+  The last of those closes the second residual. "The engine ships no RxNorm **content**" was
+  unscoped in the way the UCUM claim once was, because `RELA` / `RELA_INVERSE` / `TERM_TYPES` do
+  ship RxNorm's relationship and term-type names; every site now reads "no RxNorm **release**", the
+  same narrowing already applied to the code-system claim, and the names that do ship are named.
+  `Ships no SNOMED content` on the complex-map loader is narrowed to "no SNOMED CT release or
+  refset" for the same reason. **No engine behaviour, API surface or bundled content changes.**
+  Both surfaces that carry the claim move together, as they must: `README.md` and the package JSDoc
+  compiled into `dist/index.d.ts` / `dist/index.d.cts`, plus four `docs-content/` pages, two of
+  which carried a grammatically **closed** bundled-list that the new `LICENSE` would otherwise have
+  contradicted. The enumerated items are derived from the build, not from prose, and every list
+  reads "includes the following" rather than closing the set. Beyond the named constants,
+  individual SNOMED CT, ICD-10-CM and **RxNorm** identifiers ship inside the API documentation
+  examples, with their real names and term types, and those examples reach a consumer in three
+  places rather than one: `README.md`, the compiled declaration files, and the build's sourcemaps,
+  whose `sourcesContent` carries every source comment verbatim. No absolute negative is written
+  over those files: a draft said "no RxNorm release, drug concept or NDC is distributed", which the
+  build falsifies (`RXCUI` `316151` ships as "lisinopril 10 MG"), so the claim is scoped to the
+  release rather than reworded around it.
+  Gated by `test/license-third-party.test.ts` (bytes read with `node:fs`, never a `grep` pipeline):
+  the MIT grant is intact; the third-party section names the UCUM copyright holder, licence URL,
+  revocability, no-derivative-works restriction, warranty disclaimer and `NOTICE.md` pointer;
+  `LICENSE`, `README.md`, the package JSDoc and the four `docs-content/` pages all name the same
+  distributed items, so one surface cannot be updated while another is left contradicting it; no
+  prose file in `LICENSE`, `README.md`, `docs-content/` or **all** of `src/` contains the phrase
+  "RxNorm content" or "SNOMED content"; and every checked-in path in `package.json`'s `files`
+  exists, which is the check `0.0.1` lacked when it pointed consumers at a `NOTICE.md` the tarball
+  did not contain. The anchor list is explicit rather than inferred, so a sixth bundled item still
+  needs the anchors updated by hand.
+  That guard bans the **phrase**, not a determiner pattern, and the reason is recorded because it
+  was got wrong first: a version matching `no\s+(\*\*)?RxNorm(\*\*)?\s+content` put the optional
+  bold markers after the space, so it matched `no **RxNorm content` and missed `**no** RxNorm
+content` — the form every historical instance actually took — and read green over the whole
+  pre-fix tree, 0 of 6 real forms firing. A self-test now asserts the matcher fires on all eight
+  historical spellings and stays quiet on the correct wording. The file list also **walks** `src/`
+  rather than naming files, because a hand-written list omitted `src/rxnorm/rela.ts` and
+  `src/rxnorm/tty.ts`, whose doc comments compile into the declaration files.
+
 - **Three published documentation pages carried a link form that MDX cannot compile, and it stopped
   docs.cosyte.com building for every package** (`TERMINOLOGY-MDX-AUTOLINK`). `docs-content/intro.md`,
   `troubleshooting.md` and `concepts-archetype.md` linked the UCUM licence as the CommonMark autolink
