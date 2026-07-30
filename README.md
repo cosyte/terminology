@@ -8,9 +8,9 @@
 resources. It is the sibling engine `@cosyte/transform` and, later, the parsers' code-system
 recognition consume. It ships the **engine, and no code-system release** — SNOMED CT, CPT, LOINC,
 UMLS/RxNorm, and VSAC value sets are strictly bring-your-own. It is not content-free, though: what it
-_does_ bundle — the UCUM unit table, the code-system _identities_ (OID ↔ canonical URI), and the
-SNOMED CT concepts the crosswalk resolver names — is listed with its copyright under
-[What is bundled](#what-is-bundled).
+_does_ bundle, including the UCUM unit table, the code-system _identities_ (OID ↔ canonical URI), the
+SNOMED CT concepts the crosswalk resolver names and RxNorm's relationship and term-type names, is
+listed with its copyright under [What is bundled](#what-is-bundled).
 
 > **Status:** pre-alpha (`0.0.x`), **published on npm.** The **engine is complete** — every
 > operation below ships today. The surface:
@@ -178,8 +178,9 @@ resolveNdc(graph, "00000000001"); // { resolved: true, rxcui: "314076", status: 
 ingredientsOf(graph, "99999999"); // { found: false, code: "TERM_RXNORM_UNKNOWN_RXCUI" } — never a guess
 ```
 
-The engine ships **no** RxNorm content — you supply the release (the public-domain Current Prescribable
-Content subset, or the full BYO release).
+The engine ships **no** RxNorm release; you supply it (the public-domain Current Prescribable
+Content subset, or the full BYO release). What it does ship is RxNorm's relationship and term-type
+_names_, listed under [What is bundled](#what-is-bundled).
 
 ## The invariants this engine is built on
 
@@ -189,7 +190,7 @@ Content subset, or the full BYO release).
 - **Never invert.** A directional map is read in its authored direction only; reverse translation
   needs an explicit inverse map, never a mechanical inversion.
 - **BYO data, engine-only.** No code-system release is bundled (a licensing wall, not a gap); the
-  engine operates over your own FHIR resources. The UCUM unit table and the two identity sets that
+  engine operates over your own FHIR resources. The UCUM unit table and the identity sets that
   **are** bundled are named, with their copyright, under [What is bundled](#what-is-bundled).
 - **Liberal load, conservative assertion.** Malformed input degrades to a typed diagnostic; a 1:many
   mapping returns the full candidate set, never collapsed to one.
@@ -215,9 +216,18 @@ with its copyright:
 - **The SNOMED CT concepts the crosswalk resolver names**, each with its description: the four
   map-category concepts in `MAP_CATEGORIES` (`447637006`, `447638001`, `447639009`, `447640006`) that
   a complex-map row's `mapCategoryId` refers to, and the two gender findings (`248152002` Female,
-  `248153007` Male) that a gender `IFA` rule is written against. SNOMED CT is copyright
+  `248153007` Male) that a gender `IFA` rule is written against. Further SNOMED CT identifiers, and
+  ICD-10-CM codes, appear in the API documentation examples, which are distributed in the compiled
+  declaration files and in the build's sourcemaps. SNOMED CT is copyright
   © International Health Terminology Standards Development Organisation. **No SNOMED CT release or
   refset is bundled** — you supply the map rows under your own SNOMED CT licence.
+- **The RxNorm relationship and term-type names** the drug-graph API is written against: the
+  relationship names in `RELA` / `RELA_INVERSE` (`has_ingredient`, `tradename_of`, …), and the
+  term-type codes in `TERM_TYPES`, each with its name as published by the U.S. National Library of
+  Medicine (`SCD` reads "Semantic Clinical Drug"). Individual RxNorm identifiers also appear in the
+  API documentation examples, with their RxNorm names and term types (for instance `RXCUI` `316151`,
+  "lisinopril 10 MG"), and in this README as well as the places named above. RxNorm is produced by the
+  National Library of Medicine. **No RxNorm release is bundled**; you supply it.
 
 This section states what is distributed and under whose copyright. It is not legal advice, and makes
 no claim about whether any particular use of these materials is permitted to you.
@@ -225,4 +235,5 @@ no claim about whether any particular use of these materials is permitted to you
 ## License
 
 MIT © Cosyte — this package's own code. The bundled third-party materials above stay under their own
-copyright and licences.
+copyright and licences; the `LICENSE` file that ships with this package carries the MIT text and a
+third-party notices section naming each of them.

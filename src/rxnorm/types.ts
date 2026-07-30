@@ -22,7 +22,8 @@
  * fabricates** an `RXCUI` or a relationship absent from the loaded data — an absent concept is a typed
  * {@link RxNormUnknown}, an unresolvable NDC a typed {@link NdcUnmapped}, never a guess.
  *
- * **No RxNorm content is bundled**: the engine ships the graph *machinery*; the caller
+ * **No RxNorm release is bundled**: the engine ships the graph *machinery*, and RxNorm's
+ * relationship and term-type *names* (`RELA`, `TERM_TYPES`); the caller
  * supplies the RRF release (the public-domain Current Prescribable Content, or the full BYO
  * release).
  *

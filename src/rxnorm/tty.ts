@@ -1,7 +1,7 @@
 /**
  * The RxNorm **term-type (`TTY`) vocabulary** relevant to the drug graph — the normal-form ladder and
  * the cross-link kinds — encoded as published identity facts (grounded firsthand on the NLM RxNorm
- * Technical Documentation, Appendix 5). **No RxNorm content is bundled**: these are the
+ * Technical Documentation, Appendix 5). **No RxNorm release is bundled**: what ships is these
  * *labels*, not the drug list.
  *
  * The RxNorm normal-form graph runs `IN → SCDC → SCD → SBD` (ingredient → clinical-drug component →

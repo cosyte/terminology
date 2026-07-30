@@ -2,8 +2,8 @@
  * The RxNorm **relationship (`RELA`) vocabulary** and the **direction convention** the drug graph is
  * built on — encoded here as published identity facts (like the code-system OID↔URI facts in
  * {@link ../systems/registry}), grounded firsthand on the NLM RxNorm Technical Documentation and the
- * UMLS Reference Manual. **No RxNorm content is bundled** — only the relationship *names* and the
- * *rule* for reading a row's direction.
+ * UMLS Reference Manual. **No RxNorm release is bundled** — what ships is the relationship *names*
+ * and the *rule* for reading a row's direction.
  *
  * **The direction rule (a documented medication-safety trap).** From the
  * RxNorm Technical Documentation (§12.7) and the UMLS Reference Manual, verbatim: *"the direction of

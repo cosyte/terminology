@@ -144,8 +144,8 @@ function parseRf2(content: string): {
  *
  * Liberal on load: a structurally unusable RF2 *row* is skipped and surfaced as a warning; only an
  * unusable *source* (empty content, header missing required columns) is a fatal
- * {@link FATAL_CODES.TERM_CROSSWALK_MALFORMED}. Ships **no** SNOMED content — the rows are the
- * caller's, under their own licence.
+ * {@link FATAL_CODES.TERM_CROSSWALK_MALFORMED}. Ships **no** SNOMED CT release or refset — the rows
+ * are the caller's, under their own licence.
  *
  * @param input - Structured `rows`, or a raw RF2 extended-map refset `content`.
  * @returns The immutable {@link ComplexMap}.

@@ -25,7 +25,11 @@ following, with its copyright:
 - the **SNOMED CT concepts the crosswalk resolver names**, each with its description — the four
   map-category concepts a complex-map row's `mapCategoryId` refers to, and the two gender findings a
   gender `IFA` rule is written against. SNOMED CT is copyright © International Health Terminology
-  Standards Development Organisation; no SNOMED CT refset or release is bundled.
+  Standards Development Organisation; no SNOMED CT refset or release is bundled;
+- **RxNorm's relationship and term-type names** the drug-graph API is written against (`RELA`,
+  `RELA_INVERSE`, `TERM_TYPES`), each with its name as published by the U.S. National Library of
+  Medicine, which produces RxNorm. Individual RxNorm identifiers also appear in the API documentation
+  examples, with their RxNorm names and term types. No RxNorm release is bundled.
 
 That states what is distributed and under whose copyright. It is not legal advice.
 

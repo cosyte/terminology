@@ -235,7 +235,7 @@ stalled.mapped && stalled.groups[0]?.outcome; // => "context-required"
 
 RxNorm's drug graph — ingredient → clinical drug → branded drug, with brand and dose-form cross-links
 — is loaded from a **bring-your-own** RxNorm RRF release (`RXNCONSO` + `RXNREL`, and `RXNSAT` for
-NDCs; the engine bundles **no** RxNorm content). Relationships are read in RxNorm's documented
+NDCs; the engine bundles **no** RxNorm release). Relationships are read in RxNorm's documented
 direction (`RELA` is the relationship the **second** `RXCUI` has to the **first**), and navigation
 follows only **authored** edges — the engine never synthesizes an inverse.
 

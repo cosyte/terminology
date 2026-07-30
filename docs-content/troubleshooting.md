@@ -92,7 +92,7 @@ context** can be PHI: never log the surrounding record.
 - **Intensional filters are best-effort** — `is-a` / `descendent-of` / `is-not-a` / `=` / `in` /
   `not-in` / `exists` are implemented; `regex` / `generalizes` surface as `TERM_VALUESET_CANNOT_EXPAND`.
 - **RxNorm graph is BYO** — `loadRxNormGraph` operates over the RxNorm RRF release you supply; the
-  engine bundles **no** RxNorm content. NDC↔RXCUI resolution is release-scoped and carries the as-of
+  engine bundles **no** RxNorm release. NDC↔RXCUI resolution is release-scoped and carries the as-of
   release; obsolete/alien NDC statuses come from RxNav NDC-history data (a differential source), not the
   base RRF concept files, and are never fabricated. Approximate matching is opt-in and always labeled.
   An `RXCUI` whose supplied atoms could not establish a term type is left out of the graph and
@@ -100,12 +100,16 @@ context** can be PHI: never log the surrounding record.
   `TTY`; check that list if a concept you expected reads as `TERM_RXNORM_UNKNOWN_RXCUI`.
 - **No bundled code-system release** — every code-system release is bring-your-own, including the
   content packs (RxNorm Prescribable, ICD-10-CM) and SNOMED CT / CPT / LOINC / UMLS / VSAC.
-- **What *is* bundled**: the UCUM unit table (`ucum-essence.xml` v2.2, copyright © Regenstrief
+- **What *is* bundled** includes the UCUM unit table (`ucum-essence.xml` v2.2, copyright © Regenstrief
   Institute, Inc., reproduced verbatim under [https://ucum.org/license](https://ucum.org/license); notice at
-  `vendor/ucum/NOTICE.md`, which ships with the package), the code-system identity pairings, and the
+  `vendor/ucum/NOTICE.md`, which ships with the package), the code-system identity pairings, the
   SNOMED CT concepts the crosswalk resolver names — the map-category concepts and the two gender
   findings (SNOMED CT is copyright © International Health Terminology Standards Development
-  Organisation). So the UCUM operations and `resolveSystem` work with no release at all; `$lookup`,
+  Organisation), and RxNorm's relationship and term-type names (`RELA`, `RELA_INVERSE`,
+  `TERM_TYPES`), published by the U.S. National Library of Medicine. Individual SNOMED CT, ICD-10-CM
+  and RxNorm identifiers also appear in the API documentation examples. The full list, with its
+  copyright, is in the package's `LICENSE`. So the UCUM operations and `resolveSystem` work with no
+  release at all; `$lookup`,
   `$validate-code`, `$expand`, `$translate` and the crosswalk and RxNorm resolvers need one you
   supply.
 
