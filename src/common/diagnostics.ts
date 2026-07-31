@@ -23,17 +23,21 @@
  * that reaches a log or an error reporter without the consumer choosing to put it there.
  *
  * **▶ THE CLAIM IS ABOUT THE MESSAGE FIELDS, NOT ABOUT THE OBJECTS. DO NOT SHORTEN IT TO "A
- * DIAGNOSTIC IS SAFE TO LOG".** The safe strings are exactly `TerminologyError.message` / `.stack`,
- * `LoadWarning.detail`, `GemLoadWarning.detail`, `ComplexMapLoadWarning.detail`,
- * `RxNormLoadWarning.detail`, `ExpansionDiagnostic.detail` and `UcumValidation.reason`, plus the
- * loci beside them. The **objects** these codes appear on are a different matter: a
- * {@link DIAGNOSTIC_CODES} value rides on a first-class *result* the caller inspects, and several of
- * those carry the caller's own query verbatim on a named field — `LookupUnknown.input`,
- * `UnknownSystem.input`, `TranslateUnmapped.source`, `GemUnmapped.source`, `RxNormUnknown.rxcui`,
- * `NdcUnmapped.ndc`, `ValueSetMembership.coding`. That query is the one genuinely patient-derived
- * input this engine takes, so `JSON.stringify(lookupResult)` into a log is a PHI decision, and
- * `String(err)` is not. Log the `code` and the locus; log a value only if you would log the code you
- * passed in.
+ * DIAGNOSTIC IS SAFE TO LOG".** The safe strings are the *message* fields:
+ * `TerminologyError.message` / `.stack`, `LoadWarning.detail`, `GemLoadWarning.detail`,
+ * `ComplexMapLoadWarning.detail`, `RxNormLoadWarning.detail`, `ExpansionDiagnostic.detail`,
+ * `ParseFailure.reason` and `UcumValidation.reason`, plus the loci beside them.
+ *
+ * The **objects** these codes appear on are a different matter: a {@link DIAGNOSTIC_CODES} value
+ * rides on a first-class *result* the caller inspects, and many of those carry the caller's own
+ * query verbatim on a named field — among them `LookupUnknown.input`, `LookupResult.code`,
+ * `UnknownSystem.input`, `TranslateUnmapped.source`, `CrosswalkUnmapped.source`,
+ * `CrosswalkNoMap.source`, `ComplexMapContextRequired.rules`, `RxNormUnknown.rxcui`,
+ * `RxNormRelated.predicates`, `NdcUnmapped.ndc` and `ValueSetMembership.coding`. Read that list as
+ * illustrative, not closed: **assume any result field may hold what you passed in.** That query is
+ * the one genuinely patient-derived input this engine takes, so `JSON.stringify(lookupResult)` into
+ * a log is a PHI decision, and `String(err)` is not. Log the `code` and the locus; log a value only
+ * if you would log the code you passed in.
  *
  * Those echoes are deliberate and are not going away: they are how a never-fabricate outcome says
  * *which* thing it refused to guess, they are the caller's own data returned to the caller, and

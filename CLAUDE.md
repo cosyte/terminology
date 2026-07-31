@@ -235,9 +235,9 @@ a summary.
   **redundant rather than load-bearing** (every locus here already rides on a diagnostic); it exists
   so the classification of every name-like string on every exported model type is executed and
   reviewable. `Property.code` and `RxNormEdge.predicate` are payload on a checkable test — an HL7 v2
-  `segment.type` is spec-bounded to three characters so bounding it discards nothing, while these
-  have no length bound and are the keys the engine and the caller match on, so truncating either
-  turns a hit into a miss. **Re-derive that before trusting it, and check the dependency graph
+  `segment.type` is spec-bounded to three characters so bounding it discards nothing, while a FHIR
+  `code` has no `maxLength` and RxNorm's `RELA` is an open vocabulary, and both are the keys the
+  engine and the caller match on, so truncating either turns a hit into a miss. **Re-derive that before trusting it, and check the dependency graph
   rather than recalling it**: a draft named `@cosyte/transform` as the downstream, which declares no
   dependency on this package at all; `@cosyte/cli` is the only one that does.
   **Results are the other half of the contract and are deliberately NOT covered**: `lookup`,

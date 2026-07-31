@@ -78,8 +78,9 @@ this file is maintained by hand (Changesets handles the version bump and publish
   every exported model type is executed and reviewable instead of collapsing to a `[]` a reader has
   to trust. `Property.code` and `RxNormEdge.predicate` are classified as payload on a checkable
   test: an HL7 v2 `segment.type` is spec-bounded to three characters, so bounding it discards
-  nothing, while a FHIR `property.code` and an RxNorm `RELA` have no length bound and are the keys
-  the engine and the caller match on, so truncating either turns a hit into a miss. The residual is
+  nothing, while a FHIR `code` carries no `maxLength` and RxNorm's `RELA` is an open vocabulary, and
+  both are the keys the engine and the caller match on, so truncating either turns a hit into a
+  miss. The residual is
   named: that protects the lookup, not a future consumer who builds a locus out of one.
   `@cosyte/cli` is today the only package in the ecosystem that depends on this one, and it uses
   `loadConceptMap` + `translate` only.

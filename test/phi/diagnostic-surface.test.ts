@@ -110,7 +110,8 @@ const probe = (run: () => unknown): Probe => ({ run });
  * thrown half by the runner itself, the surfaced half by this selector.
  *
  * A typed non-throwing outcome that carries a stable `code` (`LookupUnknown`, `TranslateUnmapped`,
- * `GemUnmapped`, `RxNormUnknown`, `NdcUnmapped`, an invalid `UcumValidation`) is **also** returned
+ * `CrosswalkUnmapped`, `CrosswalkNoMap`, `RxNormUnknown`, `NdcUnmapped`, an invalid
+ * `UcumValidation`) is **also** returned
  * here when the probe produced one, so nothing that carries a diagnostic code escapes the sweep.
  */
 function collectDiagnostics(parsed: unknown): readonly unknown[] {
@@ -150,8 +151,9 @@ function collectDiagnostics(parsed: unknown): readonly unknown[] {
  * a test that is checkable rather than on taste: **is the field spec-bounded?** An HL7 v2
  * `segment.type` is three characters by the standard, so an unbounded one is already malformed and
  * bounding it discards nothing. A FHIR `CodeSystem.concept.property.code` is a `code` primitive with
- * no length bound, and an RxNorm `RELA` is an open vocabulary; both are the keys the engine and the
- * caller match on (`props.find((p) => p.code === "status")` in `src/codesystem/fhir.ts`,
+ * no length bound, and an RxNorm `RELA` is an **open vocabulary** — the vocabulary is the
+ * load-bearing half of that clause, since the RRF column's own width is not verified here; both are
+ * the keys the engine and the caller match on (`props.find((p) => p.code === "status")` in `src/codesystem/fhir.ts`,
  * `matchesFilter` in `src/valueset/filters.ts`, `predicates.has(edge.predicate)` in
  * `src/rxnorm/navigate.ts`). Truncating either silently turns a hit into a miss, which is
  * fabrication — the thing this package exists not to do.
