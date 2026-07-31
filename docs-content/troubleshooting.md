@@ -73,16 +73,19 @@ the whole value set.
 
 ## Diagnostics and logs
 
-Diagnostic and error `message` fields are **value-free by construction**: none is built from a value
-parameter, so nothing you configured and nothing your release or resource contained reaches a
-`message`, a `detail`, or an `err.stack`, at any length. Positional context is a line number, an
-index path into your own resource, or a fixed token — never a URI or a column name. A diagnostic is
-safe to log.
+The `message`, `detail` and `reason` **fields** are **value-free by construction**: none is built
+from a value parameter, so nothing you configured and nothing your release or resource contained
+reaches one, or an `err.stack`, at any length. The locus beside them is a line number, an index path
+into your own resource, or a fixed token — never a URI or a column name. `String(err)` is safe.
 
-A **result** is not a diagnostic. `lookup`, `translate`, `applyGem`, `resolveNdc` and friends echo
-the code you asked about back on their `unknown`/`unmapped` outcomes, deliberately, and carry the
-displays and canonical URIs from the release you loaded. A **code in patient context** can be PHI:
-log the `code`, not the whole result, and never the surrounding record.
+**The objects those codes ride on are not the same thing, and this is the part to get right.** A
+`TERM_CODE_UNKNOWN`, `TERM_TRANSLATE_UNMAPPED`, `TERM_CROSSWALK_UNMAPPED`, `TERM_RXNORM_UNKNOWN_RXCUI`
+or `TERM_RXNORM_NDC_UNMAPPED` outcome names **what you asked about** — `input`, `source`, `rxcui`,
+`ndc`, `coding` — because that is how a never-fabricate answer says which thing it refused to guess.
+A loaded model likewise carries the displays and canonical URIs from your release. So
+`JSON.stringify(result)` into a log is a decision about PHI, and a **code in patient context** can be
+PHI: log the `code` and the locus, log a value only if you would log the code you passed in, and
+never the surrounding record.
 
 ## Known limitations (this release)
 

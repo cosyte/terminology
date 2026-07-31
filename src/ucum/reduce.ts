@@ -60,9 +60,12 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
   const cached = atomMemo.get(atom.code);
   if (cached) return cached;
   /* v8 ignore start -- defensive: the vendored UCUM essence is acyclic and every derived atom has a
-     parseable definition; these guard against a corrupt table, unreachable with the shipped data. */
+     parseable definition; these guard against a corrupt table, unreachable with the shipped data.
+     The messages name no atom: `reduce` is exported and takes a caller-built `UnitNode`, so a forged
+     node could otherwise put a caller string of any length into an `Error.message` and `err.stack`.
+     A value-free message costs nothing here, since the condition is unreachable with real data. */
   if (inProgress.has(atom.code)) {
-    throw new Error(`cyclic UCUM atom definition for '${atom.code}'`);
+    throw new Error("cyclic UCUM atom definition in the unit table");
   }
   if (!atom.value) {
     atomMemo.set(atom.code, DIMENSIONLESS);
@@ -73,7 +76,7 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
   const parsed = parseUcum(atom.value.unit);
   if (!parsed.ok) {
     inProgress.delete(atom.code);
-    throw new Error(`unparseable UCUM essence definition for '${atom.code}'`);
+    throw new Error("unparseable UCUM essence definition in the unit table");
   }
   /* v8 ignore stop */
   const reduced = linearReduceTerm(parsed.node);

@@ -26,11 +26,23 @@
  * The audit's single distinguishing property applies mechanically: **does the diagnostic factory
  * take a value parameter at all?** After this slice, none of them does.
  *
- * ## Reach
+ * ## Reach, and exactly how much it proves
  *
- * Every slot names the diagnostic or fatal code it must produce; the runner fails a slot whose code
- * never appeared, which is what stops this suite from going green over space it cannot reach. No
- * slot declares `expectCode: null`.
+ * Every slot names the diagnostic or fatal code it must produce, no slot declares `expectCode: null`,
+ * and each slot runs in its own `it` so a second leak cannot hide behind the first.
+ *
+ * **But `expectCode` proves the branch ran, not that the marker is what ran it, and the slots split
+ * two ways.** In a *marker-driven* slot the declared code is raised by the very element the marker
+ * sits in (a short CSV row that IS the marker, a FHIR concept whose only field is the marked
+ * `display`, an unmodelled `TTY`, a malformed GEM line). In a *model-only* slot the marker lands
+ * somewhere that raises nothing on its own — a configured property name, a `CodeSystem.url`, a
+ * `RELA` — and the fixture pairs it with a second, marker-free malformed element so a diagnostic
+ * exists to sweep. For those the `expectCode` shows the collection is populated and swept; what
+ * covers the marker is the sweep of the whole rendered result, not the code assertion. A leak
+ * planted in a branch a model-only slot names but does not enter would not be caught by that slot.
+ * That is a real limit of the technique, not a wording problem, so it is written here rather than
+ * implied away — and it is why the marker-driven fixtures are preferred wherever the branch can be
+ * reached by the marker itself.
  */
 
 import { assertNoDiagnosticPhiLeak, type DiagnosticSlot } from "@cosyte/test-utils";
@@ -45,6 +57,7 @@ import {
   invertGem,
   loadComplexMap,
   loadConceptMap,
+  loadCodeSystem,
   loadGems,
   loadRxNormGraph,
   loadValueSet,
@@ -57,7 +70,9 @@ import {
   resolveSystem,
   TerminologyError,
   translate,
+  validateCodeInValueSet,
   validateUcum,
+  type CodeSystem,
   type Concept,
   type GemDirection,
 } from "../../src/index.js";
@@ -109,39 +124,82 @@ function collectDiagnostics(parsed: unknown): readonly unknown[] {
 }
 
 /**
- * Every **name-like** string on every exported model type, classified. A structural identifier is a
- * string a downstream package would interpolate to describe a *location* — the `hl7`/`deid` shape,
- * where `segment.type` stayed unbounded on the model and `deid` built a manifest locus out of it.
+ * Every **name-like** string on every exported model type, classified, and the loci the model does
+ * carry. A structural identifier here means what the shared kit means: a string a **downstream**
+ * package would interpolate to describe a *location* — the `hl7`/`deid` shape, where `segment.type`
+ * stayed unbounded on the model and `deid` built a manifest locus out of it.
  *
  * The enumeration, walked over the `types.ts` files under `src/` rather than recalled:
  *
  * | Field | Classification |
  * |---|---|
- * | `LoadWarning.line`, `GemLoadWarning.line`, `ComplexMapLoadWarning.line`, `RxNormLoadWarning.line` | **locus** — an integer index, unbounded-free by construction |
- * | `RxNormLoadWarning.file` | **locus** — a closed set (`RXNCONSO`/`RXNREL`/`RXNSAT`) |
- * | `ExpansionDiagnostic.path` | **locus** — a `compose.include[2]`-style index path, built from integers |
- * | `Property.code` | payload — the lookup key a caller matches on (`props.find(p => p.code === "status")`, and the ValueSet property filter). Truncating it would silently break a lookup, i.e. fabricate. |
- * | `RxNormEdge.predicate` | payload — the `RELA` name navigation matches on (`predicates.has(edge.predicate)`). Same argument. |
- * | `CodeSystem.url` / `.version` / `.name`, `ValueSet.url` / `.version` / `.name` | payload — the release's canonical identity, returned verbatim by `$lookup` as `system`/`version`. A bounded canonical URI is a wrong one. |
+ * | `LoadWarning.line`, `GemLoadWarning.line`, `ComplexMapLoadWarning.line`, `RxNormLoadWarning.line` | **locus** — an integer index, unbounded-free by construction. (FHIR concept warnings hardcode `line: 0`: a JSON concept is not line-addressable, so it is a placeholder, not a position.) |
+ * | `RxNormLoadWarning.file` | **locus** — a closed set (`RXNCONSO`/`RXNREL`/`RXNSAT`); returned below |
+ * | `ExpansionDiagnostic.path` | **locus** — a `compose.include[2]`-style index path built from integers; returned below |
+ * | `Property.code` | payload — see the note under the table |
+ * | `RxNormEdge.predicate` | payload — see the note under the table |
+ * | `CodeSystem.url` / `.version`, `ValueSet.url` / `.version` | payload — the release's canonical identity. `$lookup` returns them verbatim as `system` / `version`, and a bounded canonical URI is a wrong one. |
+ * | `CodeSystem.name` / `ValueSet.name` | payload — the release's own human-readable name, carried through from the caller's resource for the caller's own display. Nothing in `src/` reads it (it is written and returned, never matched on), and no diagnostic is built from it. |
  * | `ConceptStatus.raw` | payload — the steward's own status token, carried verbatim as the evidence for the normalized `activity`. |
  * | `Concept.code` / `.display` / `.definition`, `Property.value`, `RxNormConcept.name` | payload — the answer. |
  * | `RxNormConcept.tty`, `GemMap.direction`, `ConceptStatus.activity` | closed unions, validated on load |
- * | `MapProvenance.sourceSystem` / `.targetSystem` / `.mapUrl` | payload — the map's provenance, returned on matched *and* unmapped results alike; see the boundary pin below |
+ * | `MapProvenance.sourceSystem` / `.targetSystem` / `.conceptMapUrl` | payload — the map's provenance, returned on matched *and* unmapped results alike; see the boundary pin at the bottom of this file |
  *
- * **Every locus in this package is already an integer index or a closed-set token**, and every
- * name-like string is a lookup key the caller must be able to match byte-for-byte. So the returned
- * array is empty *by construction*, not by omission — and the classification above is the thing to
- * review, not the `[]`.
+ * **`Property.code` and `RxNormEdge.predicate` are the two rows to argue with**, because they are
+ * document-derived name-like strings, which is the audited leak shape. They are filed as payload on
+ * a test that is checkable rather than on taste: **is the field spec-bounded?** An HL7 v2
+ * `segment.type` is three characters by the standard, so an unbounded one is already malformed and
+ * bounding it discards nothing. A FHIR `CodeSystem.concept.property.code` is a `code` primitive with
+ * no length bound, and an RxNorm `RELA` is an open vocabulary; both are the keys the engine and the
+ * caller match on (`props.find((p) => p.code === "status")` in `src/codesystem/fhir.ts`,
+ * `matchesFilter` in `src/valueset/filters.ts`, `predicates.has(edge.predicate)` in
+ * `src/rxnorm/navigate.ts`). Truncating either silently turns a hit into a miss, which is
+ * fabrication — the thing this package exists not to do.
  *
- * The one downstream that reads this model is `@cosyte/transform`, whose diagnostics come solely
- * from a frozen `ISSUE_REGISTRY` with no value parameter and which contains zero `throw new` in
- * `src/`, so there is no `deid`-shaped consumer building a locus out of these fields today.
+ * **The residual, named rather than waved away:** that argument protects the *lookup*, not a future
+ * consumer who builds a diagnostic locus by interpolating a `Property.code`. If one appears, the fix
+ * belongs at that consumer, or in a new bounded accessor here — never in a silent truncation of the
+ * key itself. Today no such consumer exists, and that is checked rather than assumed:
+ * **`@cosyte/cli` is the only package in the ecosystem that depends on `@cosyte/terminology`**
+ * (`cli/package.json`; `cli/src/commands/map-codes.ts` imports `loadConceptMap` + `translate` and
+ * touches neither field). `@cosyte/transform` declares **no** dependency on this package at all —
+ * an earlier draft of this comment said it was the downstream, which was simply wrong, and a
+ * classification whose evidence is wrong is not a classification.
+ *
+ * So the selector returns the model's **actual** loci — which are already integers and closed-set
+ * tokens — rather than a bare `[]`. There is no unbounded locus to return, and the table above is
+ * the thing to review, not the result.
+ *
+ * **Be clear about what that buys: nothing the diagnostic sweep does not already cover.** Every
+ * locus this engine has rides on a diagnostic, so these strings are swept twice, and this selector
+ * is redundant by design rather than load-bearing. It is here so the enumeration is executed and
+ * visible in review instead of collapsing to a `[]` a reader has to take on trust.
  */
-function collectModelIdentifiers(): readonly string[] {
-  return [];
+function collectModelIdentifiers(parsed: unknown): readonly string[] {
+  const out: string[] = [];
+  if (typeof parsed !== "object" || parsed === null) return out;
+  const rec = parsed as Record<string, unknown>;
+  for (const key of ["warnings", "diagnostics"]) {
+    const list = rec[key];
+    if (!Array.isArray(list)) continue;
+    for (const entry of list as Record<string, unknown>[]) {
+      if (typeof entry["file"] === "string") out.push(entry["file"]);
+      if (typeof entry["path"] === "string") out.push(entry["path"]);
+    }
+  }
+  return out;
 }
 
 // ── Fixtures ────────────────────────────────────────────────────────────────────────────────────
+
+/** An empty loaded code system, so a membership probe reaches the filter branch rather than the
+ * "code system not supplied" one before it. */
+function emptyCodeSystem(): CodeSystem {
+  return loadCodeSystem({
+    format: "fhir",
+    resource: { resourceType: "CodeSystem", url: "http://example.org/cs", concept: [] },
+  });
+}
 
 const CSV_HEADER = "CODE,NAME,STATUS,EXTRA";
 const CSV_ROW = "2160-0,Creatinine,ACTIVE,x";
@@ -233,7 +291,7 @@ function rf2Row(over: { source?: string; advice?: string; category?: string } = 
  * The reviewed size of the slot table. It is asserted, so a slot cannot be dropped silently while
  * the suite still reports green.
  */
-const SLOT_COUNT = 44;
+const SLOT_COUNT = 52;
 
 const slots: readonly DiagnosticSlot<Probe>[] = [
   // ── RFC-4180 CSV reader: the caller-supplied column config ───────────────────────────────────
@@ -448,15 +506,14 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
     expectCode: DIAGNOSTIC_CODES.TERM_FHIR_CONCEPT_MALFORMED,
   },
   {
+    // MARKER-DRIVEN: the marker-bearing concept is itself the one missing its `code`, so the
+    // declared code is raised by the element the marker is in, not by a paired clean element.
     name: "CodeSystem.concept[].display (document-derived)",
     plant: (m) =>
       probe(() =>
         parseFhirCodeSystem({
           format: "fhir",
-          resource: {
-            resourceType: "CodeSystem",
-            concept: [{ code: "A", display: m }, { display: "no code" }],
-          },
+          resource: { resourceType: "CodeSystem", concept: [{ display: m }] },
         }),
       ),
     expectCode: DIAGNOSTIC_CODES.TERM_FHIR_CONCEPT_MALFORMED,
@@ -684,6 +741,155 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
     expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
   },
 
+  // ── ValueSet $validate-code (membership) ─────────────────────────────────────────────────────
+  //
+  // `src/valueset/validate.ts` is a SECOND, PRIVATE COPY of the diagnostic factories: its own
+  // `cannotExpand`, its own `underPath`, six diagnostic-producing branches. Covering `expand` and
+  // not `validateCodeInValueSet` left every one of them unswept, and a planted echo in
+  // `validate.ts` passed the gate green. Every branch below is reached through the membership path
+  // specifically, not through expansion.
+  {
+    // The queried coding carries NO system: `matchComponent` short-circuits a system mismatch into
+    // a definite non-match before raising anything, so a marker in the query would hide the branch
+    // (and would be swept as the caller's own payload echo besides).
+    name: "validateCodeInValueSet: include[].system, code system not supplied (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: {
+              include: [{ system: m, filter: [{ property: "p", op: "is-a", value: "x" }] }],
+            },
+          }),
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    name: "validateCodeInValueSet: include[].filter[].op, unsupported operator (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { system: "http://example.org/cs", code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: {
+              include: [
+                { system: "http://example.org/cs", filter: [{ property: "p", op: m, value: "v" }] },
+              ],
+            },
+          }),
+          { codeSystems: new Map([["http://example.org/cs", emptyCodeSystem()]]) },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // `loadValueSet` refuses a filter component with no `system` (TERM_VALUESET_MALFORMED), so this
+    // branch of `matchComponent` is reachable only from a hand-built `ValueSet`, which the exported
+    // type permits. Built directly rather than declared unreachable.
+    name: "validateCodeInValueSet: include[].filter[] without a 'system' (hand-built ValueSet)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          {
+            compose: {
+              include: [{ filter: [{ property: m, op: "is-a", value: m }] }],
+              exclude: [],
+            },
+          },
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    name: "validateCodeInValueSet: include[].valueSet[0], reference not supplied (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: { include: [{ valueSet: [m] }] },
+          }),
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    name: "validateCodeInValueSet: ValueSet.url, cyclic reference (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            url: m,
+            compose: { include: [{ valueSet: [m] }] },
+          }),
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // Membership reports a truncated pre-computed expansion as TERM_VALUESET_CANNOT_EXPAND, where
+    // `expand` reports TERM_VALUESET_EXPANSION_TRUNCATED. Pre-existing, and declared as it is.
+    name: "validateCodeInValueSet: ValueSet.url, truncated expansion (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "absent" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            url: m,
+            expansion: { total: 9, contains: [{ code: "a" }] },
+          }),
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    name: "validateCodeInValueSet: expansion.contains[].code (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "absent" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            expansion: { total: 9, contains: [{ code: m }] },
+          }),
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    name: "validateCodeInValueSet: compose.exclude[].system, code system not supplied (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: {
+              include: [{ system: "http://example.org/cs", concept: [{ code: "dog" }] }],
+              exclude: [{ system: m, filter: [{ property: "p", op: "is-a", value: "x" }] }],
+            },
+          }),
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+
   // ── CMS GEM crosswalk ────────────────────────────────────────────────────────────────────────
   {
     name: "GemSource.content line, skipped malformed row (document-derived)",
@@ -852,6 +1058,16 @@ describe("PHI: the payload boundary is exactly the caller's own query", () => {
       code: "TERM_RXNORM_NDC_UNMAPPED",
       ndc: marker,
     });
+  });
+
+  it("validateCodeInValueSet echoes the queried coding only in `coding`", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      expansion: { total: 9, contains: [{ code: "a" }] },
+    });
+    const r = validateCodeInValueSet({ code: marker }, vs, {});
+    expect(r.undetermined).toBe(true);
+    expect(JSON.stringify(r).split(marker).length - 1).toBe(1);
   });
 
   it("validateUcum never echoes the unit expression at all", () => {

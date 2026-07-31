@@ -33,7 +33,14 @@ function cannotExpand(detail: string, path?: string): ExpansionDiagnostic {
 
 /**
  * Re-root a diagnostic raised inside a *referenced* value set onto the reference that reached it.
- * Mirrors {@link ../valueset/expand.underPath} so membership and expansion report the same loci.
+ *
+ * The **path format and its construction** are shared with `expand` (index paths over `compose`,
+ * `/`-joined across a reference). The **sets of diagnostics are not**, and must not be read as
+ * identical: membership short-circuits where expansion cannot. A component whose target system
+ * differs is a definite non-match here before any diagnostic is raised, an unresolvable `exclude`
+ * that cannot change a decided verdict yields nothing here while expansion still reports it, and
+ * expansion returns early from a component that names both an unusable `system` and a `valueSet`
+ * where membership goes on to evaluate the reference. Same vocabulary, different question.
  */
 function underPath(d: ExpansionDiagnostic, prefix: string): ExpansionDiagnostic {
   const out: Writable<ExpansionDiagnostic> = { code: d.code, detail: d.detail };

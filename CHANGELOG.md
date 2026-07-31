@@ -14,7 +14,7 @@ this file is maintained by hand (Changesets handles the version bump and publish
 - **Consumer-supplied strings reached `TerminologyError.message`, `err.stack` and an
   `ExpansionDiagnostic`, contradicting this package's own "value-free by construction" claim**
   (`PHI-WARNING-MESSAGE-LEAK`). Three sites, found by binding
-  `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils@0.0.2` to a 44-slot table covering every
+  `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils@0.0.2` to a 52-slot table covering every
   consumer-controlled position across the readers and loaders; **9 slots were red on the base
   commit**, and the table was run there first for exactly that reason.
   1. `csv.ts` `requireHeader` interpolated the caller's configured column name into the
@@ -34,9 +34,12 @@ this file is maintained by hand (Changesets handles the version bump and publish
      recorded `terminology` as "one site, a CSV column name".** It is the only one of the three
      that is _document_-derived rather than caller-configuration. **Breaking:** the field is
      replaced by `path`, a value-free index locus (`compose.include[2]`,
-     `compose.include[0].valueSet[1]`, `expansion`), built in both `expand.ts` and `validate.ts` so
-     membership and expansion report the same loci, and prefixed with the reference that reached it
-     when the diagnostic comes from a referenced value set. Not a truncation: an index path is
+     `compose.include[0].valueSet[1]`, `expansion`), built the same way in both `expand.ts` and
+     `validate.ts` so a locus means the same thing in each, and prefixed with the reference that
+     reached it when the diagnostic comes from a referenced value set. The two do **not** always
+     emit the same _set_ of diagnostics and the changeset no longer says they do: membership
+     short-circuits on a system mismatch and on an exclude that cannot change a decided verdict,
+     where expansion still has to report the part it could not compute. Not a truncation: an index path is
      strictly more precise than the URI, which cannot distinguish two `include`s over one system.
 
   **Severity is medium-low and stays medium-low.** Sites 1 and 2 echo the caller's own
@@ -65,11 +68,21 @@ this file is maintained by hand (Changesets handles the version bump and publish
   **What the gate proves is narrow, deliberately:** for each declared slot, no verbatim echo of
   four or more bytes of the planted value on any swept surface, and the slot provably reached the
   code it names. It does not prove the absence of a re-encoded echo, an echo under four bytes, or a
-  leak through a slot nobody declared. `getModelIdentifiers` returns `[]` **by construction, not by
-  omission**: the test carries the full classification of every name-like string on every exported
-  model type, and each is either a lookup key the caller must match byte-for-byte (`Property.code`,
-  `RxNormEdge.predicate`) or a locus that is already an integer index or a closed-set token. That
-  classification is the thing to review.
+  leak through a slot nobody declared. Two limits are written into the file rather than implied
+  away. First, `expectCode` shows the branch ran, not that the _marker_ ran it: about half the slots
+  are **model-only** and pair the marker with a second marker-free malformed element so a diagnostic
+  exists to sweep, and for those it is the sweep of the whole rendered result that carries the
+  proof. Second, `getModelIdentifiers` returns the model's real loci — a `RxNormLoadWarning.file`
+  token, an `ExpansionDiagnostic.path` — which are also swept as part of their diagnostic, so it is
+  redundant rather than load-bearing; it exists so the classification of every name-like string on
+  every exported model type is executed and reviewable instead of collapsing to a `[]` a reader has
+  to trust. `Property.code` and `RxNormEdge.predicate` are classified as payload on a checkable
+  test: an HL7 v2 `segment.type` is spec-bounded to three characters, so bounding it discards
+  nothing, while a FHIR `property.code` and an RxNorm `RELA` have no length bound and are the keys
+  the engine and the caller match on, so truncating either turns a hit into a miss. The residual is
+  named: that protects the lookup, not a future consumer who builds a locus out of one.
+  `@cosyte/cli` is today the only package in the ecosystem that depends on this one, and it uses
+  `loadConceptMap` + `translate` only.
 
 - **`LICENSE` was unqualified MIT over a tree that also distributes third-party material**
   (`TERMINOLOGY-LICENSE-THIRD-PARTY`, residuals 1 and 2 of `TERMINOLOGY-RESIDUALS`). The README had

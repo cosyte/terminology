@@ -225,13 +225,21 @@ a summary.
   (`RXNCONSO`/`RXNREL`/`RXNSAT`) — never a URI, a column name, or anything the file supplied. Naming
   the **role** (`the configured 'code' column`) is the substitute for naming the caller's string; do
   not "improve" it back into an echo, and do not settle for truncating one.
-  `test/phi/diagnostic-surface.test.ts` holds this: 44 slots, each naming the code it must reach, so
-  a slot that stops reaching its branch reds instead of passing over dead space. **Add a slot when
+  `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
+  a slot that stops reaching its branch reds instead of passing over dead space. **`src/valueset/`
+  has TWO copies of the diagnostic factories** — `expand.ts` and `validate.ts` each have their own
+  `cannotExpand` and `underPath` — and a first draft of the table covered only `expand`, which let a
+  planted echo in `validate.ts` pass green. Cover both, always. **Add a slot when
   you add a consumer-controlled position**; `SLOT_COUNT` is asserted so the table cannot shrink
-  quietly. Its `getModelIdentifiers` returns `[]` **by construction, not omission** — the file
-  carries the classification of every name-like string on every exported model type, and each is
-  either a lookup key a caller must match byte-for-byte (`Property.code`, `RxNormEdge.predicate`) or
-  a locus already made of integers. Re-derive that classification before you trust the `[]`.
+  quietly. Its `getModelIdentifiers` returns the model's real loci and is
+  **redundant rather than load-bearing** (every locus here already rides on a diagnostic); it exists
+  so the classification of every name-like string on every exported model type is executed and
+  reviewable. `Property.code` and `RxNormEdge.predicate` are payload on a checkable test — an HL7 v2
+  `segment.type` is spec-bounded to three characters so bounding it discards nothing, while these
+  have no length bound and are the keys the engine and the caller match on, so truncating either
+  turns a hit into a miss. **Re-derive that before trusting it, and check the dependency graph
+  rather than recalling it**: a draft named `@cosyte/transform` as the downstream, which declares no
+  dependency on this package at all; `@cosyte/cli` is the only one that does.
   **Results are the other half of the contract and are deliberately NOT covered**: `lookup`,
   `translate`, `applyGem`, `resolveNdc` and `resolveSystem` echo the caller's own query back on their
   typed `unknown`/`unmapped` outcomes, and every loaded model carries the release's URIs and

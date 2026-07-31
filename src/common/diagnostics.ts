@@ -19,15 +19,25 @@
  * Positional context is value-free the same way: a `line` integer, an `ExpansionDiagnostic.path`
  * index path into the caller's own resource (`compose.include[2]`), or a closed-set token
  * (`RXNCONSO` / `RXNREL` / `RXNSAT`) — never a URI, a column name, or a field the file supplied.
- * This matters because a code *in patient context* can be PHI, and a diagnostic is the one surface
+ * This matters because a code *in patient context* can be PHI, and a thrown error is the one surface
  * that reaches a log or an error reporter without the consumer choosing to put it there.
  *
- * **The scope of that claim, stated so it is not read as more:** it covers *diagnostics*, not
- * *results*. The engine's typed outcomes deliberately carry values — the queried code echoed back on
- * an `unmapped`/`unknown` outcome, a release's canonical `url`, a concept's `display`, the steward's
- * raw status token. Those are the answer the caller asked for, they are the caller's own data
- * returned to the caller, and bounding them would mean fabricating. Treat a result object as
- * carrying whatever you put in; treat a diagnostic as safe to log.
+ * **▶ THE CLAIM IS ABOUT THE MESSAGE FIELDS, NOT ABOUT THE OBJECTS. DO NOT SHORTEN IT TO "A
+ * DIAGNOSTIC IS SAFE TO LOG".** The safe strings are exactly `TerminologyError.message` / `.stack`,
+ * `LoadWarning.detail`, `GemLoadWarning.detail`, `ComplexMapLoadWarning.detail`,
+ * `RxNormLoadWarning.detail`, `ExpansionDiagnostic.detail` and `UcumValidation.reason`, plus the
+ * loci beside them. The **objects** these codes appear on are a different matter: a
+ * {@link DIAGNOSTIC_CODES} value rides on a first-class *result* the caller inspects, and several of
+ * those carry the caller's own query verbatim on a named field — `LookupUnknown.input`,
+ * `UnknownSystem.input`, `TranslateUnmapped.source`, `GemUnmapped.source`, `RxNormUnknown.rxcui`,
+ * `NdcUnmapped.ndc`, `ValueSetMembership.coding`. That query is the one genuinely patient-derived
+ * input this engine takes, so `JSON.stringify(lookupResult)` into a log is a PHI decision, and
+ * `String(err)` is not. Log the `code` and the locus; log a value only if you would log the code you
+ * passed in.
+ *
+ * Those echoes are deliberate and are not going away: they are how a never-fabricate outcome says
+ * *which* thing it refused to guess, they are the caller's own data returned to the caller, and
+ * bounding them would mean fabricating a miss.
  *
  * @packageDocumentation
  */
