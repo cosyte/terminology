@@ -207,6 +207,20 @@ has_ingredient IN`). RxNorm authors no such relationship in any release: the ing
   the matcher can see a real autolink, so a green result cannot come from a pattern that matches
   nothing. It reads bytes directly rather than shelling out to `grep`, which this repository has
   already been burned by. Scoped to `docs-content/` only, for the reason above.
+- **The README opens with the Cosyte mark, which follows the reader's color scheme.** A `<picture>`
+  block above the H1 offers a dark-ground tile behind a `prefers-color-scheme: dark` media query and
+  carries the light-ground tile as the inner `<img>`, so on a renderer that honors the switch the
+  mark sits on a ground that matches the page it is read on. This README carried no image at all
+  before, so the block is purely additive: the `# @cosyte/terminology` heading, the blockquote
+  tagline and every section below are unchanged, and because the lockup reads "Cosyte" while the
+  heading reads `@cosyte/terminology`, nothing is duplicated. The failure mode is safe: a renderer
+  that strips `<source>` renders the inner `<img>`, so the worst case is a light-ground mark on a
+  dark page, never a missing image. On the npm package page the `<img>` is hoisted out of its
+  `<picture>` by the anchor wrapper, so the light cut renders there, which is the correct one
+  because npmjs.com has no dark mode. The alt text describes the artwork rather than the package,
+  since it is what a screen reader reads out and what a reader gets when the image fails. Both tile
+  URLs were rechecked before push and returned `200 image/png`. No behaviour, API surface or bundled
+  content changed.
 
 ### Changed
 
