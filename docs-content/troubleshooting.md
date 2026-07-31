@@ -56,7 +56,7 @@ carries `code: "TERM_VALUESET_CANNOT_EXPAND"` and a `diagnostics` list naming ea
 ```ts
 const r = validateCodeInValueSet(coding, valueSet, { codeSystems });
 if (r.undetermined) {
-  r.diagnostics; // each names the code system / value set it could not resolve
+  r.diagnostics; // each carries a stable code and a `path` into your own compose
 }
 ```
 
@@ -67,14 +67,22 @@ membership (a false "not a member" is a clinical error).
 ## `expand` returned `complete: false`
 
 The `contains` set is a **lower bound**, not exhaustive membership — some intensional part could not be
-computed (see above). Read the `diagnostics` for which code system or filter was missing; do **not**
-treat the partial `contains` as the whole value set.
+computed (see above). Read each diagnostic's `path` — `"compose.include[2]"`, `"expansion"` — to
+find the part that did not resolve in your own resource; do **not** treat the partial `contains` as
+the whole value set.
 
 ## Diagnostics and logs
 
-Diagnostic and error `message` fields are **value-free** — they carry a stable code and, at most, a
-code + system + version, never a patient identifier. Still, remember that a **code in patient
-context** can be PHI: never log the surrounding record.
+Diagnostic and error `message` fields are **value-free by construction**: none is built from a value
+parameter, so nothing you configured and nothing your release or resource contained reaches a
+`message`, a `detail`, or an `err.stack`, at any length. Positional context is a line number, an
+index path into your own resource, or a fixed token — never a URI or a column name. A diagnostic is
+safe to log.
+
+A **result** is not a diagnostic. `lookup`, `translate`, `applyGem`, `resolveNdc` and friends echo
+the code you asked about back on their `unknown`/`unmapped` outcomes, deliberately, and carry the
+displays and canonical URIs from the release you loaded. A **code in patient context** can be PHI:
+log the `code`, not the whole result, and never the surrounding record.
 
 ## Known limitations (this release)
 

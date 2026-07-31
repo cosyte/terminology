@@ -242,6 +242,22 @@ export function applyGem(map: GemMap, source: string): GemApplyResult {
 }
 
 /**
+ * The frozen fatal message per authored direction, and the fallback for anything else. A **closed-set
+ * lookup, not an interpolation**: `GemSource.direction` is typed `GemDirection`, but a JavaScript
+ * caller can put any string there, and interpolating it would put an unbounded caller-supplied value
+ * into `TerminologyError.message` and `err.stack`. Naming the direction is worth keeping because it
+ * tells the caller which file to load instead — so it is kept, from a table the engine owns.
+ */
+const NOT_INVERTIBLE_MESSAGE: ReadonlyMap<string, string> = new Map([
+  ["9-to-10", "GEM map (direction 9-to-10) cannot be inverted — load the 10-to-9 GEM file instead"],
+  ["10-to-9", "GEM map (direction 10-to-9) cannot be inverted — load the 9-to-10 GEM file instead"],
+]);
+
+/** The message for a map whose `direction` is not one of the two authored GEM directions. */
+const NOT_INVERTIBLE_UNKNOWN_DIRECTION =
+  "GEM map cannot be inverted — load the reverse GEM file instead";
+
+/**
  * Refuse to invert a directional GEM map. **Always throws** {@link FATAL_CODES.TERM_MAP_NOT_INVERTIBLE}.
  *
  * The never-invert invariant made explicit and discoverable: a forward GEM (9→10) is **not** the
@@ -263,6 +279,6 @@ export function applyGem(map: GemMap, source: string): GemApplyResult {
 export function invertGem(map: GemMap): never {
   throw new TerminologyError(
     FATAL_CODES.TERM_MAP_NOT_INVERTIBLE,
-    `GEM map (direction ${map.direction}) cannot be inverted — load the reverse GEM file instead`,
+    NOT_INVERTIBLE_MESSAGE.get(map.direction) ?? NOT_INVERTIBLE_UNKNOWN_DIRECTION,
   );
 }

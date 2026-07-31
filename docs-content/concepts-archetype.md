@@ -153,8 +153,11 @@ full candidate set (never collapsed to one), and steward advice comments ride th
 Outcomes carry **stable codes** — `DIAGNOSTIC_CODES` (typed, surfaced, non-throwing outcomes like
 `TERM_TRANSLATE_UNMAPPED`) and `FATAL_CODES` (thrown, like `TERM_CONCEPTMAP_MALFORMED`). Consumers
 branch on these, so a code's name is part of the public contract: renaming or removing one is a
-**breaking change**. Diagnostics are **value-free** — a code plus, at most, a code + system +
-version, never a surrounding patient identifier (a code *in patient context* can be PHI).
+**breaking change**. Diagnostics are **value-free by construction**: no diagnostic or fatal message
+is built from a value parameter, and positional context is a line number or an index path into your
+own resource, so nothing you supplied can reach a `message` or an `err.stack`. Results are the
+opposite by design — they carry the values you asked about, and a code *in patient context* can be
+PHI.
 
 ## Immutability
 

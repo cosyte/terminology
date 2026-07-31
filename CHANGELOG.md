@@ -11,6 +11,66 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **Consumer-supplied strings reached `TerminologyError.message`, `err.stack` and an
+  `ExpansionDiagnostic`, contradicting this package's own "value-free by construction" claim**
+  (`PHI-WARNING-MESSAGE-LEAK`). Three sites, found by binding
+  `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils@0.0.2` to a 44-slot table covering every
+  consumer-controlled position across the readers and loaders; **9 slots were red on the base
+  commit**, and the table was run there first for exactly that reason.
+  1. `csv.ts` `requireHeader` interpolated the caller's configured column name into the
+     `TERM_CODESYSTEM_MALFORMED` message. Measured against the published `0.0.5`: a 1,000,000-byte
+     `columns.code` produced a 1,000,063-byte `err.message`, and the same bytes landed in
+     `err.stack`. It now reads the message out of a frozen `MISSING_COLUMN_MESSAGE` table keyed on
+     the column's **role** (`code` / `display` / `status` / `property`) and takes no value
+     parameter. This is the `astm`/`transform` shape: the distinguishing property of every design
+     in the ecosystem audit that does not leak is that its message factory has no value parameter.
+  2. `invertGem` interpolated `GemMap.direction` into the `TERM_MAP_NOT_INVERTIBLE` message.
+     `GemDirection` is a two-value union, but nothing validates it on load and a JavaScript caller
+     can pass anything, so the echo was unbounded in practice. Now a closed-set `Map` lookup with a
+     direction-free fallback; the direction is kept where it is one of the two authored values,
+     because it tells the caller which file to load instead.
+  3. `ExpansionDiagnostic.system` carried the caller's `include.system`, referenced `valueSet` URL,
+     or `ValueSet.url` verbatim. **This site is not in the 2026-07-30 ecosystem audit, which
+     recorded `terminology` as "one site, a CSV column name".** It is the only one of the three
+     that is _document_-derived rather than caller-configuration. **Breaking:** the field is
+     replaced by `path`, a value-free index locus (`compose.include[2]`,
+     `compose.include[0].valueSet[1]`, `expansion`), built in both `expand.ts` and `validate.ts` so
+     membership and expansion report the same loci, and prefixed with the reference that reached it
+     when the diagnostic comes from a referenced value set. Not a truncation: an index path is
+     strictly more precise than the URI, which cannot distinguish two `include`s over one system.
+
+  **Severity is medium-low and stays medium-low.** Sites 1 and 2 echo the caller's own
+  configuration, not a patient's document; site 3 echoes a canonical URI out of reference content.
+  The engine's genuinely patient-derived inputs are its _query_ values (a code off a parsed
+  message, a unit off an observation, an NDC off a prescription, the `PatientContext` age/gender a
+  complex map branches on), and **no query value reaches a message or a stack anywhere**: the
+  engine throws only on an unusable source, never on a query. That is now asserted rather than
+  argued.
+
+  **The `@param` contract this broke** is `TerminologyError`'s own: _"a **value-free** structural
+  description (path + fault; never an input value)"_. It now also tells a caller why, since the
+  string reaches `err.stack`.
+
+  **The "Value-free by construction" claim in `src/common/diagnostics.ts` was checked before being
+  rewritten, and it was false** on two counts: the two messages above echoed arbitrary input, and
+  "at most a code + system + version" described the leaking `ExpansionDiagnostic.system` as though
+  it were the safety property. The new wording states the mechanical fact (no message is built from
+  a value parameter; the only input-derived interpolation left anywhere is a number: a `line`, a
+  column count) and, in the same place, scopes it: it covers **diagnostics**, not **results**,
+  which carry the caller's values by design. `README.md`, `docs-content/troubleshooting.md` and
+  `docs-content/concepts-archetype.md` carried the same "code + system + version" sentence and move
+  with it, as does the `diagnostics` guidance in `troubleshooting.md`, which told readers to read a
+  diagnostic for "which code system was missing" and now points at `path`.
+
+  **What the gate proves is narrow, deliberately:** for each declared slot, no verbatim echo of
+  four or more bytes of the planted value on any swept surface, and the slot provably reached the
+  code it names. It does not prove the absence of a re-encoded echo, an echo under four bytes, or a
+  leak through a slot nobody declared. `getModelIdentifiers` returns `[]` **by construction, not by
+  omission**: the test carries the full classification of every name-like string on every exported
+  model type, and each is either a lookup key the caller must match byte-for-byte (`Property.code`,
+  `RxNormEdge.predicate`) or a locus that is already an integer index or a closed-set token. That
+  classification is the thing to review.
+
 - **`LICENSE` was unqualified MIT over a tree that also distributes third-party material**
   (`TERMINOLOGY-LICENSE-THIRD-PARTY`, residuals 1 and 2 of `TERMINOLOGY-RESIDUALS`). The README had
   already grown a "What is bundled" carve-out; the licence file had not, so the two consumer-facing

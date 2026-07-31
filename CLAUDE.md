@@ -209,6 +209,35 @@ a summary.
   emits spec-clean output).
 - Fatal errors only for unrecoverable structural corruption (Tier-3 codes). Everything else is a
   warning with a stable code + positional context.
+- **NO DIAGNOSTIC FACTORY TAKES A VALUE PARAMETER.** A `TerminologyError` message, a
+  `LoadWarning.detail`, an `ExpansionDiagnostic.detail`, a `ParseFailure.reason`: each is a string
+  literal or an entry in a frozen table keyed on the engine's own vocabulary. The only input-derived
+  thing any of them may interpolate is a **number** (a `line`, a column count). This is the one
+  property that separates every non-leaking design in the ecosystem from every leaking one, and it
+  is mechanical, so apply it mechanically: if you find yourself writing `` `… ${x} …` `` inside a
+  diagnostic and `x` is not a number, stop.
+  Three sites broke it and were fixed on 2026-07-31: `csv.ts` interpolated the caller's configured
+  column name (1,000,000 bytes in → a 1,000,063-byte `err.message`, and the same bytes in
+  `err.stack`), `invertGem` interpolated `GemMap.direction`, and `ExpansionDiagnostic` carried a
+  caller-supplied canonical URI in a `system` field, now the value-free index path `path`. The
+  ecosystem audit recorded only the first; the third was found by the slot table, not by reading.
+  **Positional context is a locus, and a locus is an integer, an index path, or a closed-set token**
+  (`RXNCONSO`/`RXNREL`/`RXNSAT`) — never a URI, a column name, or anything the file supplied. Naming
+  the **role** (`the configured 'code' column`) is the substitute for naming the caller's string; do
+  not "improve" it back into an echo, and do not settle for truncating one.
+  `test/phi/diagnostic-surface.test.ts` holds this: 44 slots, each naming the code it must reach, so
+  a slot that stops reaching its branch reds instead of passing over dead space. **Add a slot when
+  you add a consumer-controlled position**; `SLOT_COUNT` is asserted so the table cannot shrink
+  quietly. Its `getModelIdentifiers` returns `[]` **by construction, not omission** — the file
+  carries the classification of every name-like string on every exported model type, and each is
+  either a lookup key a caller must match byte-for-byte (`Property.code`, `RxNormEdge.predicate`) or
+  a locus already made of integers. Re-derive that classification before you trust the `[]`.
+  **Results are the other half of the contract and are deliberately NOT covered**: `lookup`,
+  `translate`, `applyGem`, `resolveNdc` and `resolveSystem` echo the caller's own query back on their
+  typed `unknown`/`unmapped` outcomes, and every loaded model carries the release's URIs and
+  displays. Bounding those would fabricate. The boundary is pinned at the bottom of the same test
+  file: each echo is exactly the caller's value, in the one named field, and no query value reaches a
+  message or a stack anywhere (the engine throws only on an unusable _source_, never on a query).
 - Coverage: global >= 90% (lines/branches/functions/statements), enforced by `pnpm test:coverage`.
   **Per-directory thresholds now cover every source directory.** `vitest.config.ts` gates `common/`,
   `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/`, `crosswalk/` **and `rxnorm/`**.

@@ -50,16 +50,27 @@ function makeCoding(
   return coding(init);
 }
 
-function cannotExpand(detail: string, system?: string): ExpansionDiagnostic {
+function cannotExpand(detail: string, path?: string): ExpansionDiagnostic {
   const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_CANNOT_EXPAND", detail };
-  if (system !== undefined) d.system = system;
+  if (path !== undefined) d.path = path;
   return Object.freeze(d);
 }
 
-function truncated(detail: string, system?: string): ExpansionDiagnostic {
+function truncated(detail: string, path?: string): ExpansionDiagnostic {
   const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_EXPANSION_TRUNCATED", detail };
-  if (system !== undefined) d.system = system;
+  if (path !== undefined) d.path = path;
   return Object.freeze(d);
+}
+
+/**
+ * Re-root a diagnostic raised inside a *referenced* value set onto the reference that reached it, so
+ * a nested `compose.include[3]` is still navigable from the caller's own resource. Value-free: both
+ * halves are index paths this module built.
+ */
+function underPath(d: ExpansionDiagnostic, prefix: string): ExpansionDiagnostic {
+  const out: Writable<ExpansionDiagnostic> = { code: d.code, detail: d.detail };
+  out.path = d.path === undefined ? prefix : `${prefix}/${d.path}`;
+  return Object.freeze(out);
 }
 
 /** The internal result of expanding a single `include`/`exclude` component: a keyed member map. */
@@ -80,27 +91,29 @@ function expandReferencedValueSets(
   urls: readonly string[],
   ctx: ExpansionContext,
   visited: ReadonlySet<string>,
+  path: string,
 ): ComponentExpansion {
   const diagnostics: ExpansionDiagnostic[] = [];
   let complete = true;
   let acc: Map<string, Coding> | null = null;
-  for (const url of urls) {
+  for (const [i, url] of urls.entries()) {
+    const refPath = `${path}.valueSet[${String(i)}]`;
     if (visited.has(url)) {
-      diagnostics.push(cannotExpand("cyclic value set reference", url));
+      diagnostics.push(cannotExpand("cyclic value set reference", refPath));
       complete = false;
       acc = new Map();
       continue;
     }
     const vs = ctx.valueSets?.get(url);
     if (vs === undefined) {
-      diagnostics.push(cannotExpand("referenced value set not supplied", url));
+      diagnostics.push(cannotExpand("referenced value set not supplied", refPath));
       complete = false;
       acc = new Map();
       continue;
     }
     const exp = expandInternal(vs, ctx, new Set([...visited, url]));
     if (!exp.complete) complete = false;
-    for (const d of exp.diagnostics) diagnostics.push(d);
+    for (const d of exp.diagnostics) diagnostics.push(underPath(d, refPath));
     const members = new Map<string, Coding>();
     for (const c of exp.contains) members.set(codingKey(c.system, c.code), c);
     acc = acc === null ? members : intersectInto(acc, members);
@@ -113,6 +126,7 @@ function expandComponent(
   component: ConceptSetComponent,
   ctx: ExpansionContext,
   visited: ReadonlySet<string>,
+  path: string,
 ): ComponentExpansion {
   const diagnostics: ExpansionDiagnostic[] = [];
   let complete = true;
@@ -134,18 +148,18 @@ function expandComponent(
   } else if (hasFilter || (system !== undefined && !hasVs)) {
     // Intensional filter, or a whole-system include — both need the loaded code system.
     if (system === undefined) {
-      diagnostics.push(cannotExpand("intensional filter without a code system 'system'"));
+      diagnostics.push(cannotExpand("intensional filter without a code system 'system'", path));
       return { members: new Map(), complete: false, diagnostics };
     }
     const cs = ctx.codeSystems?.get(system);
     if (cs === undefined) {
-      diagnostics.push(cannotExpand("code system not supplied for intensional include", system));
+      diagnostics.push(cannotExpand("code system not supplied for intensional include", path));
       return { members: new Map(), complete: false, diagnostics };
     }
     if (hasFilter) {
       const unsupported = unsupportedOps(filter);
       if (unsupported.length > 0) {
-        diagnostics.push(cannotExpand("unsupported filter operator", system));
+        diagnostics.push(cannotExpand("unsupported filter operator", path));
         return { members: new Map(), complete: false, diagnostics };
       }
       const sub = buildSubsumption(cs);
@@ -170,7 +184,7 @@ function expandComponent(
   }
 
   if (hasVs) {
-    const refs = expandReferencedValueSets(valueSet, ctx, visited);
+    const refs = expandReferencedValueSets(valueSet, ctx, visited, path);
     for (const d of refs.diagnostics) diagnostics.push(d);
     if (!refs.complete) complete = false;
     base = base === null ? refs.members : intersectInto(base, refs.members);
@@ -208,7 +222,7 @@ function expandInternal(
     if (vs.expansion.truncated) {
       complete = false;
       diagnostics.push(
-        truncated("pre-computed expansion is incomplete (truncated or too-costly)", vs.url),
+        truncated("pre-computed expansion is incomplete (truncated or too-costly)", "expansion"),
       );
     }
     const out: Writable<ExpandResult> = {
@@ -224,14 +238,14 @@ function expandInternal(
     const included = new Map<string, Coding>();
     const diagnostics: ExpansionDiagnostic[] = [];
     let complete = true;
-    for (const inc of vs.compose.include) {
-      const r = expandComponent(inc, ctx, visited);
+    for (const [i, inc] of vs.compose.include.entries()) {
+      const r = expandComponent(inc, ctx, visited, `compose.include[${String(i)}]`);
       if (!r.complete) complete = false;
       for (const d of r.diagnostics) diagnostics.push(d);
       for (const [k, c] of r.members) if (!included.has(k)) included.set(k, c);
     }
-    for (const exc of vs.compose.exclude) {
-      const r = expandComponent(exc, ctx, visited);
+    for (const [i, exc] of vs.compose.exclude.entries()) {
+      const r = expandComponent(exc, ctx, visited, `compose.exclude[${String(i)}]`);
       for (const d of r.diagnostics) diagnostics.push(d);
       // Remove the members we could prove are excluded.
       for (const k of r.members.keys()) included.delete(k);

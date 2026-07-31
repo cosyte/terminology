@@ -135,6 +135,56 @@ describe("parseCsvSource via loadCodeSystem", () => {
     ).toThrowError(TerminologyError);
   });
 
+  it("names the missing column's ROLE, never the caller's configured column name", () => {
+    const cases: { columns: Parameters<typeof loadCodeSystem>[0]; expected: string }[] = [
+      {
+        columns: {
+          format: "csv",
+          content: "CODE,DISP\n1,2",
+          columns: { code: "NOPE-code", display: "DISP" },
+        },
+        expected: "the configured 'code' column",
+      },
+      {
+        columns: {
+          format: "csv",
+          content: "CODE,DISP\n1,2",
+          columns: { code: "CODE", display: "NOPE-display" },
+        },
+        expected: "the configured 'display' column",
+      },
+      {
+        columns: {
+          format: "csv",
+          content: "CODE,DISP\n1,2",
+          columns: { code: "CODE", display: "DISP", status: "NOPE-status" },
+        },
+        expected: "the configured 'status' column",
+      },
+      {
+        columns: {
+          format: "csv",
+          content: "CODE,DISP\n1,2",
+          columns: { code: "CODE", display: "DISP", properties: ["NOPE-property"] },
+        },
+        expected: "a configured property column",
+      },
+    ];
+    for (const c of cases) {
+      try {
+        loadCodeSystem(c.columns);
+        throw new Error("expected a fatal");
+      } catch (err) {
+        const e = err as TerminologyError;
+        expect(e.code).toBe("TERM_CODESYSTEM_MALFORMED");
+        expect(e.message).toContain(c.expected);
+        // The caller's string reaches neither the message nor the stack.
+        expect(e.message).not.toContain("NOPE-");
+        expect(e.stack ?? "").not.toContain("NOPE-");
+      }
+    }
+  });
+
   it("does not lose adjacent rows on a stray unescaped quote (no silent data loss)", () => {
     const cs = loadCodeSystem({
       format: "csv",

@@ -134,4 +134,26 @@ describe("invertGem — the never-invert refusal is a first-class thrown contrac
       expect((err as TerminologyError).code).toBe("TERM_MAP_NOT_INVERTIBLE");
     }
   });
+
+  it("names the direction from a closed table, never the caller's string", () => {
+    const forward = loadGems({ direction: "9-to-10", content: "0010 A000 00000\n" });
+    expect(() => invertGem(forward)).toThrow("direction 9-to-10");
+    const backward = loadGems({ direction: "10-to-9", content: "A000 0010 00000\n" });
+    expect(() => invertGem(backward)).toThrow("direction 10-to-9");
+
+    // A JS caller can put any string in `direction`; it must never reach the message or the stack.
+    const bogus = loadGems({
+      direction: "NOPE-direction" as never,
+      content: "0010 A000 00000\n",
+    });
+    try {
+      invertGem(bogus);
+      throw new Error("expected a fatal");
+    } catch (err) {
+      const e = err as TerminologyError;
+      expect(e.code).toBe("TERM_MAP_NOT_INVERTIBLE");
+      expect(e.message).toBe("GEM map cannot be inverted — load the reverse GEM file instead");
+      expect(e.stack ?? "").not.toContain("NOPE-");
+    }
+  });
 });

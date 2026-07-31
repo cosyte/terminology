@@ -199,8 +199,11 @@ _names_, listed under [What is bundled](#what-is-bundled).
   **are** bundled are named, with their copyright, under [What is bundled](#what-is-bundled).
 - **Liberal load, conservative assertion.** Malformed input degrades to a typed diagnostic; a 1:many
   mapping returns the full candidate set, never collapsed to one.
-- **Value-free diagnostics.** A diagnostic carries a code + system + version, never patient context —
-  a code _in patient context_ can be PHI.
+- **Value-free diagnostics.** No diagnostic or error `message` is built from a value parameter: each
+  is a literal or a frozen-table entry, and its positional context is a line number or an index path
+  into your own resource (`compose.include[2]`). Nothing you configured, and nothing your release
+  contained, reaches a `message` or an `err.stack` — so a diagnostic is safe to log. A **result** is
+  different: it carries the values you asked about, and a code _in patient context_ can be PHI.
 - **Zero runtime dependencies. Dual ESM + CJS.** Node stdlib only; built with `tsup`, validated with
   `attw`. Immutable by construction (every returned value is deep-frozen).
 

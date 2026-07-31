@@ -8,10 +8,26 @@
  * them, so renaming or removing one is a **breaking change**, and the full set is snapshotted via
  * `sortedCodeSet` (`@cosyte/test-utils`) as a reviewable tripwire.
  *
- * **Value-free by construction.** A diagnostic carries a stable code plus, at most, a
- * code + system + version — **never** a surrounding patient identifier or clinical narrative. A
- * code *in patient context* can be PHI, so messages describe *structure* (a resource
- * path, a code system), never echo arbitrary input *values*.
+ * **Value-free by construction**, and "by construction" is meant literally: no diagnostic or fatal
+ * message in this package is built from a **value parameter**. A {@link TerminologyError} message is
+ * a string literal or an entry in a frozen table keyed on the engine's own vocabulary; a
+ * `LoadWarning.detail` / `ExpansionDiagnostic.detail` is a literal. The only input-derived thing any
+ * of them interpolates is a **number** — a 1-based `line`, a column count. So no string a caller
+ * configured, and no string their release/resource contained, can reach a `message`, a `stack`, or a
+ * `detail`, at any length.
+ *
+ * Positional context is value-free the same way: a `line` integer, an `ExpansionDiagnostic.path`
+ * index path into the caller's own resource (`compose.include[2]`), or a closed-set token
+ * (`RXNCONSO` / `RXNREL` / `RXNSAT`) — never a URI, a column name, or a field the file supplied.
+ * This matters because a code *in patient context* can be PHI, and a diagnostic is the one surface
+ * that reaches a log or an error reporter without the consumer choosing to put it there.
+ *
+ * **The scope of that claim, stated so it is not read as more:** it covers *diagnostics*, not
+ * *results*. The engine's typed outcomes deliberately carry values — the queried code echoed back on
+ * an `unmapped`/`unknown` outcome, a release's canonical `url`, a concept's `display`, the steward's
+ * raw status token. Those are the answer the caller asked for, they are the caller's own data
+ * returned to the caller, and bounding them would mean fabricating. Treat a result object as
+ * carrying whatever you put in; treat a diagnostic as safe to log.
  *
  * @packageDocumentation
  */
@@ -231,8 +247,9 @@ export type FatalCode = (typeof FATAL_CODES)[keyof typeof FATAL_CODES];
  * The engine's typed error. Carries a stable {@link FatalCode} so callers branch on `err.code`
  * without string-matching the message. Thrown only for {@link FATAL_CODES} conditions.
  *
- * The `message` is **value-free**: it names the structural fault (a resource path, a missing
- * field) and never echoes input *values*.
+ * The `message` is **value-free**: it names the structural fault (a resource path, a missing field,
+ * the *role* of a configured column) from a literal or a frozen table, and never echoes an input
+ * value — so it is safe to log, and safe in an `err.stack` that reaches an error reporter.
  *
  * @example
  * ```ts
@@ -252,6 +269,8 @@ export class TerminologyError extends Error {
   /**
    * @param code - The stable {@link FatalCode} describing the fault.
    * @param message - A **value-free** structural description (path + fault; never an input value).
+   *   Pass a literal or a frozen-table entry: this string reaches `err.stack`, so building it by
+   *   interpolating a caller-supplied or document-derived value is how a diagnostic becomes a leak.
    */
   public constructor(code: FatalCode, message: string) {
     super(message);
