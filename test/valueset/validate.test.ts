@@ -180,6 +180,30 @@ describe("validateCodeInValueSet — undetermined (never a fabricated false)", (
     if (r.undetermined) {
       expect(r.code).toBe("TERM_VALUESET_CANNOT_EXPAND");
       expect(r.diagnostics.length).toBeGreaterThan(0);
+      // Membership reports the same value-free index loci as expansion, never the system URI.
+      expect(r.diagnostics.map((d) => d.path)).toStrictEqual(["compose.include[0]"]);
+    }
+  });
+
+  it("locates an undetermined membership by the same index path expansion uses", () => {
+    const inner = loadValueSet({
+      resourceType: "ValueSet",
+      url: "http://inner",
+      compose: { include: [{ system: "http://not-supplied" }] },
+    });
+    const outer = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ valueSet: ["http://inner", "http://absent"] }] },
+    });
+    const r = validateCodeInValueSet({ code: "dog" }, outer, {
+      valueSets: new Map([["http://inner", inner]]),
+    });
+    expect(r.undetermined).toBe(true);
+    if (r.undetermined) {
+      expect(r.diagnostics.map((d) => d.path)).toStrictEqual([
+        "compose.include[0].valueSet[0]/compose.include[0]",
+        "compose.include[0].valueSet[1]",
+      ]);
     }
   });
 

@@ -6,8 +6,13 @@
 published under the Cosyte brand. Open-source (MIT). It is **not a parser** and does **not** mirror the
 parser API: it mirrors the FHIR **Terminology Module** (`$translate`, `$lookup`, `$validate-code`,
 `$expand`, …), operating over **consumer-supplied** FHIR resources. It is a sibling engine consumed the
-way the parsers are — `@cosyte/transform` depends on it (one-way, acyclic); the parsers do not import
-it. The authoritative plan is the meta-repo `operations/roadmaps/terminology.md`.
+way the parsers are — **`@cosyte/cli` is the only package in the org that depends on it** (one-way,
+acyclic), via `loadConceptMap` + `translate` in `map-codes`; the parsers do not import it. This line
+used to say `@cosyte/transform` was the downstream. **It is not, and never was** — `transform`
+declares no dependency on this package in any manifest section, and `ccda`, `synth` and `website`
+mention it only in prose. Re-derive it, do not recall it:
+`grep -l '"@cosyte/terminology"' /workspace/*/package.json`. The authoritative plan is the meta-repo
+`operations/roadmaps/terminology.md`.
 
 **North star:** a developer holds a code off a parsed message and, in one line, canonicalizes its code
 system (`resolveSystem`) or translates it through a supplied ConceptMap (`translate`) — and is
@@ -209,6 +214,86 @@ a summary.
   emits spec-clean output).
 - Fatal errors only for unrecoverable structural corruption (Tier-3 codes). Everything else is a
   warning with a stable code + positional context.
+- **EVERY STRING A DIAGNOSTIC MESSAGE IS BUILT FROM IS OWNED BY THIS ENGINE.** A `TerminologyError`
+  message, a `LoadWarning.detail`, an `ExpansionDiagnostic.detail`, a `ParseFailure.reason`: each is
+  assembled only from a string literal, an entry in a frozen table keyed on the engine's own
+  vocabulary, or a locus this package built (a `line`, a column count, an index path of integers and
+  FHIR field names). Nothing a caller configured and nothing a document contained is ever one of
+  them. This is the one property that separates every non-leaking design in the ecosystem from every
+  leaking one, and it is mechanical, so apply it mechanically: if you find yourself writing
+  `` `… ${x} …` `` inside a diagnostic, `x` must be a number or a string this file's own code
+  produced — never an argument that traces back to the caller or the document.
+  **This rule is about the ARGUMENTS, not the signatures, and an earlier wording got that wrong.**
+  It read "NO DIAGNOSTIC FACTORY TAKES A VALUE PARAMETER … each is a literal or a frozen-table
+  entry", which was flatly false of factories in `src/` that it never touched:
+  `malformed(path, fault)` in `conceptmap/load.ts` and `valueset/load.ts`, and `cannotExpand` /
+  `truncated` / `underPath` in `valueset/` — remembering that `expand.ts` and `validate.ts` each
+  carry their own copy. **Do not write the count down here**: a draft said "four" and the tree has
+  seven. Derive it:
+  `rg -n '^function (malformed|cannotExpand|truncated|underPath)' src/`.
+  Those are safe — every `fault` and `detail` is a literal at the call
+  site, every `path` is index-built — but a guardrail stronger than the code teaches the next reader
+  something untrue and gets "fixed" in the wrong direction. Do not restore the absolute form.
+  Three sites broke it and were fixed on 2026-07-31: `csv.ts` interpolated the caller's configured
+  column name (1,000,000 bytes in → a 1,000,063-byte `err.message`, and the same bytes in
+  `err.stack`), `invertGem` interpolated `GemMap.direction`, and `ExpansionDiagnostic` carried a
+  caller-supplied canonical URI in a `system` field, now the value-free index path `path`. The
+  ecosystem audit recorded only the first; the third was found by the slot table, not by reading.
+  **Positional context is a locus, and a locus is an integer, an index path, or a closed-set token**
+  (`RXNCONSO`/`RXNREL`/`RXNSAT`) — never a URI, a column name, or anything the file supplied. Naming
+  the **role** (`the configured 'code' column`) is the substitute for naming the caller's string; do
+  not "improve" it back into an echo, and do not settle for truncating one.
+  A **fourth** site was found by the refuter after those three: `reduce` is exported, takes a
+  caller-built `UnitNode`, and interpolated a forged atom's `code` into a plain `Error` — a
+  1,000,000-byte code gave a 1,000,042-byte `message` and the same bytes in `err.stack`. It sat under
+  a `/* v8 ignore */` labelled "unreachable with the shipped data" and is now outside that block.
+  **A `v8 ignore` is an assertion about reachability; check it against the exported surface before
+  you trust one — and check the WHOLE block, because the two branches still inside it are reachable
+  too.** `inProgress` and `atomMemo` key on the atom's `code` **string**, and nothing checks that an
+  atom came from the vendored table, so a forged atom whose code collides with a shipped one
+  re-enters the cyclic guard (`reduce` over a forged `mol` defined as `mol` throws it) and a forged
+  atom with no `value` falls through the next branch — which throws nothing; it memoizes
+  dimensionless and returns. A draft of that slice relabelled the block "genuinely unreachable
+  through the public API", which is how a defensible scoped claim ("…with the shipped data") became
+  a wrong absolute one; the scoped form is restored, worded as a coverage exclusion rather than a
+  reachability assertion. Neither branch leaks — the one message in there is a literal — but
+  **do not put an atom back into it.** Pinned now in `test/ucum/reduce.test.ts`.
+  **That no-`value` branch writes to the module-global `atomMemo` BEFORE returning, and that is a
+  live never-fabricate defect, unchanged since `0.0.5` and NOT fixed by that slice** — one exported
+  `reduce()` call with a forged, value-less atom whose `code` collides with a shipped one poisons
+  every later reduction of that atom in the process, so `ucumEqual("mg/L", "mg")` can be made to
+  answer `true`. It is its own item, not a claims fix; do not fold it into a docs slice.
+  `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
+  a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
+  deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,
+  and the table's invariant is that every slot names one. **The slot count is a shrink tripwire, not
+  a coverage claim**; plenty of exported entry points (`parseCsv`, `parseRrfLine`, `parseUcum`,
+  `ucumEqual`, `validateCode`, the `filters.ts` helpers) have no slot. **`src/valueset/`
+  has TWO copies of the diagnostic factories** — `expand.ts` and `validate.ts` each have their own
+  `cannotExpand` and `underPath` — and a first draft of the table covered only `expand`, which let a
+  planted echo in `validate.ts` pass green. Cover both, always. **Add a slot when
+  you add a consumer-controlled position**; `SLOT_COUNT` is asserted so the table cannot shrink
+  quietly. Its `getModelIdentifiers` returns the model's real loci and is
+  **redundant rather than load-bearing** (every locus here already rides on a diagnostic); it exists
+  so the classification of every name-like string on every exported model type is executed and
+  reviewable. `Property.code` and `RxNormEdge.predicate` are payload on a checkable test — an HL7 v2
+  `segment.type` is spec-bounded to three characters so bounding it discards nothing, while a FHIR
+  `code` has no `maxLength` and RxNorm's `RELA` is an open vocabulary, and both are the keys the
+  engine and the caller match on, so truncating either turns a hit into a miss. **Re-derive that before trusting it, and check the dependency graph
+  rather than recalling it**: a draft named `@cosyte/transform` as the downstream, which declares no
+  dependency on this package at all; `@cosyte/cli` is the only one that does.
+  **Results are the other half of the contract and are deliberately NOT covered**: `lookup`,
+  `translate`, `applyGem`, `resolveNdc` and `resolveSystem` echo the caller's own query back on their
+  typed `unknown`/`unmapped` outcomes, and every loaded model carries the release's URIs and
+  displays. Bounding those would fabricate. The boundary is pinned at the bottom of the same test
+  file: each echo is exactly the caller's value, unaltered, and no query value reaches a message or a
+  stack anywhere (the engine throws only on an unusable _source_, never on a query). **It is not one
+  field per echo, and a draft of that sentence said it was.** `translate` returns a coding's `system`
+  in `source.system` **and** in `provenance.sourceSystem`, because `MapProvenance.sourceSystem` is
+  `sourceSystem ?? group?.source` — the caller's query first, the map's own `group.source` only as
+  the fallback. Classify it with the query echoes, never with `.targetSystem` / `.conceptMapUrl`,
+  which really are read off the loaded map. The `translate` pin holds only because its fixture coding
+  carries no `system`; its name says so.
 - Coverage: global >= 90% (lines/branches/functions/statements), enforced by `pnpm test:coverage`.
   **Per-directory thresholds now cover every source directory.** `vitest.config.ts` gates `common/`,
   `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/`, `crosswalk/` **and `rxnorm/`**.

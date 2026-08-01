@@ -155,8 +155,18 @@ export interface ExpansionDiagnostic {
   readonly code: DiagnosticCode;
   /** A **value-free** structural description of the concern (never echoes a patient value). */
   readonly detail: string;
-  /** The code system / value set URI the concern is about (a published identity — not PHI). */
-  readonly system?: string;
+  /**
+   * A **value-free structural locus** into the caller's own resource — `"expansion"`, or a
+   * `compose`-relative index path such as `"compose.include[2]"` or
+   * `"compose.include[0].valueSet[1]"`. A diagnostic raised while expanding a *referenced* value set
+   * is prefixed with the reference that reached it (`"compose.include[0].valueSet[1]/compose.include[3]"`).
+   *
+   * Built entirely from integers and the engine's own field names, so nothing the caller or their
+   * resource supplied can reach it, at any length. It replaces the URI this field used to carry:
+   * a canonical URI is unbounded consumer-supplied text on a diagnostic surface, and an index path
+   * is strictly more precise anyway (two `include`s may name the same system).
+   */
+  readonly path?: string;
 }
 
 /**

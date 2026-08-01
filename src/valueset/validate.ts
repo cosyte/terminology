@@ -25,10 +25,27 @@ import type {
   ValueSetMembership,
 } from "./types.js";
 
-function cannotExpand(detail: string, system?: string): ExpansionDiagnostic {
+function cannotExpand(detail: string, path?: string): ExpansionDiagnostic {
   const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_CANNOT_EXPAND", detail };
-  if (system !== undefined) d.system = system;
+  if (path !== undefined) d.path = path;
   return Object.freeze(d);
+}
+
+/**
+ * Re-root a diagnostic raised inside a *referenced* value set onto the reference that reached it.
+ *
+ * The **path format and its construction** are shared with `expand` (index paths over `compose`,
+ * `/`-joined across a reference). The **sets of diagnostics are not**, and must not be read as
+ * identical: membership short-circuits where expansion cannot. A component whose target system
+ * differs is a definite non-match here before any diagnostic is raised, an unresolvable `exclude`
+ * that cannot change a decided verdict yields nothing here while expansion still reports it, and
+ * expansion returns early from a component that names both an unusable `system` and a `valueSet`
+ * where membership goes on to evaluate the reference. Same vocabulary, different question.
+ */
+function underPath(d: ExpansionDiagnostic, prefix: string): ExpansionDiagnostic {
+  const out: Writable<ExpansionDiagnostic> = { code: d.code, detail: d.detail };
+  out.path = d.path === undefined ? prefix : `${prefix}/${d.path}`;
+  return Object.freeze(out);
 }
 
 /** Whether a single `include`/`exclude` component matches `target`, and whether that is decidable. */
@@ -45,6 +62,7 @@ function matchComponent(
   component: ConceptSetComponent,
   ctx: ExpansionContext,
   visited: ReadonlySet<string>,
+  path: string,
 ): ComponentMatch {
   const diagnostics: ExpansionDiagnostic[] = [];
   const { system, concept, filter, valueSet } = component;
@@ -66,18 +84,18 @@ function matchComponent(
     baseMatched = concept.some((c) => c.code === target.code);
   } else if (hasFilter || (system !== undefined && !hasVs)) {
     if (system === undefined) {
-      diagnostics.push(cannotExpand("intensional filter without a code system 'system'"));
+      diagnostics.push(cannotExpand("intensional filter without a code system 'system'", path));
       baseMatched = false;
       baseComplete = false;
     } else {
       const cs = ctx.codeSystems?.get(system);
       if (cs === undefined) {
-        diagnostics.push(cannotExpand("code system not supplied for intensional include", system));
+        diagnostics.push(cannotExpand("code system not supplied for intensional include", path));
         baseMatched = false;
         baseComplete = false;
       } else if (hasFilter) {
         if (unsupportedOps(filter).length > 0) {
-          diagnostics.push(cannotExpand("unsupported filter operator", system));
+          diagnostics.push(cannotExpand("unsupported filter operator", path));
           baseMatched = false;
           baseComplete = false;
         } else {
@@ -96,21 +114,22 @@ function matchComponent(
   let refDefiniteFalse = false;
   let refUndetermined = false;
   if (hasVs) {
-    for (const url of valueSet) {
+    for (const [i, url] of valueSet.entries()) {
+      const refPath = `${path}.valueSet[${String(i)}]`;
       if (visited.has(url)) {
-        diagnostics.push(cannotExpand("cyclic value set reference", url));
+        diagnostics.push(cannotExpand("cyclic value set reference", refPath));
         refUndetermined = true;
         continue;
       }
       const vs = ctx.valueSets?.get(url);
       if (vs === undefined) {
-        diagnostics.push(cannotExpand("referenced value set not supplied", url));
+        diagnostics.push(cannotExpand("referenced value set not supplied", refPath));
         refUndetermined = true;
         continue;
       }
       const m = validateInternal(target, vs, ctx, new Set([...visited, url]));
       if (m.undetermined) {
-        for (const d of m.diagnostics) diagnostics.push(d);
+        for (const d of m.diagnostics) diagnostics.push(underPath(d, refPath));
         refUndetermined = true;
       } else if (!m.result) {
         refDefiniteFalse = true;
@@ -163,7 +182,7 @@ function validateInternal(
     if (found) return decided(true, target);
     if (vs.expansion.truncated) {
       return undetermined(target, [
-        cannotExpand("pre-computed expansion is incomplete (truncated or too-costly)", vs.url),
+        cannotExpand("pre-computed expansion is incomplete (truncated or too-costly)", "expansion"),
       ]);
     }
     return decided(false, target);
@@ -173,16 +192,16 @@ function validateInternal(
     const diagnostics: ExpansionDiagnostic[] = [];
     let includedDefinite = false;
     let anyIncludeUndetermined = false;
-    for (const inc of vs.compose.include) {
-      const m = matchComponent(target, inc, ctx, visited);
+    for (const [i, inc] of vs.compose.include.entries()) {
+      const m = matchComponent(target, inc, ctx, visited, `compose.include[${String(i)}]`);
       for (const d of m.diagnostics) diagnostics.push(d);
       if (m.complete && m.matched) includedDefinite = true;
       if (!m.complete) anyIncludeUndetermined = true;
     }
     let excludedDefinite = false;
     let anyExcludeUndetermined = false;
-    for (const exc of vs.compose.exclude) {
-      const m = matchComponent(target, exc, ctx, visited);
+    for (const [i, exc] of vs.compose.exclude.entries()) {
+      const m = matchComponent(target, exc, ctx, visited, `compose.exclude[${String(i)}]`);
       for (const d of m.diagnostics) diagnostics.push(d);
       if (m.complete && m.matched) excludedDefinite = true;
       if (!m.complete) anyExcludeUndetermined = true;

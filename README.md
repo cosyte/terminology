@@ -199,8 +199,14 @@ _names_, listed under [What is bundled](#what-is-bundled).
   **are** bundled are named, with their copyright, under [What is bundled](#what-is-bundled).
 - **Liberal load, conservative assertion.** Malformed input degrades to a typed diagnostic; a 1:many
   mapping returns the full candidate set, never collapsed to one.
-- **Value-free diagnostics.** A diagnostic carries a code + system + version, never patient context —
-  a code _in patient context_ can be PHI.
+- **Value-free diagnostic messages.** Nothing you configured and nothing your release or resource
+  contained reaches a `message`, `detail`, `reason` or `err.stack` — not a column name, not a
+  canonical URI, not a unit atom — at any length. What sits beside a message is a locus: a line
+  number, a column count, an index path into your own resource (`compose.include[2]`), or a fixed
+  token naming which file of a release it came from. The
+  **objects** are a different matter: a typed `unknown`/`unmapped` outcome names the code, unit or
+  NDC you asked about, so log the `code` and the locus rather than the whole result — a code _in
+  patient context_ can be PHI.
 - **Zero runtime dependencies. Dual ESM + CJS.** Node stdlib only; built with `tsup`, validated with
   `attw`. Immutable by construction (every returned value is deep-frozen).
 

@@ -8,6 +8,9 @@
  * surfaced** as a `TERM_CSV_MALFORMED` warning; an unterminated final quote is surfaced too — never a
  * crash. A configured code/display header that is **absent from the header row** is a *fatal*
  * (`TERM_CODESYSTEM_MALFORMED`): the source config does not match the file, so nothing loads cleanly.
+ * That fatal names the missing column's **role** (`code`, `display`, `status`, a property column)
+ * from a frozen table, never the column name you configured — the message reaches `err.stack`, and a
+ * column name is consumer-supplied text of unbounded length.
  *
  * @packageDocumentation
  */
@@ -111,14 +114,35 @@ export function parseCsv(content: string): string[][] {
   return parseCsvRows(content).rows;
 }
 
-/** Resolve a header name to its column index, or throw a fatal if a required one is absent. */
-function requireHeader(header: readonly string[], name: string): number {
+/**
+ * The **role** a configured CSV column plays. A closed set: it is the engine's own vocabulary, never
+ * a string that came from the caller or the file.
+ */
+type CsvColumnRole = "code" | "display" | "status" | "property";
+
+/**
+ * The frozen fatal message per {@link CsvColumnRole}. A **table lookup, not an interpolation** — the
+ * factory below takes no value parameter, so no caller-supplied or document-derived string can reach
+ * `TerminologyError.message` (and from there `err.stack`, and from there an error reporter) however
+ * long or however hostile it is.
+ *
+ * The role is the useful half anyway: a caller who configured `columns.code = "LOINC_NUM"` already
+ * holds that string, and what they need from the engine is *which* configured column their file does
+ * not have. Naming a property column's own string would echo an unbounded value to say something the
+ * caller can recover in one line from their own `columns.properties` and the file's header row.
+ */
+const MISSING_COLUMN_MESSAGE: Readonly<Record<CsvColumnRole, string>> = Object.freeze({
+  code: "CSV source: the configured 'code' column is not present in the header row",
+  display: "CSV source: the configured 'display' column is not present in the header row",
+  status: "CSV source: the configured 'status' column is not present in the header row",
+  property: "CSV source: a configured property column is not present in the header row",
+});
+
+/** Resolve a header name to its column index, or throw a value-free fatal naming only its role. */
+function requireHeader(header: readonly string[], name: string, role: CsvColumnRole): number {
   const idx = header.indexOf(name);
   if (idx < 0) {
-    throw new TerminologyError(
-      FATAL_CODES.TERM_CODESYSTEM_MALFORMED,
-      `CSV source: required column '${name}' is not present in the header row`,
-    );
+    throw new TerminologyError(FATAL_CODES.TERM_CODESYSTEM_MALFORMED, MISSING_COLUMN_MESSAGE[role]);
   }
   return idx;
 }
@@ -129,7 +153,8 @@ function requireHeader(header: readonly string[], name: string): number {
  * @param source - The CSV source.
  * @returns The parsed concepts (by code) and the load warnings.
  * @throws {TerminologyError} `TERM_CODESYSTEM_MALFORMED` when the file has no header row, or a
- *   configured `code`/`display`/`status`/property column is absent from the header.
+ *   configured `code`/`display`/`status`/property column is absent from the header. The message
+ *   names the missing column's **role**, never the name you configured.
  * @example
  * ```ts
  * import { parseCsvSource } from "@cosyte/terminology";
@@ -168,13 +193,15 @@ export function parseCsvSource(source: CsvSource): {
     );
   }
 
-  const codeIdx = requireHeader(header, source.columns.code);
-  const displayIdx = requireHeader(header, source.columns.display);
+  const codeIdx = requireHeader(header, source.columns.code, "code");
+  const displayIdx = requireHeader(header, source.columns.display, "display");
   const statusIdx =
-    source.columns.status !== undefined ? requireHeader(header, source.columns.status) : undefined;
+    source.columns.status !== undefined
+      ? requireHeader(header, source.columns.status, "status")
+      : undefined;
   const propIdx: { name: string; index: number }[] = (source.columns.properties ?? []).map((n) => ({
     name: n,
-    index: requireHeader(header, n),
+    index: requireHeader(header, n, "property"),
   }));
   const needCols =
     Math.max(codeIdx, displayIdx, statusIdx ?? 0, ...propIdx.map((p) => p.index)) + 1;

@@ -8,10 +8,63 @@
  * them, so renaming or removing one is a **breaking change**, and the full set is snapshotted via
  * `sortedCodeSet` (`@cosyte/test-utils`) as a reviewable tripwire.
  *
- * **Value-free by construction.** A diagnostic carries a stable code plus, at most, a
- * code + system + version — **never** a surrounding patient identifier or clinical narrative. A
- * code *in patient context* can be PHI, so messages describe *structure* (a resource
- * path, a code system), never echo arbitrary input *values*.
+ * **Value-free by construction**, and the property is stated as what it actually is: every string a
+ * diagnostic or fatal message is assembled from is **owned by the engine**. Three kinds, and no
+ * fourth: a string literal; an entry in a frozen table keyed on the engine's own vocabulary; and a
+ * **locus this package built** — a 1-based `line`, a column count, or an index path over the
+ * caller's own resource made of integers and FHIR field names (`ConceptMap group[0].element[0].target[0]`,
+ * `compose.include[2]`). Nothing a caller configured and nothing their release or resource contained
+ * is ever one of them, so no such string reaches a `message`, a `stack`, or a `detail`, at any
+ * length.
+ *
+ * Read that as the rule, and note what it does **not** say. It does not say no factory takes a
+ * `string` parameter. Several do: `malformed(path, fault)` in `conceptmap/load.ts` and
+ * `valueset/load.ts`, and `cannotExpand(detail, path)`, `truncated(detail, path)` and
+ * `underPath(d, prefix)` in `valueset/` — where `expand.ts` and `validate.ts` each carry their own
+ * copy. It says every **argument** reaching them is engine-owned: each `fault` and `detail` is a
+ * literal at the call site, each `path` and `prefix` is built from indices by the loader that
+ * raises it. That distinction is the thing to preserve — an absolute "no factory takes a value
+ * parameter" reads as a stronger guarantee than the one the code makes, and those factories are the
+ * counter-example to it. Do not write the count down; derive it.
+ *
+ * Positional context is value-free the same way: a `line` integer, an `ExpansionDiagnostic.path`
+ * index path into the caller's own resource (`compose.include[2]`), or a closed-set token
+ * (`RXNCONSO` / `RXNREL` / `RXNSAT`) — never a URI, a column name, or a field the file supplied.
+ * This matters because a code *in patient context* can be PHI, and a thrown error is the one surface
+ * that reaches a log or an error reporter without the consumer choosing to put it there.
+ *
+ * **▶ THE CLAIM IS ABOUT THE MESSAGE FIELDS, NOT ABOUT THE OBJECTS. DO NOT SHORTEN IT TO "A
+ * DIAGNOSTIC IS SAFE TO LOG".** The safe strings are the *message* fields:
+ * `TerminologyError.message` / `.stack`, `LoadWarning.detail`, `GemLoadWarning.detail`,
+ * `ComplexMapLoadWarning.detail`, `RxNormLoadWarning.detail`, `ExpansionDiagnostic.detail`,
+ * `ParseFailure.reason` and `UcumValidation.reason`, plus the loci beside them.
+ *
+ * The **objects** these codes appear on are a different matter, and they carry verbatim text from
+ * two *different* provenances, which decide differently:
+ *
+ * - **Your query, echoed back** — `LookupUnknown.input`, `LookupResult.code`, `UnknownSystem.input`,
+ *   `TranslateUnmapped.source`, `CrosswalkUnmapped.source`, `CrosswalkNoMap.source`,
+ *   `RxNormUnknown.rxcui`, `RxNormRelated.predicates`, `NdcUnmapped.ndc`,
+ *   `ValueSetMembership.coding`, and **`MapProvenance.sourceSystem`** — which is the `system` off
+ *   the `Coding` you passed to `translate`, verbatim and unbounded, whenever that coding
+ *   carries one; the map's own `group.source` is only the fallback for a coding that does not. The
+ *   query is the one genuinely **patient-derived** input this engine takes (a code off a parsed
+ *   message, a unit off an observation, an NDC off a prescription), so this is the class that
+ *   decides a PHI question.
+ * - **Your loaded artifact, carried through** — `ComplexMapContextRequired.rules` (the map
+ *   document's own `rule` / `advice` text) and `MapProvenance.targetSystem` / `.conceptMapUrl` /
+ *   `.conceptMapVersion`, which are read off the loaded map (`group.target`, `map.url`,
+ *   `map.version`). These are *reference data*, bounded by the map or release you loaded, not by
+ *   anything a patient supplied. **`MapProvenance` straddles the two lists** — do not read the whole
+ *   record as reference data on the strength of the fields that are.
+ *
+ * Read both lists as illustrative, not closed: **assume any result field may hold what you passed
+ * in.** So `JSON.stringify(lookupResult)` into a log is a PHI decision, and `String(err)` is not.
+ * Log the `code` and the locus; log a value only if you would log the code you passed in.
+ *
+ * Those echoes are deliberate and are not going away: they are how a never-fabricate outcome says
+ * *which* thing it refused to guess, they are the caller's own data returned to the caller, and
+ * bounding them would mean fabricating a miss.
  *
  * @packageDocumentation
  */
@@ -231,8 +284,10 @@ export type FatalCode = (typeof FATAL_CODES)[keyof typeof FATAL_CODES];
  * The engine's typed error. Carries a stable {@link FatalCode} so callers branch on `err.code`
  * without string-matching the message. Thrown only for {@link FATAL_CODES} conditions.
  *
- * The `message` is **value-free**: it names the structural fault (a resource path, a missing
- * field) and never echoes input *values*.
+ * The `message` is **value-free**: it names the structural fault (a resource path, a missing field,
+ * the *role* of a configured column) and never echoes an input value — so it is safe to log, and
+ * safe in an `err.stack` that reaches an error reporter. The rule the strings are built by is in
+ * this module's docblock above.
  *
  * @example
  * ```ts
@@ -252,6 +307,9 @@ export class TerminologyError extends Error {
   /**
    * @param code - The stable {@link FatalCode} describing the fault.
    * @param message - A **value-free** structural description (path + fault; never an input value).
+   *   Every piece of it must be engine-owned — a literal, a frozen-table entry, or a locus this
+   *   package built. This string reaches `err.stack`, so interpolating a caller-supplied or
+   *   document-derived value into it is how a diagnostic becomes a leak.
    */
   public constructor(code: FatalCode, message: string) {
     super(message);

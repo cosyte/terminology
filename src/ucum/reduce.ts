@@ -59,23 +59,36 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
 
   const cached = atomMemo.get(atom.code);
   if (cached) return cached;
-  /* v8 ignore start -- defensive: the vendored UCUM essence is acyclic and every derived atom has a
-     parseable definition; these guard against a corrupt table, unreachable with the shipped data. */
+  /* v8 ignore start -- unreachable *with the shipped unit table*: the vendored UCUM essence is
+     acyclic and every derived atom carries a parseable definition, so a node that came out of
+     `parseUcum` enters neither branch. That scope is the whole claim. Both branches ARE reachable
+     through `reduce`'s exported surface with a caller-forged atom, because `inProgress` and
+     `atomMemo` key on the atom's `code` string and nothing checks that the atom came from the table:
+     a forged code that collides with a shipped one re-enters the cyclic guard, and a forged atom
+     with no `value` falls through the second (which throws nothing — it memoizes and returns
+     dimensionless). The one message in here is therefore a literal too. This is a coverage exclusion
+     over a corrupt-table guard, not an assertion of unreachability. */
   if (inProgress.has(atom.code)) {
-    throw new Error(`cyclic UCUM atom definition for '${atom.code}'`);
+    throw new Error("cyclic UCUM atom definition in the unit table");
   }
   if (!atom.value) {
     atomMemo.set(atom.code, DIMENSIONLESS);
     return DIMENSIONLESS;
   }
+  /* v8 ignore stop */
 
   inProgress.add(atom.code);
   const parsed = parseUcum(atom.value.unit);
   if (!parsed.ok) {
     inProgress.delete(atom.code);
-    throw new Error(`unparseable UCUM essence definition for '${atom.code}'`);
+    // REACHABLE, and not merely defensive: `reduce` is exported and takes a caller-built `UnitNode`,
+    // so a forged atom whose `value.unit` does not parse reaches this line. The message names no
+    // atom for that reason. It used to interpolate `atom.code`: a 1,000,000-byte forged code
+    // produced a 1,000,042-byte `Error.message` and the same bytes in `err.stack`. This is a second
+    // ~1 MB diagnostic-surface leak, at a site the 2026-07-30 ecosystem audit did not record.
+    // Pinned in `test/ucum/reduce.test.ts`; do not put the atom back into the message.
+    throw new Error("unparseable UCUM essence definition in the unit table");
   }
-  /* v8 ignore stop */
   const reduced = linearReduceTerm(parsed.node);
   const result = multiply({ kind: "linear", factor: atom.value.factor, dims: {} }, reduced);
   inProgress.delete(atom.code);

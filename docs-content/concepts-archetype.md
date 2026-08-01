@@ -153,8 +153,11 @@ full candidate set (never collapsed to one), and steward advice comments ride th
 Outcomes carry **stable codes** — `DIAGNOSTIC_CODES` (typed, surfaced, non-throwing outcomes like
 `TERM_TRANSLATE_UNMAPPED`) and `FATAL_CODES` (thrown, like `TERM_CONCEPTMAP_MALFORMED`). Consumers
 branch on these, so a code's name is part of the public contract: renaming or removing one is a
-**breaking change**. Diagnostics are **value-free** — a code plus, at most, a code + system +
-version, never a surrounding patient identifier (a code *in patient context* can be PHI).
+**breaking change**. Diagnostic and fatal **messages** are **value-free**: nothing you configured and
+nothing your release or resource contained reaches a `message` or an `err.stack`, and the locus
+beside one is a line number, an index path into your own resource, or a fixed token. The **objects** are the opposite
+by design — a typed `unknown`/`unmapped` outcome names what you asked about, and a code
+*in patient context* can be PHI, so log the code and the locus rather than the whole result.
 
 ## Immutability
 

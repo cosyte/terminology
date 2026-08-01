@@ -56,7 +56,7 @@ carries `code: "TERM_VALUESET_CANNOT_EXPAND"` and a `diagnostics` list naming ea
 ```ts
 const r = validateCodeInValueSet(coding, valueSet, { codeSystems });
 if (r.undetermined) {
-  r.diagnostics; // each names the code system / value set it could not resolve
+  r.diagnostics; // each carries a stable code and a `path` into your own compose
 }
 ```
 
@@ -67,14 +67,25 @@ membership (a false "not a member" is a clinical error).
 ## `expand` returned `complete: false`
 
 The `contains` set is a **lower bound**, not exhaustive membership — some intensional part could not be
-computed (see above). Read the `diagnostics` for which code system or filter was missing; do **not**
-treat the partial `contains` as the whole value set.
+computed (see above). Read each diagnostic's `path` — `"compose.include[2]"`, `"expansion"` — to
+find the part that did not resolve in your own resource; do **not** treat the partial `contains` as
+the whole value set.
 
 ## Diagnostics and logs
 
-Diagnostic and error `message` fields are **value-free** — they carry a stable code and, at most, a
-code + system + version, never a patient identifier. Still, remember that a **code in patient
-context** can be PHI: never log the surrounding record.
+The `message`, `detail` and `reason` **fields** are **value-free**: nothing you configured and nothing
+your release or resource contained reaches one, or an `err.stack`, at any length. The locus beside
+them is a line number, an index path into your own resource, or a fixed token — never a URI or a
+column name. `String(err)` is safe.
+
+**The objects those codes ride on are not the same thing, and this is the part to get right.** A
+`TERM_CODE_UNKNOWN`, `TERM_TRANSLATE_UNMAPPED`, `TERM_CROSSWALK_UNMAPPED`, `TERM_RXNORM_UNKNOWN_RXCUI`
+or `TERM_RXNORM_NDC_UNMAPPED` outcome names **what you asked about** — `input`, `source`, `rxcui`,
+`ndc`, `coding` — because that is how a never-fabricate answer says which thing it refused to guess.
+A loaded model likewise carries the displays and canonical URIs from your release. So
+`JSON.stringify(result)` into a log is a decision about PHI, and a **code in patient context** can be
+PHI: log the `code` and the locus, log a value only if you would log the code you passed in, and
+never the surrounding record.
 
 ## Known limitations (this release)
 

@@ -82,7 +82,13 @@ export interface MapProvenance {
   readonly conceptMapUrl?: string;
   /** The ConceptMap's business `version`, when declared (mappings are release-scoped). */
   readonly conceptMapVersion?: string;
-  /** The source code system of the group that matched (or was consulted), when known. */
+  /**
+   * The source code system for this translation. **This is an echo of your query, not reference
+   * data off the map**: it is the `system` on the `Coding` you passed to `translate`, verbatim and
+   * unbounded, whenever that coding carries one; the matched (or consulted) group's own `source` is
+   * only the fallback for a coding that does not. Log it only if you would log the code you passed
+   * in.
+   */
   readonly sourceSystem?: string;
   /** The target code system of the group that matched, when known. */
   readonly targetSystem?: string;

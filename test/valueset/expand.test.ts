@@ -140,7 +140,8 @@ describe("expand — never fabricate / surfaced incompleteness", () => {
     expect(r.complete).toBe(false);
     expect(codes(r)).toStrictEqual([]);
     expect(nth(r.diagnostics, 0).code).toBe("TERM_VALUESET_CANNOT_EXPAND");
-    expect(nth(r.diagnostics, 0).system).toBe(CS_URL);
+    // The locus is a value-free index path into the caller's own compose, not the system URI.
+    expect(nth(r.diagnostics, 0).path).toBe("compose.include[0]");
   });
 
   it("an unimplemented filter operator is cannot-expand, never a partial include", () => {
@@ -154,6 +155,74 @@ describe("expand — never fabricate / surfaced incompleteness", () => {
     expect(r.complete).toBe(false);
     expect(codes(r)).toStrictEqual([]);
     expect(nth(r.diagnostics, 0).detail).toContain("unsupported filter operator");
+  });
+
+  it("locates a diagnostic by index path — include, exclude, reference, and expansion", () => {
+    // include[1] (not [0]) is the one that cannot expand: an index path distinguishes them, which a
+    // system URI could not when two components name the same system.
+    const byIndex = expand(
+      loadValueSet({
+        resourceType: "ValueSet",
+        compose: {
+          include: [
+            { system: CS_URL, concept: [{ code: "dog" }] },
+            { system: "http://not-supplied" },
+          ],
+          exclude: [{ system: "http://also-not-supplied" }],
+        },
+      }),
+      ctx([CS_URL, animalCs()]),
+    );
+    expect(byIndex.diagnostics.map((d) => d.path)).toStrictEqual([
+      "compose.include[1]",
+      "compose.exclude[0]",
+    ]);
+
+    // A reference the caller did not supply is located at the reference, not at the value set's URI.
+    const byRef = expand(
+      loadValueSet({
+        resourceType: "ValueSet",
+        compose: { include: [{ valueSet: ["http://vs-a", "http://vs-b"] }] },
+      }),
+      {},
+    );
+    expect(byRef.diagnostics.map((d) => d.path)).toStrictEqual([
+      "compose.include[0].valueSet[0]",
+      "compose.include[0].valueSet[1]",
+    ]);
+
+    // A diagnostic raised *inside* a referenced value set keeps the reference that reached it.
+    const inner = loadValueSet({
+      resourceType: "ValueSet",
+      url: "http://inner",
+      compose: {
+        include: [{ system: CS_URL, concept: [{ code: "dog" }] }, { system: "http://x" }],
+      },
+    });
+    const nested = expand(
+      loadValueSet({
+        resourceType: "ValueSet",
+        compose: { include: [{ valueSet: ["http://inner"] }] },
+      }),
+      {
+        codeSystems: new Map([[CS_URL, animalCs()]]),
+        valueSets: new Map([["http://inner", inner]]),
+      },
+    );
+    expect(nested.diagnostics.map((d) => d.path)).toStrictEqual([
+      "compose.include[0].valueSet[0]/compose.include[1]",
+    ]);
+
+    // A truncated pre-computed expansion is located at `expansion`, never at the value set's URI.
+    const trunc = expand(
+      loadValueSet({
+        resourceType: "ValueSet",
+        url: "http://truncated",
+        expansion: { total: 9, contains: [{ code: "a" }] },
+      }),
+      {},
+    );
+    expect(nth(trunc.diagnostics, 0).path).toBe("expansion");
   });
 
   it("an incomplete SAME-system exclude drops possibly-excluded members (contains stays a lower bound)", () => {
