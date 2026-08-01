@@ -2,9 +2,10 @@
  * The PHI diagnostic-surface gate for `@cosyte/terminology`.
  *
  * This file is the deliverable, not the fix. It binds the shared runner
- * `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils` to a slot table that enumerates **every**
- * consumer-controlled position across the engine's readers and loaders, and asserts that none of
- * them echoes into a diagnostic surface: a `TerminologyError.message`, an `err.stack`, a thrown
+ * `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils` to a slot table that enumerates the
+ * consumer-controlled positions across the engine's readers and loaders — every one this repo has
+ * identified, which is not a proof that none was missed (see "Reach" below) — and asserts that none
+ * of them echoes into a diagnostic surface: a `TerminologyError.message`, an `err.stack`, a thrown
  * value, a `LoadWarning.detail`, an `ExpansionDiagnostic`, or a structural identifier on the model.
  *
  * ## Two classes of string, and only one of them is a diagnostic surface
@@ -23,8 +24,13 @@
  *    pinned separately, at the bottom of this file, so the boundary is a reviewed decision rather
  *    than an omission.
  *
- * The audit's single distinguishing property applies mechanically: **does the diagnostic factory
- * take a value parameter at all?** After this slice, none of them does.
+ * What this file asserts about class 1 is the consumer-facing property, and only that: **no value
+ * the caller configured and no value their document contained reaches one of those strings.** The
+ * *mechanism* that makes it so — which kinds of string a message may be assembled from, and the
+ * factories whose `string` parameters are engine-owned rather than caller-owned — is stated in
+ * exactly one place, the module docblock of `src/common/diagnostics.ts`. Do not restate it here.
+ * Three successive drafts of this slice restated it and got it wrong each time, in a file no gate in
+ * this repo can grade, because no gate can read an English sentence.
  *
  * ## Reach, and exactly how much it proves
  *

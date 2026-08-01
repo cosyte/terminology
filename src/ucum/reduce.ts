@@ -59,9 +59,14 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
 
   const cached = atomMemo.get(atom.code);
   if (cached) return cached;
-  /* v8 ignore start -- genuinely unreachable through the public API: `parseUcum` resolves atoms only
-     out of the shipped table, so a forged atom's code can never reappear in a definition parsed from
-     it, and the vendored essence is acyclic. Kept as a guard against a corrupt table. */
+  /* v8 ignore start -- unreachable *with the shipped unit table*: the vendored UCUM essence is
+     acyclic and every derived atom carries a parseable definition, so a node that came out of
+     `parseUcum` enters neither branch. That scope is the whole claim. Both branches ARE reachable
+     through `reduce`'s exported surface with a caller-forged atom, because `inProgress` and
+     `atomMemo` key on the atom's `code` string and nothing checks that the atom came from the table:
+     a forged code that collides with a shipped one re-enters the cyclic guard, and a forged atom
+     with no `value` falls through the second. Both messages here are therefore literals too. This
+     is a coverage exclusion over a corrupt-table guard, not an assertion of unreachability. */
   if (inProgress.has(atom.code)) {
     throw new Error("cyclic UCUM atom definition in the unit table");
   }

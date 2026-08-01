@@ -73,10 +73,10 @@ the whole value set.
 
 ## Diagnostics and logs
 
-The `message`, `detail` and `reason` **fields** are **value-free by construction**: none is built
-from a value parameter, so nothing you configured and nothing your release or resource contained
-reaches one, or an `err.stack`, at any length. The locus beside them is a line number, an index path
-into your own resource, or a fixed token — never a URI or a column name. `String(err)` is safe.
+The `message`, `detail` and `reason` **fields** are **value-free**: nothing you configured and nothing
+your release or resource contained reaches one, or an `err.stack`, at any length. The locus beside
+them is a line number, an index path into your own resource, or a fixed token — never a URI or a
+column name. `String(err)` is safe.
 
 **The objects those codes ride on are not the same thing, and this is the part to get right.** A
 `TERM_CODE_UNKNOWN`, `TERM_TRANSLATE_UNMAPPED`, `TERM_CROSSWALK_UNMAPPED`, `TERM_RXNORM_UNKNOWN_RXCUI`

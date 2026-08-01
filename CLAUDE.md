@@ -242,9 +242,18 @@ a summary.
   A **fourth** site was found by the refuter after those three: `reduce` is exported, takes a
   caller-built `UnitNode`, and interpolated a forged atom's `code` into a plain `Error` — a
   1,000,000-byte code gave a 1,000,042-byte `message` and the same bytes in `err.stack`. It sat under
-  a `/* v8 ignore */` labelled "unreachable with the shipped data", which is true of the _cyclic_
-  guard next to it and false of that one. **A `v8 ignore` is an assertion about reachability; check
-  it against the exported surface before you trust one.** Pinned now in `test/ucum/reduce.test.ts`.
+  a `/* v8 ignore */` labelled "unreachable with the shipped data" and is now outside that block.
+  **A `v8 ignore` is an assertion about reachability; check it against the exported surface before
+  you trust one — and check the WHOLE block, because the two branches still inside it are reachable
+  too.** `inProgress` and `atomMemo` key on the atom's `code` **string**, and nothing checks that an
+  atom came from the vendored table, so a forged atom whose code collides with a shipped one
+  re-enters the cyclic guard (`reduce` over a forged `mol` defined as `mol` throws it) and a forged
+  atom with no `value` falls through the next branch. A draft of that slice relabelled the block
+  "genuinely unreachable through the public API", which is how a defensible scoped claim
+  ("…with the shipped data") became a wrong absolute one; the scoped form is restored, worded as a
+  coverage exclusion rather than a reachability assertion. Neither of those two branches leaks —
+  both messages are literals — but **do not put an atom back into either of them.**
+  Pinned now in `test/ucum/reduce.test.ts`.
   `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
   a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
   deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,
