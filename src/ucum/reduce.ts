@@ -65,8 +65,9 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
      through `reduce`'s exported surface with a caller-forged atom, because `inProgress` and
      `atomMemo` key on the atom's `code` string and nothing checks that the atom came from the table:
      a forged code that collides with a shipped one re-enters the cyclic guard, and a forged atom
-     with no `value` falls through the second. Both messages here are therefore literals too. This
-     is a coverage exclusion over a corrupt-table guard, not an assertion of unreachability. */
+     with no `value` falls through the second (which throws nothing — it memoizes and returns
+     dimensionless). The one message in here is therefore a literal too. This is a coverage exclusion
+     over a corrupt-table guard, not an assertion of unreachability. */
   if (inProgress.has(atom.code)) {
     throw new Error("cyclic UCUM atom definition in the unit table");
   }

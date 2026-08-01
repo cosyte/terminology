@@ -18,12 +18,14 @@
  * length.
  *
  * Read that as the rule, and note what it does **not** say. It does not say no factory takes a
- * `string` parameter — `malformed(path, fault)` in `conceptmap/load.ts` and `valueset/load.ts` takes
- * two, and `cannotExpand(detail, path)` in `valueset/` takes two more. It says every **argument**
- * reaching them is engine-owned: each `fault` and `detail` is a literal at the call site, each
- * `path` is built from indices by the loader that raises it. That distinction is the thing to
- * preserve — an absolute "no factory takes a value parameter" reads as a stronger guarantee than
- * the one the code makes, and those four factories are the counter-example to it.
+ * `string` parameter. Several do: `malformed(path, fault)` in `conceptmap/load.ts` and
+ * `valueset/load.ts`, and `cannotExpand(detail, path)`, `truncated(detail, path)` and
+ * `underPath(d, prefix)` in `valueset/` — where `expand.ts` and `validate.ts` each carry their own
+ * copy. It says every **argument** reaching them is engine-owned: each `fault` and `detail` is a
+ * literal at the call site, each `path` and `prefix` is built from indices by the loader that
+ * raises it. That distinction is the thing to preserve — an absolute "no factory takes a value
+ * parameter" reads as a stronger guarantee than the one the code makes, and those factories are the
+ * counter-example to it. Do not write the count down; derive it.
  *
  * Positional context is value-free the same way: a `line` integer, an `ExpansionDiagnostic.path`
  * index path into the caller's own resource (`compose.include[2]`), or a closed-set token

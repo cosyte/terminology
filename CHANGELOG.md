@@ -43,7 +43,7 @@ this file is maintained by hand (Changesets handles the version bump and publish
      the column's **role** (`code` / `display` / `status` / `property`) and takes no value
      parameter. That is the `astm`/`transform` shape the ecosystem audit recorded for the designs
      that do not leak, and it is what this factory now is — a property of **this** factory, not a
-     rule this package holds everywhere. Four factories here do take `string` parameters and are
+     rule this package holds everywhere. Several factories here do take `string` parameters and are
      safe because every argument reaching them is engine-owned; they are named below, and reading
      the no-value-parameter shape as a package-wide rule is what made three drafts of this entry
      wrong.
@@ -98,24 +98,30 @@ this file is maintained by hand (Changesets handles the version bump and publish
   the same place, scopes it: it covers **diagnostics**, not **results**, which carry the caller's
   values by design. A first draft of that replacement said instead that "no message is built from a
   value parameter" and that every message is "a literal or a frozen-table entry". **That was false as
-  written**, of four factories it did not touch: `malformed(path, fault)` in `conceptmap/load.ts` and
-  `valueset/load.ts`, and `cannotExpand` / `truncated` in `valueset/`, all of which do interpolate
-  `string` parameters. The code is fine — every argument reaching them is engine-owned, each `fault`
+  written**, of factories it did not touch: `malformed(path, fault)` in `conceptmap/load.ts` and
+  `valueset/load.ts`, and `cannotExpand` / `truncated` / `underPath` in `valueset/` — where
+  `expand.ts` and `validate.ts` each carry their own copy — all of which do interpolate
+  `string` parameters. **An earlier draft of this paragraph said "four", and the tree has seven**;
+  a count in prose is the thing that goes stale, so it is derived now, not written down.
+  The code is fine — every argument reaching them is engine-owned, each `fault`
   a literal at the call site and each `path` built from indices — but the sentence was stronger than
   the code, which is precisely the failure this entry exists to end. It now describes the arguments,
   not the signatures.
 
-  **That mechanism is now stated in exactly one place — the `src/common/diagnostics.ts` docblock —
-  and nowhere else.** `README.md`, `docs-content/troubleshooting.md`,
-  `docs-content/concepts-archetype.md` and the `test/phi/diagnostic-surface.test.ts` header carried
-  the same "code + system + version" sentence; each now states only the **consumer-facing property**
-  (nothing you configured and nothing your release or resource contained reaches a `message`,
-  `detail`, `reason` or `err.stack`, at any length) and none restates the mechanism. An earlier
-  draft of this slice moved all four to a _restatement_ of the mechanism instead — in the wording
-  that had already been found false of `malformed` / `cannotExpand` / `truncated` — and this entry
-  claimed they had moved with the fix when what they had moved to was the superseded draft. Three
-  successive drafts got that sentence wrong. No gate in this repo can grade an English sentence,
-  which is the argument for having one copy of it rather than four. The `diagnostics` guidance in
+  **The mechanism is now stated as a general rule in exactly one place — the
+  `src/common/diagnostics.ts` docblock.** `README.md`, `docs-content/troubleshooting.md` and
+  `docs-content/concepts-archetype.md` carried the old "code + system + version" sentence, and the
+  `test/phi/diagnostic-surface.test.ts` header (new in this slice) carried the same doctrine in a
+  later wording; all four now state only the **consumer-facing property** — nothing you configured
+  and nothing your release or resource contained reaches a `message`, `detail`, `reason` or
+  `err.stack`, at any length — and none restates the general rule. An earlier draft of this slice
+  moved all four to a _restatement_ of the mechanism instead, in the wording already found false of
+  `malformed` / `cannotExpand` / `truncated`, and this entry claimed they had moved with the fix
+  when what they had moved to was the superseded draft. No gate in this repo can grade an English
+  sentence, which is the argument for one copy of the rule rather than four. **Statements scoped to
+  a single factory are not copies of the rule and deliberately stay put** — `csv.ts` still says its
+  own `MISSING_COLUMN_MESSAGE` lookup takes no value parameter, and `TerminologyError`'s `@param`
+  still tells a caller what may go into the string it is handed. The `diagnostics` guidance in
   `troubleshooting.md`, which told readers to read a diagnostic for "which code system was missing",
   points at `path`.
 
@@ -148,7 +154,7 @@ this file is maintained by hand (Changesets handles the version bump and publish
   `UnitNode`, and nothing checks that the atoms on it came from the vendored UCUM table, so a
   forged atom whose `value.unit` does not parse reaches the throw. Measured on `0.0.5`: a
   1,000,000-byte atom code produced a **1,000,042-byte** `Error.message`, with the same bytes in
-  `err.stack`. Both messages there are now literals. The site had been marked `/* v8 ignore */` as
+  `err.stack`. Both messages `reduce` can throw are now literals. The site had been marked `/* v8 ignore */` as
   "unreachable with the shipped data", and the throw is now outside that block, with
   `test/ucum/reduce.test.ts` pinning the message and the stack. **The two branches still inside the
   block are not unreachable either, and the comment no longer says they are.** A draft of this slice
@@ -156,11 +162,16 @@ this file is maintained by hand (Changesets handles the version bump and publish
   and `atomMemo` key on the atom's `code` string and nothing checks that an atom came from the
   vendored table, so a caller-forged atom whose code collides with a shipped one re-enters the
   cyclic guard (measured: `reduce` over a forged `mol` defined as `mol` throws it) and a forged atom
-  with no `value` falls through the second. The original "with the shipped data" scope was the
-  defensible one and is restored, stated as a coverage exclusion over a corrupt-table guard rather
-  than as an assertion of unreachability. Neither branch leaks — both messages are literals — so
-  nothing here is deferred on the diagnostic surface; what is deferred is that the two branches are
-  reachable at all, which is unchanged from `0.0.5` and out of scope for this entry. It is **not** in the slot table and
+  with no `value` falls through the second, which throws nothing — it memoizes dimensionless and
+  returns. The original "with the shipped data" scope was the defensible one and is restored, stated
+  as a coverage exclusion over a corrupt-table guard rather than as an assertion of unreachability.
+  Neither branch leaks — the one message inside the block is a literal — so nothing is deferred **on
+  the diagnostic surface**. What is deferred is not merely that the branches are reachable: that
+  second branch writes the forged atom's `code` into the module-global `atomMemo` before returning,
+  so one `reduce()` over a forged, value-less atom whose code collides with a shipped one poisons
+  every later reduction of that atom in the process — enough to make `ucumEqual("mg/L", "mg")`
+  answer `true`. That is a **never-fabricate defect, not a diagnostic-surface one**, it is
+  byte-identical on `0.0.5`, and it is filed as its own item rather than folded in here. It is **not** in the slot table and
   cannot be: it throws an un-coded `Error`, so it can carry no `expectCode`, and every slot in
   that table names one. The 2026-07-30 ecosystem audit recorded this package as "one site"; with
   `ExpansionDiagnostic.system` and this, it was **three**.

@@ -225,9 +225,13 @@ a summary.
   produced — never an argument that traces back to the caller or the document.
   **This rule is about the ARGUMENTS, not the signatures, and an earlier wording got that wrong.**
   It read "NO DIAGNOSTIC FACTORY TAKES A VALUE PARAMETER … each is a literal or a frozen-table
-  entry", which was flatly false of four factories in `src/` that it never touched:
+  entry", which was flatly false of factories in `src/` that it never touched:
   `malformed(path, fault)` in `conceptmap/load.ts` and `valueset/load.ts`, and `cannotExpand` /
-  `truncated` in `valueset/`. Those are safe — every `fault` and `detail` is a literal at the call
+  `truncated` / `underPath` in `valueset/` — remembering that `expand.ts` and `validate.ts` each
+  carry their own copy. **Do not write the count down here**: a draft said "four" and the tree has
+  seven. Derive it:
+  `rg -n '^function (malformed|cannotExpand|truncated|underPath)' src/`.
+  Those are safe — every `fault` and `detail` is a literal at the call
   site, every `path` is index-built — but a guardrail stronger than the code teaches the next reader
   something untrue and gets "fixed" in the wrong direction. Do not restore the absolute form.
   Three sites broke it and were fixed on 2026-07-31: `csv.ts` interpolated the caller's configured
@@ -248,12 +252,17 @@ a summary.
   too.** `inProgress` and `atomMemo` key on the atom's `code` **string**, and nothing checks that an
   atom came from the vendored table, so a forged atom whose code collides with a shipped one
   re-enters the cyclic guard (`reduce` over a forged `mol` defined as `mol` throws it) and a forged
-  atom with no `value` falls through the next branch. A draft of that slice relabelled the block
-  "genuinely unreachable through the public API", which is how a defensible scoped claim
-  ("…with the shipped data") became a wrong absolute one; the scoped form is restored, worded as a
-  coverage exclusion rather than a reachability assertion. Neither of those two branches leaks —
-  both messages are literals — but **do not put an atom back into either of them.**
-  Pinned now in `test/ucum/reduce.test.ts`.
+  atom with no `value` falls through the next branch — which throws nothing; it memoizes
+  dimensionless and returns. A draft of that slice relabelled the block "genuinely unreachable
+  through the public API", which is how a defensible scoped claim ("…with the shipped data") became
+  a wrong absolute one; the scoped form is restored, worded as a coverage exclusion rather than a
+  reachability assertion. Neither branch leaks — the one message in there is a literal — but
+  **do not put an atom back into it.** Pinned now in `test/ucum/reduce.test.ts`.
+  **That no-`value` branch writes to the module-global `atomMemo` BEFORE returning, and that is a
+  live never-fabricate defect, unchanged since `0.0.5` and NOT fixed by that slice** — one exported
+  `reduce()` call with a forged, value-less atom whose `code` collides with a shipped one poisons
+  every later reduction of that atom in the process, so `ucumEqual("mg/L", "mg")` can be made to
+  answer `true`. It is its own item, not a claims fix; do not fold it into a docs slice.
   `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
   a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
   deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,
@@ -277,8 +286,14 @@ a summary.
   `translate`, `applyGem`, `resolveNdc` and `resolveSystem` echo the caller's own query back on their
   typed `unknown`/`unmapped` outcomes, and every loaded model carries the release's URIs and
   displays. Bounding those would fabricate. The boundary is pinned at the bottom of the same test
-  file: each echo is exactly the caller's value, in the one named field, and no query value reaches a
-  message or a stack anywhere (the engine throws only on an unusable _source_, never on a query).
+  file: each echo is exactly the caller's value, unaltered, and no query value reaches a message or a
+  stack anywhere (the engine throws only on an unusable _source_, never on a query). **It is not one
+  field per echo, and a draft of that sentence said it was.** `translate` returns a coding's `system`
+  in `source.system` **and** in `provenance.sourceSystem`, because `MapProvenance.sourceSystem` is
+  `sourceSystem ?? group?.source` — the caller's query first, the map's own `group.source` only as
+  the fallback. Classify it with the query echoes, never with `.targetSystem` / `.conceptMapUrl`,
+  which really are read off the loaded map. The `translate` pin holds only because its fixture coding
+  carries no `system`; its name says so.
 - Coverage: global >= 90% (lines/branches/functions/statements), enforced by `pnpm test:coverage`.
   **Per-directory thresholds now cover every source directory.** `vitest.config.ts` gates `common/`,
   `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/`, `crosswalk/` **and `rxnorm/`**.

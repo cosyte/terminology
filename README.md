@@ -202,7 +202,8 @@ _names_, listed under [What is bundled](#what-is-bundled).
 - **Value-free diagnostic messages.** Nothing you configured and nothing your release or resource
   contained reaches a `message`, `detail`, `reason` or `err.stack` — not a column name, not a
   canonical URI, not a unit atom — at any length. What sits beside a message is a locus: a line
-  number, a column count, or an index path into your own resource (`compose.include[2]`). The
+  number, a column count, an index path into your own resource (`compose.include[2]`), or a fixed
+  token naming which file of a release it came from. The
   **objects** are a different matter: a typed `unknown`/`unmapped` outcome names the code, unit or
   NDC you asked about, so log the `code` and the locus rather than the whole result — a code _in
   patient context_ can be PHI.

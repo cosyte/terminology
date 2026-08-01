@@ -169,7 +169,8 @@ function collectDiagnostics(parsed: unknown): readonly unknown[] {
  * | `ConceptStatus.raw` | payload — the steward's own status token, carried verbatim as the evidence for the normalized `activity`. |
  * | `Concept.code` / `.display` / `.definition`, `Property.value`, `RxNormConcept.name` | payload — the answer. |
  * | `RxNormConcept.tty`, `GemMap.direction`, `ConceptStatus.activity` | closed unions, validated on load |
- * | `MapProvenance.sourceSystem` / `.targetSystem` / `.conceptMapUrl` | payload — the map's provenance, returned on matched *and* unmapped results alike; see the boundary pin at the bottom of this file |
+ * | `MapProvenance.targetSystem` / `.conceptMapUrl` | payload — the map's provenance, returned on matched *and* unmapped results alike; see the boundary pin at the bottom of this file |
+ * | `MapProvenance.sourceSystem` | payload, but **your query echoed back**, not the map's provenance: it is the `system` off the `Coding` you passed to `translate` whenever it carries one, and the group's `source` only when it does not. Classified with `TranslateUnmapped.source`, not with the two rows above. |
  *
  * **`Property.code` and `RxNormEdge.predicate` are the two rows to argue with**, because they are
  * document-derived name-like strings, which is the audited leak shape. They are filed as payload on
@@ -1060,7 +1061,12 @@ describe("PHI: the payload boundary is exactly the caller's own query", () => {
     });
   });
 
-  it("translate echoes the source coding only in `source`", () => {
+  // Scoped deliberately, and the scope is the point: this pins the `code` echo, using a coding that
+  // carries no `system`. Hand `translate` a coding that DOES carry one and that system is echoed
+  // **twice** — in `source.system` and, verbatim, in `provenance.sourceSystem`. Both are payload,
+  // neither is a diagnostic surface, and `MapProvenance.sourceSystem` is documented as the query
+  // echo it is. Do not restate this pin as "the caller's value appears in exactly one field".
+  it("translate echoes a system-less source coding only in `source`", () => {
     const map = loadConceptMap({
       resourceType: "ConceptMap",
       group: [{ element: [{ code: "male", target: [{ code: "M", equivalence: "equivalent" }] }] }],
