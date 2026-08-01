@@ -38,11 +38,23 @@
  * somewhere that raises nothing on its own — a configured property name, a `CodeSystem.url`, a
  * `RELA` — and the fixture pairs it with a second, marker-free malformed element so a diagnostic
  * exists to sweep. For those the `expectCode` shows the collection is populated and swept; what
- * covers the marker is the sweep of the whole rendered result, not the code assertion. A leak
+ * covers the marker is the sweep of those diagnostics, not the code assertion. A leak
  * planted in a branch a model-only slot names but does not enter would not be caught by that slot.
  * That is a real limit of the technique, not a wording problem, so it is written here rather than
  * implied away — and it is why the marker-driven fixtures are preferred wherever the branch can be
  * reached by the marker itself.
+ *
+ * **What the runner sweeps is exactly what the two selectors return, plus the thrown value — not the
+ * whole result object.** An earlier version of this paragraph said "the whole rendered result", which
+ * overstates the gate in the paragraph written to state its limits honestly. For the `CodeSystem.url`
+ * slot, for instance, `collectDiagnostics` returns the one malformed-concept warning and nothing
+ * else, so `url` is never swept — correctly, because it is payload, but it is not swept.
+ *
+ * **One diagnostic surface is deliberately NOT in this table: `reduce`.** It is exported, it takes a
+ * caller-built `UnitNode`, and it throws a plain `Error` — with no stable code, so it cannot carry an
+ * `expectCode` and cannot be a slot in a table whose whole invariant is that every slot names one.
+ * It is pinned in `test/ucum/reduce.test.ts` instead, where a forged atom's code is asserted absent
+ * from both `message` and `stack`. Do not "fix" that by giving a slot `expectCode: null`.
  */
 
 import { assertNoDiagnosticPhiLeak, type DiagnosticSlot } from "@cosyte/test-utils";
@@ -1004,8 +1016,14 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
     expect(slots.filter((s) => s.expectCode === null)).toStrictEqual([]);
   });
 
-  it("covers every reader, loader and query entry point that takes consumer input", () => {
+  it("still declares the reviewed number of slots", () => {
     // A cheap tripwire against a slot table that quietly shrinks: the count is the reviewed number.
+    // It is NOT a coverage claim. This test used to be titled "covers every reader, loader and query
+    // entry point that takes consumer input", which asserting a length cannot show and which was not
+    // true: `parseCsv`, `parseRrfLine`, `parseUcum`, `ucumEqual`, `reduce`, `loadUcumEssence`,
+    // `validateCode`, `makeStatus`, `asTermType`, the `src/valueset/filters.ts` helpers and the
+    // row-shaped `loadComplexMap` are all exported and all unslotted. What bounds the table is the
+    // enumeration in the header and in `CLAUDE.md`, reviewed by a human — never this number.
     expect(slots).toHaveLength(SLOT_COUNT);
   });
 });

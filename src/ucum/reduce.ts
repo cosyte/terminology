@@ -59,11 +59,9 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
 
   const cached = atomMemo.get(atom.code);
   if (cached) return cached;
-  /* v8 ignore start -- defensive: the vendored UCUM essence is acyclic and every derived atom has a
-     parseable definition; these guard against a corrupt table, unreachable with the shipped data.
-     The messages name no atom: `reduce` is exported and takes a caller-built `UnitNode`, so a forged
-     node could otherwise put a caller string of any length into an `Error.message` and `err.stack`.
-     A value-free message costs nothing here, since the condition is unreachable with real data. */
+  /* v8 ignore start -- genuinely unreachable through the public API: `parseUcum` resolves atoms only
+     out of the shipped table, so a forged atom's code can never reappear in a definition parsed from
+     it, and the vendored essence is acyclic. Kept as a guard against a corrupt table. */
   if (inProgress.has(atom.code)) {
     throw new Error("cyclic UCUM atom definition in the unit table");
   }
@@ -71,14 +69,20 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
     atomMemo.set(atom.code, DIMENSIONLESS);
     return DIMENSIONLESS;
   }
+  /* v8 ignore stop */
 
   inProgress.add(atom.code);
   const parsed = parseUcum(atom.value.unit);
   if (!parsed.ok) {
     inProgress.delete(atom.code);
+    // REACHABLE, and not merely defensive: `reduce` is exported and takes a caller-built `UnitNode`,
+    // so a forged atom whose `value.unit` does not parse reaches this line. The message names no
+    // atom for that reason. It used to interpolate `atom.code`: a 1,000,000-byte forged code
+    // produced a 1,000,042-byte `Error.message` and the same bytes in `err.stack`. This is a second
+    // ~1 MB diagnostic-surface leak, at a site the 2026-07-30 ecosystem audit did not record.
+    // Pinned in `test/ucum/reduce.test.ts`; do not put the atom back into the message.
     throw new Error("unparseable UCUM essence definition in the unit table");
   }
-  /* v8 ignore stop */
   const reduced = linearReduceTerm(parsed.node);
   const result = multiply({ kind: "linear", factor: atom.value.factor, dims: {} }, reduced);
   inProgress.delete(atom.code);

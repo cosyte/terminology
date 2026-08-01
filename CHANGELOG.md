@@ -9,6 +9,20 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking: `ExpansionDiagnostic.system` is replaced by `ExpansionDiagnostic.path`.** The field
+  used to carry the code system or value set URI the concern was about — consumer-supplied text of
+  unbounded length on a diagnostic surface. It now carries a value-free structural locus into your
+  own resource, built from integers and the engine's own field names: `"compose.include[2]"`,
+  `"compose.include[0].valueSet[1]"`, `"expansion"`. A diagnostic raised while expanding a
+  referenced value set is prefixed with the reference that reached it. This is strictly more precise
+  than the URI, which cannot distinguish two `include` components naming the same system. `expand`
+  and `validateCodeInValueSet` build the path identically, so a locus means the same thing in both;
+  they do **not** always emit the same _set_ of diagnostics, because membership can decide an answer
+  without evaluating a part expansion still has to report. Reading `d.system` is now a type error.
+  The rationale, and the other three sites, are under **Fixed** below.
+
 ### Fixed
 
 - **Consumer-supplied strings reached `TerminologyError.message`, `err.stack` and an
@@ -61,10 +75,18 @@ this file is maintained by hand (Changesets handles the version bump and publish
   **The "Value-free by construction" claim in `src/common/diagnostics.ts` was checked before being
   rewritten, and it was false** on two counts: the two messages above echoed arbitrary input, and
   "at most a code + system + version" described the leaking `ExpansionDiagnostic.system` as though
-  it were the safety property. The new wording states the mechanical fact (no message is built from
-  a value parameter; the only input-derived interpolation left anywhere is a number: a `line`, a
-  column count) and, in the same place, scopes it: it covers **diagnostics**, not **results**,
-  which carry the caller's values by design. `README.md`, `docs-content/troubleshooting.md` and
+  it were the safety property. The new wording states the mechanical fact — **every string a message
+  is assembled from is owned by the engine**: a literal, a frozen-table entry, or a locus this
+  package built (a `line`, a column count, an index path of integers and FHIR field names) — and, in
+  the same place, scopes it: it covers **diagnostics**, not **results**, which carry the caller's
+  values by design. A first draft of that replacement said instead that "no message is built from a
+  value parameter" and that every message is "a literal or a frozen-table entry". **That was false as
+  written**, of four factories it did not touch: `malformed(path, fault)` in `conceptmap/load.ts` and
+  `valueset/load.ts`, and `cannotExpand` / `truncated` in `valueset/`, all of which do interpolate
+  `string` parameters. The code is fine — every argument reaching them is engine-owned, each `fault`
+  a literal at the call site and each `path` built from indices — but the sentence was stronger than
+  the code, which is precisely the failure this entry exists to end. It now describes the arguments,
+  not the signatures. `README.md`, `docs-content/troubleshooting.md` and
   `docs-content/concepts-archetype.md` carried the same "code + system + version" sentence and move
   with it, as does the `diagnostics` guidance in `troubleshooting.md`, which told readers to read a
   diagnostic for "which code system was missing" and now points at `path`.
@@ -75,8 +97,11 @@ this file is maintained by hand (Changesets handles the version bump and publish
   leak through a slot nobody declared. Two limits are written into the file rather than implied
   away. First, `expectCode` shows the branch ran, not that the _marker_ ran it: about half the slots
   are **model-only** and pair the marker with a second marker-free malformed element so a diagnostic
-  exists to sweep, and for those it is the sweep of the whole rendered result that carries the
-  proof. Second, `getModelIdentifiers` returns the model's real loci — a `RxNormLoadWarning.file`
+  exists to sweep, and for those it is the sweep of **those diagnostics** that carries the proof. (An
+  earlier draft said "the whole rendered result". The runner sweeps exactly what the two selectors
+  return plus the thrown value, so for the `CodeSystem.url` slot the `url` itself is never swept —
+  correctly, since it is payload, but not swept.) Second, `getModelIdentifiers` returns the model's
+  real loci — a `RxNormLoadWarning.file`
   token, an `ExpansionDiagnostic.path` — which are also swept as part of their diagnostic, so it is
   redundant rather than load-bearing; it exists so the classification of every name-like string on
   every exported model type is executed and reviewable instead of collapsing to a `[]` a reader has
@@ -88,6 +113,20 @@ this file is maintained by hand (Changesets handles the version bump and publish
   named: that protects the lookup, not a future consumer who builds a locus out of one.
   `@cosyte/cli` is today the only package in the ecosystem that depends on this one, and it uses
   `loadConceptMap` + `translate` only.
+
+  **A FOURTH site, found by the refuter after the three above: `reduce` echoed a forged atom's
+  `code` into a plain `Error.message` and `err.stack`** — a second ~1 MB leak. `reduce` is exported
+  and takes a caller-built
+  `UnitNode`, and nothing checks that the atoms on it came from the vendored UCUM table, so a
+  forged atom whose `value.unit` does not parse reaches the throw. Measured on `0.0.5`: a
+  1,000,000-byte atom code produced a **1,000,042-byte** `Error.message`, with the same bytes in
+  `err.stack`. Both messages there are now literals. The site had been marked `/* v8 ignore */` as
+  "unreachable with the shipped data", which is true of the _cyclic_ guard beside it and **not**
+  true of this one; the ignore now covers only the genuinely unreachable branch, and
+  `test/ucum/reduce.test.ts` pins the message and the stack. It is **not** in the slot table and
+  cannot be: it throws an un-coded `Error`, so it can carry no `expectCode`, and every slot in
+  that table names one. The 2026-07-30 ecosystem audit recorded this package as "one site"; with
+  `ExpansionDiagnostic.system` and this, it was **three**.
 
 - **`LICENSE` was unqualified MIT over a tree that also distributes third-party material**
   (`TERMINOLOGY-LICENSE-THIRD-PARTY`, residuals 1 and 2 of `TERMINOLOGY-RESIDUALS`). The README had

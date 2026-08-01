@@ -6,8 +6,13 @@
 published under the Cosyte brand. Open-source (MIT). It is **not a parser** and does **not** mirror the
 parser API: it mirrors the FHIR **Terminology Module** (`$translate`, `$lookup`, `$validate-code`,
 `$expand`, …), operating over **consumer-supplied** FHIR resources. It is a sibling engine consumed the
-way the parsers are — `@cosyte/transform` depends on it (one-way, acyclic); the parsers do not import
-it. The authoritative plan is the meta-repo `operations/roadmaps/terminology.md`.
+way the parsers are — **`@cosyte/cli` is the only package in the org that depends on it** (one-way,
+acyclic), via `loadConceptMap` + `translate` in `map-codes`; the parsers do not import it. This line
+used to say `@cosyte/transform` was the downstream. **It is not, and never was** — `transform`
+declares no dependency on this package in any manifest section, and `ccda`, `synth` and `website`
+mention it only in prose. Re-derive it, do not recall it:
+`grep -l '"@cosyte/terminology"' /workspace/*/package.json`. The authoritative plan is the meta-repo
+`operations/roadmaps/terminology.md`.
 
 **North star:** a developer holds a code off a parsed message and, in one line, canonicalizes its code
 system (`resolveSystem`) or translates it through a supplied ConceptMap (`translate`) — and is
@@ -209,13 +214,22 @@ a summary.
   emits spec-clean output).
 - Fatal errors only for unrecoverable structural corruption (Tier-3 codes). Everything else is a
   warning with a stable code + positional context.
-- **NO DIAGNOSTIC FACTORY TAKES A VALUE PARAMETER.** A `TerminologyError` message, a
-  `LoadWarning.detail`, an `ExpansionDiagnostic.detail`, a `ParseFailure.reason`: each is a string
-  literal or an entry in a frozen table keyed on the engine's own vocabulary. The only input-derived
-  thing any of them may interpolate is a **number** (a `line`, a column count). This is the one
-  property that separates every non-leaking design in the ecosystem from every leaking one, and it
-  is mechanical, so apply it mechanically: if you find yourself writing `` `… ${x} …` `` inside a
-  diagnostic and `x` is not a number, stop.
+- **EVERY STRING A DIAGNOSTIC MESSAGE IS BUILT FROM IS OWNED BY THIS ENGINE.** A `TerminologyError`
+  message, a `LoadWarning.detail`, an `ExpansionDiagnostic.detail`, a `ParseFailure.reason`: each is
+  assembled only from a string literal, an entry in a frozen table keyed on the engine's own
+  vocabulary, or a locus this package built (a `line`, a column count, an index path of integers and
+  FHIR field names). Nothing a caller configured and nothing a document contained is ever one of
+  them. This is the one property that separates every non-leaking design in the ecosystem from every
+  leaking one, and it is mechanical, so apply it mechanically: if you find yourself writing
+  `` `… ${x} …` `` inside a diagnostic, `x` must be a number or a string this file's own code
+  produced — never an argument that traces back to the caller or the document.
+  **This rule is about the ARGUMENTS, not the signatures, and an earlier wording got that wrong.**
+  It read "NO DIAGNOSTIC FACTORY TAKES A VALUE PARAMETER … each is a literal or a frozen-table
+  entry", which was flatly false of four factories in `src/` that it never touched:
+  `malformed(path, fault)` in `conceptmap/load.ts` and `valueset/load.ts`, and `cannotExpand` /
+  `truncated` in `valueset/`. Those are safe — every `fault` and `detail` is a literal at the call
+  site, every `path` is index-built — but a guardrail stronger than the code teaches the next reader
+  something untrue and gets "fixed" in the wrong direction. Do not restore the absolute form.
   Three sites broke it and were fixed on 2026-07-31: `csv.ts` interpolated the caller's configured
   column name (1,000,000 bytes in → a 1,000,063-byte `err.message`, and the same bytes in
   `err.stack`), `invertGem` interpolated `GemMap.direction`, and `ExpansionDiagnostic` carried a
@@ -225,8 +239,18 @@ a summary.
   (`RXNCONSO`/`RXNREL`/`RXNSAT`) — never a URI, a column name, or anything the file supplied. Naming
   the **role** (`the configured 'code' column`) is the substitute for naming the caller's string; do
   not "improve" it back into an echo, and do not settle for truncating one.
+  A **fourth** site was found by the refuter after those three: `reduce` is exported, takes a
+  caller-built `UnitNode`, and interpolated a forged atom's `code` into a plain `Error` — a
+  1,000,000-byte code gave a 1,000,042-byte `message` and the same bytes in `err.stack`. It sat under
+  a `/* v8 ignore */` labelled "unreachable with the shipped data", which is true of the _cyclic_
+  guard next to it and false of that one. **A `v8 ignore` is an assertion about reachability; check
+  it against the exported surface before you trust one.** Pinned now in `test/ucum/reduce.test.ts`.
   `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
-  a slot that stops reaching its branch reds instead of passing over dead space. **`src/valueset/`
+  a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
+  deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,
+  and the table's invariant is that every slot names one. **The slot count is a shrink tripwire, not
+  a coverage claim**; plenty of exported entry points (`parseCsv`, `parseRrfLine`, `parseUcum`,
+  `ucumEqual`, `validateCode`, the `filters.ts` helpers) have no slot. **`src/valueset/`
   has TWO copies of the diagnostic factories** — `expand.ts` and `validate.ts` each have their own
   `cannotExpand` and `underPath` — and a first draft of the table covered only `expand`, which let a
   planted echo in `validate.ts` pass green. Cover both, always. **Add a slot when
