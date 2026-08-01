@@ -118,8 +118,15 @@ function collectDiagnostics(parsed: unknown): readonly unknown[] {
   const out: unknown[] = [];
   if (typeof parsed !== "object" || parsed === null) return out;
   const rec = parsed as Record<string, unknown>;
-  if (Array.isArray(rec["warnings"])) out.push(...(rec["warnings"] as unknown[]));
-  if (Array.isArray(rec["diagnostics"])) out.push(...(rec["diagnostics"] as unknown[]));
+  // Appended in a loop, never spread. `push(...arr)` passes each element as an argument and throws
+  // `RangeError: Maximum call stack size exceeded` past ~128k of them; this engine's input is
+  // million-row RRF releases, so a warning array is not bounded by anything. Today's slot fixtures
+  // are small, but a helper that only works on small fixtures is the wrong helper to put in the
+  // file that exists to catch a leak in a large one.
+  for (const key of ["warnings", "diagnostics"]) {
+    const list = rec[key];
+    if (Array.isArray(list)) for (const entry of list as unknown[]) out.push(entry);
+  }
   if (typeof rec["code"] === "string") out.push(parsed);
   return out;
 }

@@ -15,8 +15,12 @@ this file is maintained by hand (Changesets handles the version bump and publish
   `ExpansionDiagnostic`, contradicting this package's own "value-free by construction" claim**
   (`PHI-WARNING-MESSAGE-LEAK`). Three sites, found by binding
   `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils@0.0.2` to a 52-slot table covering every
-  consumer-controlled position across the readers and loaders; **9 slots were red on the base
-  commit**, and the table was run there first for exactly that reason.
+  consumer-controlled position across the readers and loaders; **14 of the 52 slots were red on the
+  base commit** — 4 CSV column-config slots, 1 `invertGem` slot, 4 in `expand.ts` and 5 in
+  `validate.ts` — and the table was run there first for exactly that reason. (An earlier draft of
+  this entry said 9. That was the measurement taken before the slot table was extended to the
+  **second copy** of the `src/valueset/` diagnostic factories, and it was never re-taken; the five
+  `validate.ts` slots are the difference. Re-measure after you widen a table.)
   1. `csv.ts` `requireHeader` interpolated the caller's configured column name into the
      `TERM_CODESYSTEM_MALFORMED` message. Measured against the published `0.0.5`: a 1,000,000-byte
      `columns.code` produced a 1,000,063-byte `err.message`, and the same bytes landed in
