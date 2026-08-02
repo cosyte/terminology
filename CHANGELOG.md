@@ -40,10 +40,11 @@ this file is maintained by hand (Changesets handles the version bump and publish
   return it. The candidate and rule lists were nominally `readonly` in the same way — writing over
   element `0` landed too.
 
-  Every index a **release you load** exposes as a `ReadonlyMap` is now a **read-only view** of a map
-  rather than the map itself, and every list, entry and warning reachable from a loaded model is
-  frozen. Reads are exactly a `Map`'s: `get`, `has`, `size`, `keys`, `values`, `entries`, `forEach`,
-  iteration, `new Map(view)`.
+  A code system's `concepts`, a GEM's and a complex map's `entries`, and a drug graph's `concepts` /
+  `edges` / `ndcs` are each now a **read-only view** of a map rather than the map itself — those six
+  indexes, not every field this package types `ReadonlyMap` — and every list, entry and warning
+  reachable from one of those models is frozen. Reads are exactly a `Map`'s: `get`, `has`, `size`,
+  `keys`, `values`, `entries`, `forEach`, iteration, `new Map(view)`.
 
   **Two behaviour changes to know before you write against one.** A view is not a `Map` instance, so
   `instanceof Map` is now `false` on `CodeSystem.concepts`, a `GemMap`'s and a `ComplexMap`'s

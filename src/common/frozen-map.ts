@@ -42,7 +42,9 @@ interface FrozenMapView<K, V> extends ReadonlyMap<K, V> {
  *
  * **What the view costs, and why the cost is paid this way.** Not being a `Map` is observable, and
  * measured rather than reasoned: a view is `instanceof Object` rather than `instanceof Map`, prints
- * as a plain object, `Object.keys` lists its ten own methods, `JSON.stringify` renders it as
+ * as a plain object, `Object.keys` lists its ten own keys (nine methods and the `size` getter, which
+ * is why the next clause reads as it does — a method does not survive `JSON.stringify`),
+ * `JSON.stringify` renders it as
  * `{"size":N}` where a `Map` rendered `{}`, and a model holding one **cannot be structured-cloned** —
  * `structuredClone` and `worker.postMessage` raise a `DataCloneError`, `v8.serialize` a plain `Error`,
  * both naming an uncloneable function. Clone what you need out of it instead

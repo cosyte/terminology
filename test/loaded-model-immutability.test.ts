@@ -22,6 +22,7 @@
  *    carries its own negative controls: it must find a planted defect, and it must flag a raw `Map`.
  */
 
+import { inspect } from "node:util";
 import * as v8 from "node:v8";
 
 import { describe, it, expect } from "vitest";
@@ -488,6 +489,21 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
     expect(viaV8).toBeInstanceOf(Error);
     expect(viaV8?.name).toBe("Error"); // NOT a DataCloneError — v8.serialize raises a plain Error
     expect(viaV8?.message).toContain("could not be cloned");
+
+    const channel = new MessageChannel();
+    try {
+      const posted = attempt(() => {
+        channel.port1.postMessage(g);
+      });
+      expect(posted?.name).toBe("DataCloneError");
+    } finally {
+      channel.port1.close();
+      channel.port2.close();
+    }
+
+    // "prints as a plain object" is on four public surfaces too, so it is measured rather than said.
+    expect(inspect(g.concepts).startsWith("{")).toBe(true);
+    expect(inspect(new Map(g.concepts)).startsWith("Map(2)")).toBe(true);
 
     // The model itself is untouched by the failed attempt, and the entries clone fine on their own.
     expect(g.conceptCount).toBe(2);
