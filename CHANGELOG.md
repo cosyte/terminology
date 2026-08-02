@@ -32,7 +32,8 @@ this file is maintained by hand (Changesets handles the version bump and publish
   reduction against the atom object. So corrupting a loaded atom **before that atom's first
   reduction** wrote the memo, and the reading survived restoring the table exactly as shipped.
 
-  Measured on `bf153cb` and live on published `0.0.5`, defining the loaded litre as `1` with no prior
+  Measured on `bf153cb`, and live on published `0.0.5` and `0.0.6` alike — `0.0.6` is that commit plus
+  a version bump. Defining the loaded litre as `1` with no prior
   touch of `L`: `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` both answered `true` where the
   same calls without it answered `false`, and `mmol/L` fell from `6.0221407599999985e+23 × m-3` to a
   dimensionless `6.02214076e+20` — **a concentration comparing equal to a mass**. Two further routes

@@ -6,7 +6,8 @@ import { parseEssence } from "../../src/ucum/essence.js";
 
 /**
  * `loadUcumEssence()` hands out one table, shared by every caller and by the engine itself. Through
- * `0.0.5` inclusive it was `readonly` to **TypeScript only** — `essence.ts` froze nothing — so a
+ * every version published before this change it was `readonly` to **TypeScript only** —
+ * `essence.ts` froze nothing — so a
  * consumer could rewrite a loaded atom's definition in place.
  *
  * That is not cosmetic, because `reduce` memoizes each atom's reduction against the atom **object**:
