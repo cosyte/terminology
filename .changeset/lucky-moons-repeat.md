@@ -2,7 +2,7 @@
 "@cosyte/terminology": patch
 ---
 
-The UCUM unit table `loadUcumEssence()` hands out was `readonly` to TypeScript only, so a unit's definition could be rewritten in place — and doing so fabricated a unit equivalence that outlived putting the table back.
+The UCUM unit table `loadUcumEssence()` hands out was `readonly` to TypeScript only, so a definition could be rewritten in place, fabricating a unit equivalence that outlived restoring the table.
 
 One table is shared by every caller and by the engine's own reducer, and `reduce` memoizes each atom's reduction against the atom object. So corrupting a loaded atom **before that atom's first reduction** wrote the memo, and the reading survived restoring the table exactly as shipped. Defining the loaded litre as `1` made `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` both answer `true` where the same calls without it answered `false`, and dropped `mmol/L` from `6.0221407599999985e+23 × m-3` to a dimensionless `6.02214076e+20` — a concentration comparing equal to a mass, from an engine whose contract is never to fabricate.
 
