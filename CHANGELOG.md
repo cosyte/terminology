@@ -40,26 +40,44 @@ this file is maintained by hand (Changesets handles the version bump and publish
   return it. The candidate and rule lists were nominally `readonly` in the same way — writing over
   element `0` landed too.
 
-  Every index a loaded model exposes as a `ReadonlyMap` is now a **read-only view** of a map rather
-  than the map itself, and every list, entry and warning reachable from a loaded model is frozen.
-  Reads are exactly a `Map`'s (`get`, `has`, `size`, `keys`, `values`, `entries`, `forEach`,
-  iteration, `new Map(view)`), and a view has no own enumerable properties, so `Object.keys`, spread
-  and `JSON.stringify` see what they saw before.
+  Every index a **release you load** exposes as a `ReadonlyMap` is now a **read-only view** of a map
+  rather than the map itself, and every list, entry and warning reachable from a loaded model is
+  frozen. Reads are exactly a `Map`'s: `get`, `has`, `size`, `keys`, `values`, `entries`, `forEach`,
+  iteration, `new Map(view)`.
 
-  **A view is not a `Map` instance, so `instanceof Map` is now `false`** on `CodeSystem.concepts`, a
-  `GemMap`'s and a `ComplexMap`'s `entries`, and a graph's `concepts` / `edges` / `ndcs`. That is the
-  point rather than a side effect: replacing a `Map`'s three mutators closes one route and leaves
-  `Map.prototype.set.call(theMap, …)` reaching the internal slot directly, and a view has no slot to
-  reach. `CodeSystem.concepts` was sealed that weaker way — a fabricated concept could be forced into
-  a loaded release and `lookup` would return it — and is a view now too.
+  **Two behaviour changes to know before you write against one.** A view is not a `Map` instance, so
+  `instanceof Map` is now `false` on `CodeSystem.concepts`, a `GemMap`'s and a `ComplexMap`'s
+  `entries`, and a graph's `concepts` / `edges` / `ndcs`; `Object.keys` and `JSON.stringify` see its
+  read methods rather than a `Map`'s nothing, and it prints as a plain object. And a loaded model
+  therefore **cannot be structured-cloned** — `structuredClone`, `v8.serialize` and
+  `worker.postMessage` raise a `DataCloneError` on it, where before they produced a working copy.
+  Clone what the other side needs instead: `new Map(cs.concepts)`. That refusal is deliberate rather
+  than incidental. Hiding the view's methods would make the clone _succeed_ and hand back a model
+  whose indexes were empty while `count` / `conceptCount` / `edgeCount` still reported the loaded
+  figures — this defect's own shape, arriving silently. It is pinned as a test, not left as prose.
+
+  Not being a `Map` is also what closes the second route rather than only the first: replacing a
+  `Map`'s three mutators leaves `Map.prototype.set.call(theMap, …)` reaching the internal slot
+  directly, and a view has no slot to reach. `CodeSystem.concepts` was sealed that weaker way — a
+  fabricated concept could be forced into a loaded release and `lookup` would return it — and is a
+  view now too.
+
+  **The bundled UCUM table is deliberately not part of this and is unchanged.** `atomByCode` and
+  `prefixByCode` stay real `Map`s whose `set` / `delete` / `clear` are replaced by a refusal, so an
+  entry forced through `Map.prototype` still lands there. That residual is bounded and stays
+  documented: `parseUcum` resolves an atom by scanning the frozen `atoms` array, never through a
+  lookup map, so a forced entry changes no validation, reduction or `ucumEqual` answer — only the
+  caller's own `get` is lied to.
 
   The guarantee is that the loaded model does not change, not that a write throws: a named mutator
   raises a `TypeError` in either mode, while a frozen list or entry throws in strict mode and is
   silently ignored in sloppy mode, which the CJS build lets a caller observe. Every route is
   therefore asserted by the **reading** it would have changed as well as by the refusal, and a
-  reachability sweep walks each loaded model for anything still writable, so a field added later is
-  covered without anyone maintaining a list of routes. The sweep carries its own negative controls: a
-  planted mutable object and a raw `Map` behind a frozen wrapper both have to be reported.
+  reachability sweep walks **all seven** `load*` models for anything still writable, so a field added
+  later is covered without anyone maintaining a list of routes. The UCUM table is pinned in that
+  sweep as the named exception rather than skipped, so converting it later has to be deliberate. The
+  sweep carries its own negative controls: a planted mutable object and a raw `Map` behind a frozen
+  wrapper both have to be reported.
 
 - **`parseEssence`'s example imported it from `@cosyte/terminology/ucum/essence`, a subpath the
   package's `exports` does not declare.** It is package-internal and not re-exported from the entry

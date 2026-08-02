@@ -22,6 +22,8 @@
  *    carries its own negative controls: it must find a planted defect, and it must flag a raw `Map`.
  */
 
+import * as v8 from "node:v8";
+
 import { describe, it, expect } from "vitest";
 
 import {
@@ -30,8 +32,11 @@ import {
   ingredientsOf,
   loadCodeSystem,
   loadComplexMap,
+  loadConceptMap,
   loadGems,
   loadRxNormGraph,
+  loadUcumEssence,
+  loadValueSet,
   lookup,
   resolveNdc,
 } from "../src/index.js";
@@ -162,6 +167,49 @@ function codeSystem() {
   });
 }
 
+/** A loaded ConceptMap — the `$translate` model. */
+function conceptMap() {
+  return loadConceptMap({
+    resourceType: "ConceptMap",
+    url: "http://example.org/cm",
+    group: [
+      {
+        source: "http://example.org/cs",
+        target: "http://example.org/cs2",
+        element: [{ code: "A", target: [{ code: "B", equivalence: "equivalent" }] }],
+      },
+    ],
+  });
+}
+
+/** A loaded ValueSet — compose plus a filter, so the model is not trivially shallow. */
+function valueSet() {
+  return loadValueSet({
+    resourceType: "ValueSet",
+    url: "http://example.org/vs",
+    compose: {
+      include: [
+        {
+          system: "http://example.org/cs",
+          concept: [{ code: "A", display: "Alpha" }],
+          filter: [{ property: "concept", op: "is-a", value: "A" }],
+        },
+      ],
+      exclude: [{ system: "http://example.org/cs", concept: [{ code: "B" }] }],
+    },
+  });
+}
+
+/**
+ * **Every `load*` this package exports, so the sweep cannot be true of the models it happens to
+ * name.** `loadUcumEssence` is the one exception and is pinned as one rather than skipped: its two
+ * lookup maps are real `Map`s whose `set` / `delete` / `clear` are replaced by a refusal, which
+ * `Map.prototype.set.call` still reaches. That residual is deliberate and **bounded** — nothing in
+ * `src/` outside `essence.ts` reads either map (`parseUcum` resolves an atom by scanning the frozen
+ * `atoms` array), so a forced entry changes no validation, reduction or comparison, only what the
+ * caller's own `get` hands back. Both halves are pinned in `test/ucum/essence-immutable.test.ts`.
+ * If someone converts them, this expectation reds and the decision is taken deliberately.
+ */
 describe("a loaded model has nothing writable reachable from it", () => {
   it("loadGems", () => {
     expect(mutableObjectsIn(gems())).toEqual([]);
@@ -174,6 +222,18 @@ describe("a loaded model has nothing writable reachable from it", () => {
   });
   it("loadCodeSystem", () => {
     expect(mutableObjectsIn(codeSystem())).toEqual([]);
+  });
+  it("loadConceptMap", () => {
+    expect(mutableObjectsIn(conceptMap())).toEqual([]);
+  });
+  it("loadValueSet", () => {
+    expect(mutableObjectsIn(valueSet())).toEqual([]);
+  });
+  it("loadUcumEssence — the named exception, its two lookup maps and nothing else", () => {
+    expect(mutableObjectsIn(loadUcumEssence())).toEqual([
+      "$.atomByCode: a raw Map (its entries can be rewritten)",
+      "$.prefixByCode: a raw Map (its entries can be rewritten)",
+    ]);
   });
 });
 
@@ -396,10 +456,25 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
     expect(tags).toEqual(["ctx", "ctx"]);
   });
 
-  it("has no own enumerable properties, exactly as a Map does not", () => {
+  it("is NOT a Map, and refuses a structured clone loudly rather than cloning to an empty one", () => {
+    // The one place a view is not a drop-in for the `Map` it replaced. A loaded model can no longer
+    // cross a `structuredClone` / `v8.serialize` / `worker.postMessage` boundary — and that refusal
+    // is the point: the view's methods are enumerable so the clone raises on one of them. Were they
+    // hidden, the clone would SUCCEED and hand back a model with empty indexes whose `conceptCount`
+    // still reported the loaded figure — this defect's own shape, arriving silently.
     const g = graph();
-    expect(Object.keys(g.concepts)).toEqual([]);
-    expect(JSON.stringify(g.concepts)).toBe("{}");
-    expect({ ...g.concepts }).toEqual({});
+    expect(g.concepts).not.toBeInstanceOf(Map);
+    expect(Object.keys(g.concepts)).toContain("get");
+
+    const err = attempt(() => structuredClone(g));
+    expect(err).toBeDefined();
+    expect(err?.name).toBe("DataCloneError");
+    const viaV8 = attempt(() => v8.deserialize(v8.serialize(g)));
+    expect(viaV8).toBeDefined();
+
+    // The model itself is untouched by the failed attempt, and the entries clone fine on their own.
+    expect(g.conceptCount).toBe(2);
+    expect(ingredientsOf(g, "2").found).toBe(true);
+    expect(structuredClone(new Map(g.concepts)).get("1")?.name).toBe("lisinopril");
   });
 });
