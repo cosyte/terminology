@@ -1,0 +1,15 @@
+---
+"@cosyte/terminology": patch
+---
+
+A loaded GEM map, complex map and drug graph froze their wrapper but handed out plain `Map`s inside it, so a holder could delete a mapping, forge one, or empty a medication's ingredient edges.
+
+`Object.freeze` cannot reach a `Map`: its entries live in an internal slot rather than in properties, so freezing the model left `set`, `delete` and `clear` working on the indexes the model points at. Measured before the fix: pushing one row into `loadGems(…).entries.get("0010")` made `applyGem` return a target the steward's file never authored; `graph.edges.clear()` turned `ingredientsOf` into an empty answer for every drug while `edgeCount` went on reporting the loaded figure; `graph.concepts.set(…)` added a concept the release never shipped. The `readonly` on those fields was a compile-time claim only, and each list was `readonly` in the same nominal way — a `push` into a GEM source's candidate list, or writing over element `0`, both landed.
+
+Every index a loaded model exposes as a `ReadonlyMap` is now a **read-only view** of a map rather than the map itself, and every list, entry and warning hanging off one is frozen. Reads are exactly a `Map`'s — `get`, `has`, `size`, `keys`, `values`, `entries`, `forEach`, iteration, `new Map(view)` — and a view has no own enumerable properties, so `Object.keys`, spread and `JSON.stringify` see what they saw before.
+
+**Behaviour worth knowing before you write against one: a view is not a `Map` instance, so `instanceof Map` is now `false`** for `CodeSystem.concepts`, a `GemMap`'s and a `ComplexMap`'s `entries`, and a graph's `concepts`, `edges` and `ndcs`. That is what closes the second route rather than only the first: overwriting a `Map`'s three mutators still leaves `Map.prototype.set.call(theMap, …)` inserting through the internal slot, and a view has no slot to write to. `CodeSystem.concepts` was sealed that weaker way and is now a view too, so `Map.prototype.set.call` can no longer inject a fabricated concept past `lookup`.
+
+The guarantee is that the loaded model does not change, not that a write throws. A named mutator throws a `TypeError` in either mode; a frozen list or entry refuses a write by throwing in strict mode and by doing nothing in sloppy mode, which a CJS caller can observe. Every attack is asserted by the reading it would have changed, not only by the refusal, and a reachability sweep walks each loaded model for anything still writable so a field added later is covered without a route list being kept up to date.
+
+Also in this release: `parseEssence`'s example imported it from a package subpath that `exports` does not declare — it is package-internal, and the example says so. And three `v8 ignore` hints in the same file were inert (their branches were reported uncovered either way, with and without a reason suffix and under AST-aware remapping), so they are plain comments now: an unreachable `noUncheckedIndexedAccess` fallback stays visibly uncovered here rather than being excluded by a hint nobody can check.

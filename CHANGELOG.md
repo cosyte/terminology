@@ -25,6 +25,64 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **A loaded GEM map, complex map and RxNorm drug graph froze their wrapper and handed out plain
+  `Map`s inside it, so whoever held one could delete a diagnosis mapping, add a target the steward's
+  file never authored, or empty a medication's ingredient edges** (`TERMINOLOGY-INNER-MAPS-UNSEALED`).
+  `Object.freeze` cannot reach a `Map` — its entries live in an internal slot rather than in
+  properties — so freezing the model left `set` / `delete` / `clear` working on every index it points
+  at, and the `readonly` on those fields was a compile-time claim only.
+
+  Measured on `dd8465b`, before any fix: one `push` into `loadGems(…).entries.get("0010")` made
+  `applyGem` answer with a target that is in no GEM file; `entries.delete("0010")` turned the same
+  source into a typed `TERM_CROSSWALK_UNMAPPED`; `graph.edges.clear()` left `ingredientsOf` answering
+  `targets: []` for every drug while `edgeCount` still reported the loaded figure; and
+  `graph.concepts.set(…)` put a concept the caller's release never shipped where navigation would
+  return it. The candidate and rule lists were nominally `readonly` in the same way — writing over
+  element `0` landed too.
+
+  Every index a loaded model exposes as a `ReadonlyMap` is now a **read-only view** of a map rather
+  than the map itself, and every list, entry and warning reachable from a loaded model is frozen.
+  Reads are exactly a `Map`'s (`get`, `has`, `size`, `keys`, `values`, `entries`, `forEach`,
+  iteration, `new Map(view)`), and a view has no own enumerable properties, so `Object.keys`, spread
+  and `JSON.stringify` see what they saw before.
+
+  **A view is not a `Map` instance, so `instanceof Map` is now `false`** on `CodeSystem.concepts`, a
+  `GemMap`'s and a `ComplexMap`'s `entries`, and a graph's `concepts` / `edges` / `ndcs`. That is the
+  point rather than a side effect: replacing a `Map`'s three mutators closes one route and leaves
+  `Map.prototype.set.call(theMap, …)` reaching the internal slot directly, and a view has no slot to
+  reach. `CodeSystem.concepts` was sealed that weaker way — a fabricated concept could be forced into
+  a loaded release and `lookup` would return it — and is a view now too.
+
+  The guarantee is that the loaded model does not change, not that a write throws: a named mutator
+  raises a `TypeError` in either mode, while a frozen list or entry throws in strict mode and is
+  silently ignored in sloppy mode, which the CJS build lets a caller observe. Every route is
+  therefore asserted by the **reading** it would have changed as well as by the refusal, and a
+  reachability sweep walks each loaded model for anything still writable, so a field added later is
+  covered without anyone maintaining a list of routes. The sweep carries its own negative controls: a
+  planted mutable object and a raw `Map` behind a frozen wrapper both have to be reported.
+
+- **`parseEssence`'s example imported it from `@cosyte/terminology/ucum/essence`, a subpath the
+  package's `exports` does not declare.** It is package-internal and not re-exported from the entry
+  point; the example says so and imports it the way this package's own code does. Consumers reach the
+  table through `loadUcumEssence()`, which is unchanged.
+
+- **Three `/* v8 ignore */` hints in `src/ucum/essence.ts` were inert, and are now plain comments.**
+  The branches they claimed to exclude were reported uncovered either way — measured with and
+  without a `--` reason suffix and under `--coverage.experimentalAstAwareRemapping` — so the hints
+  stated a coverage exclusion that no run performed. The package's posture is the one
+  `vitest.config.ts` already records for `rxnorm/`: an unreachable `noUncheckedIndexedAccess`
+  fallback stays visibly uncovered under a directory floor of 90, rather than being hidden by an
+  assertion about reachability that the next reader inherits with no way to check it. No coverage
+  figure moved, which is what proves they were inert.
+
+- **A GEM source with more than one combination scenario had no deterministic test**, so the
+  comparator that orders them was reached only when a `fast-check` draw happened to generate a second
+  scenario — `Array.prototype.sort` never calls one for a single-element array. Scenarios are
+  alternative valid representations of the same source, so their order is part of the answer. Covered
+  now by a fixture whose file order is deliberately scenario 2 first. Found while measuring this
+  slice; `vitest run --coverage --exclude 'test/property/**'` reports `crosswalk/` at 100% functions
+  with it and 95.45% without.
+
 - **The UCUM unit table `loadUcumEssence()` hands out was `readonly` to TypeScript only, so a unit's
   definition could be rewritten in place — and doing so fabricated a unit equivalence that outlived
   putting the table back** (`TERMINOLOGY-MUTABLE-ESSENCE-TABLE`). One table is shared by every caller

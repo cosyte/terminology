@@ -211,16 +211,22 @@ export interface RxNormLoadWarning {
 
 /**
  * A loaded, immutable RxNorm drug graph: concepts keyed by `RXCUI`, edges indexed by subject, and the
- * NDC→RXCUI attribute index — all frozen. Applied only in the authored edge direction; never inverted.
+ * NDC→RXCUI attribute index. Applied only in the authored edge direction; never inverted.
+ *
+ * Its three indexes are **read-only views**, not `Map`s you were handed: reads and iteration behave
+ * as a `Map`'s do, and adding / deleting / clearing is refused however it is attempted. What that
+ * buys is the never-fabricate invariant surviving the handover — nothing that holds a loaded graph
+ * can empty a medication's ingredient edges, or add an edge or concept the release never authored,
+ * and leave {@link conceptCount} / {@link edgeCount} still reporting the loaded figures.
  */
 export interface RxNormGraph {
   /** The release version (e.g. `"RXNORM_2026AA"`), when supplied — mappings are release-scoped. */
   readonly version?: string;
-  /** Concepts keyed by `RXCUI` (first `SAB=RXNORM` atom per `RXCUI` wins). Frozen. */
+  /** Concepts keyed by `RXCUI` (first `SAB=RXNORM` atom per `RXCUI` wins). Each frozen. */
   readonly concepts: ReadonlyMap<string, RxNormConcept>;
-  /** Directed edges indexed by `subject` `RXCUI`, each list in file order. Frozen. */
+  /** Directed edges indexed by `subject` `RXCUI`, each list in file order. Each list frozen. */
   readonly edges: ReadonlyMap<string, readonly RxNormEdge[]>;
-  /** NDC → { rxcui, status } index from `RXNSAT` `ATN=NDC` attributes. Frozen; may be empty. */
+  /** NDC → { rxcui, status } index from `RXNSAT` `ATN=NDC` attributes. Each frozen; may be empty. */
   readonly ndcs: ReadonlyMap<string, { readonly rxcui: string; readonly status: NdcStatus }>;
   /** The number of loaded concepts. */
   readonly conceptCount: number;

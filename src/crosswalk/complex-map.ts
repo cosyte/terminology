@@ -29,6 +29,7 @@
 
 import { coding } from "../common/coding.js";
 import { TerminologyError, FATAL_CODES } from "../common/diagnostics.js";
+import { frozenMap } from "../common/frozen-map.js";
 import type { Writable } from "../common/writable.js";
 import { ICD10CM_SYSTEM, MAP_CATEGORIES, SNOMEDCT_SYSTEM } from "./categories.js";
 import type {
@@ -117,11 +118,13 @@ function parseRf2(content: string): {
     const groupN = Number(at(f, iGroup));
     const priorityN = Number(at(f, iPriority));
     if (source === "" || !Number.isFinite(groupN) || !Number.isFinite(priorityN)) {
-      warnings.push({
-        code: "TERM_COMPLEX_MAP_MALFORMED_ROW",
-        line: i + 1,
-        detail: "row is missing referencedComponentId / mapGroup / mapPriority",
-      });
+      warnings.push(
+        Object.freeze({
+          code: "TERM_COMPLEX_MAP_MALFORMED_ROW",
+          line: i + 1,
+          detail: "row is missing referencedComponentId / mapGroup / mapPriority",
+        }),
+      );
       continue;
     }
     rows.push({
@@ -191,9 +194,12 @@ export function loadComplexMap(input: ComplexMapInput): ComplexMap {
     count += sorted.length;
   }
 
+  // Hand out the index as a read-only view rather than the map itself: `Object.freeze` below cannot
+  // reach a `Map`'s entries, so without this a holder could delete a source concept's rules, or add
+  // a rule the caller's refset never carried, and {@link applyComplexMap} would resolve from it.
   const out: Writable<ComplexMap> = {
     count,
-    entries,
+    entries: frozenMap(entries, "a loaded complex map's entries"),
     warnings,
   };
   if (input.version !== undefined) out.version = input.version;

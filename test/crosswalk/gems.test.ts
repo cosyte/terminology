@@ -122,6 +122,30 @@ describe("applyGem — combination clusters (scenario → choice-list)", () => {
     expect(nth(s1.choiceLists, 1).choiceList).toBe(2);
     expect(nth(s1.choiceLists, 1).targets).toEqual(["E0821"]);
   });
+
+  it("orders MULTIPLE scenarios ascending even when the file lists them out of order", () => {
+    // Two scenarios are two alternative valid representations of the same source, so which one a
+    // caller reads first is part of the answer. `Array.prototype.sort` never calls its comparator
+    // for a one-element array, so a single-scenario fixture leaves the ordering untested: this
+    // arm was reached only when a `fast-check` draw happened to generate a second scenario, which
+    // is coverage by luck (see `vitest.config.ts`). Scenario 2's rows are deliberately first.
+    const gems = loadGems({
+      direction: "9-to-10",
+      content: [
+        // flags: approximate=1, no-map=0, combination=1, scenario=S, choice-list=N
+        "24951 E0900 10121", // scenario 2, choice list 1
+        "24951 E0921 10122", // scenario 2, choice list 2
+        "24951 E0800 10111", // scenario 1, choice list 1
+      ].join("\n"),
+    });
+    const r = applyGem(gems, "24951");
+    if (!r.mapped) throw new Error("expected mapped");
+    const scenarios = r.combinations ?? [];
+    expect(scenarios.map((s) => s.scenario)).toEqual([1, 2]);
+    expect(nth(scenarios, 0).choiceLists.flatMap((c) => c.targets)).toEqual(["E0800"]);
+    expect(nth(scenarios, 1).choiceLists.map((c) => c.choiceList)).toEqual([1, 2]);
+    expect(nth(scenarios, 1).choiceLists.flatMap((c) => c.targets)).toEqual(["E0900", "E0921"]);
+  });
 });
 
 describe("invertGem — the never-invert refusal is a first-class thrown contract", () => {

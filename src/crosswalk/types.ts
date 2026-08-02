@@ -88,6 +88,10 @@ export interface GemEntry {
 /**
  * A loaded, immutable GEM map. Entries are keyed by source code (a source may have many entries — the
  * maps are 1:many). Applied **only** in its {@link direction}; never inverted.
+ *
+ * {@link entries} is a **read-only view**, not a `Map` you were handed, and each source's candidate
+ * list is frozen: nothing that holds a loaded map can delete a source's mapping, or add a target the
+ * steward's file never authored, and have {@link applyGem} answer from it.
  */
 export interface GemMap {
   /** Which direction this file maps. Applied only this way. */
@@ -96,7 +100,7 @@ export interface GemMap {
   readonly version?: string;
   /** The number of loaded entries. */
   readonly count: number;
-  /** Entries keyed by source code, each list in file order. Read-only; frozen. */
+  /** Entries keyed by source code, each list in file order. Each list frozen. */
   readonly entries: ReadonlyMap<string, readonly GemEntry[]>;
   /** The skipped-row warnings surfaced during load, in line order. Frozen; may be empty. */
   readonly warnings: readonly GemLoadWarning[];
@@ -195,6 +199,10 @@ export interface ComplexMapEntry {
 /**
  * A loaded, immutable SNOMED→ICD-10-CM complex map. Entries are keyed by source concept id; within a
  * source they are ordered by (group, priority). Applied **only** SNOMED→ICD-10-CM; never inverted.
+ *
+ * {@link entries} is a **read-only view**, not a `Map` you were handed, and each source's rule list
+ * is frozen: nothing that holds a loaded map can delete a source concept's rules, or add one your
+ * refset never carried, and have {@link applyComplexMap} resolve from it.
  */
 export interface ComplexMap {
   /** The map version/release, when supplied — mappings are release-scoped. */

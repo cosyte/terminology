@@ -165,5 +165,16 @@ A loaded `ConceptMap`, a `Coding` and a `TranslateResult` are deep-frozen. So is
 unit table, atom by atom: one table is shared by every caller and by the engine's own reducer, so a
 definition rewritten in place would change what a unit means for the whole process.
 
+Every index a loaded model exposes as a `ReadonlyMap` — the concepts of a code system, a GEM's or a
+complex map's entries, a drug graph's concepts, edges and NDCs — is a **read-only view** of a map
+rather than the map itself. Reads are exactly a `Map`'s (`get`, `has`, `size`, `keys`, `values`,
+`entries`, `forEach`, iteration, and `new Map(view)`), and adding, deleting or clearing is refused
+whichever way it is attempted. Two consequences worth knowing before you write against one: a view
+is **not** a `Map` instance, so `instanceof Map` is `false`; and `readonly` in the type is a
+compile-time claim, while this is the run-time one. Why it matters is the never-fabricate invariant —
+without it, whatever holds a loaded release could empty a medication's ingredient edges, delete a
+diagnosis mapping, or add a target the steward's file never authored, and the engine would answer
+from it while `count` went on reporting what was loaded.
+
 What `parseUcum` and `reduce` hand back is deliberately **not** frozen, because it is yours rather
 than the engine's: both are built per call, and mutating one changes nothing for anyone else.

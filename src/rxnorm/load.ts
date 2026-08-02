@@ -40,6 +40,7 @@
  */
 
 import { parseRrfLine } from "../codesystem/rrf.js";
+import { frozenMap } from "../common/frozen-map.js";
 import type { Writable } from "../common/writable.js";
 import { asTermType, isSynonymTermType } from "./tty.js";
 import type {
@@ -281,13 +282,16 @@ export function loadRxNormGraph(source: RxNormGraphSource): RxNormGraph {
   const ndcs =
     source.sat !== undefined ? parseNdcs(source.sat, warnings) : new Map<string, never>();
 
-  // Freeze each edge list so the graph is deeply immutable.
+  // Freeze each edge list, then hand out the three indexes as read-only views rather than the maps
+  // themselves. `Object.freeze(out)` below cannot reach a `Map`, so without this a holder could
+  // clear the edges of a medication graph, delete a concept, or add one the release never
+  // authored — and `conceptCount` / `edgeCount` would go on reporting the loaded figures.
   for (const list of edges.values()) Object.freeze(list);
 
   const out: Writable<RxNormGraph> = {
-    concepts,
-    edges,
-    ndcs,
+    concepts: frozenMap(concepts, "a loaded RxNorm graph's concepts"),
+    edges: frozenMap(edges, "a loaded RxNorm graph's edges"),
+    ndcs: frozenMap(ndcs, "a loaded RxNorm graph's NDC index"),
     conceptCount: concepts.size,
     edgeCount,
     warnings: Object.freeze(warnings),

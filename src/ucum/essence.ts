@@ -42,11 +42,22 @@ function readValue(block: string): { factor: number; unit: string } | undefined 
  * compiles. The two lookup maps refuse `set` / `delete` / `clear`; a `Map` cannot be made immutable
  * in place, so that is the direct route and not every route (see {@link sealLookup}).
  *
+ * The three `?? ""` capture-group fallbacks below cannot be reached from any input, so this function
+ * does not report 100% branch coverage and is not meant to. They used to carry `v8 ignore` hints,
+ * which is **the wrong tool twice over**: this repo's coverage provider does not honour one (measured
+ * — the hinted branches were reported uncovered either way, with and without a `--` reason and under
+ * `--coverage.experimentalAstAwareRemapping`), and an ignore is an assertion about reachability that
+ * the next reader inherits without a way to check it. The package's posture is that an unreachable
+ * `noUncheckedIndexedAccess` artifact stays visibly uncovered under a directory floor of 90.
+ *
  * @param xml - The essence XML (the vendored verbatim document, or a test fragment).
  * @returns The parsed {@link UcumEssence} model, frozen.
  * @example
  * ```ts
- * import { parseEssence } from "@cosyte/terminology/ucum/essence";
+ * // Package-internal: `parseEssence` is not re-exported from "@cosyte/terminology", and the
+ * // package declares no subpath export. Consumers call `loadUcumEssence()`, which parses the
+ * // vendored table once and caches it.
+ * import { parseEssence } from "./essence.js";
  *
  * const table = parseEssence('<root><base-unit Code="m" dim="L"><name>m</name></base-unit></root>');
  * table.atomByCode.get("m")?.base; // => true
@@ -57,7 +68,8 @@ export function parseEssence(xml: string): UcumEssence {
   const atoms: UcumAtom[] = [];
 
   for (const m of xml.matchAll(/<prefix\b([^>]*)>([\s\S]*?)<\/prefix>/g)) {
-    /* v8 ignore next 2 -- matchAll always yields both capture groups; the `?? ""` is a type fallback */
+    // `matchAll` always yields both capture groups; each `?? ""` is a `noUncheckedIndexedAccess`
+    // fallback with no input that reaches it, so both stay uncovered (see `parseEssence`'s docblock).
     const openTag = m[1] ?? "";
     const body = m[2] ?? "";
     const code = attr(openTag, "Code");
@@ -69,7 +81,7 @@ export function parseEssence(xml: string): UcumEssence {
   }
 
   for (const m of xml.matchAll(/<base-unit\b([^>]*)>/g)) {
-    /* v8 ignore next -- matchAll always yields the capture group; the `?? ""` is a type fallback */
+    // Same unreachable `noUncheckedIndexedAccess` fallback as above.
     const openTag = m[1] ?? "";
     const code = attr(openTag, "Code");
     if (code === undefined) continue;
@@ -84,7 +96,7 @@ export function parseEssence(xml: string): UcumEssence {
   }
 
   for (const m of xml.matchAll(/<unit\b([^>]*)>([\s\S]*?)<\/unit>/g)) {
-    /* v8 ignore next 2 -- matchAll always yields both capture groups; the `?? ""` is a type fallback */
+    // Same unreachable `noUncheckedIndexedAccess` fallbacks as above.
     const openTag = m[1] ?? "";
     const body = m[2] ?? "";
     const code = attr(openTag, "Code");
