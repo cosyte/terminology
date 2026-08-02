@@ -342,7 +342,7 @@ a summary.
   the atom back into the message left the suite green. `test/ucum/reduce.test.ts` asserts each with
   `toBe`, a length bound, and `err.stack` — **all three now under a 100,000-byte caller-supplied
   atom code**, which is the unbounded value in every one of them. The cyclic one used to be pinned
-  through the table's own `Pa`, whose code is bounded and so proved less; the accessor route below
+  through the table's own `Pa`, whose code is bounded and so proved less; the accessor route above
   replaced it.
   `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
   a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
