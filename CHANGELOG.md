@@ -47,12 +47,14 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
   **Two behaviour changes to know before you write against one.** A view is not a `Map` instance, so
   `instanceof Map` is now `false` on `CodeSystem.concepts`, a `GemMap`'s and a `ComplexMap`'s
-  `entries`, and a graph's `concepts` / `edges` / `ndcs`; `Object.keys` and `JSON.stringify` see its
-  read methods rather than a `Map`'s nothing, and it prints as a plain object. And a loaded model
-  therefore **cannot be structured-cloned** — `structuredClone`, `v8.serialize` and
-  `worker.postMessage` raise a `DataCloneError` on it, where before they produced a working copy.
-  Clone what the other side needs instead: `new Map(cs.concepts)`. That refusal is deliberate rather
-  than incidental. Hiding the view's methods would make the clone _succeed_ and hand back a model
+  `entries`, and a graph's `concepts` / `edges` / `ndcs`; it prints as a plain object, `Object.keys`
+  lists its own methods, and `JSON.stringify` renders it as `{"size":2}` where a `Map` rendered `{}`.
+  And a model carrying one therefore **cannot be structured-cloned** — `structuredClone` and
+  `worker.postMessage` raise a `DataCloneError`, `v8.serialize` a plain `Error`, where before each
+  produced a working copy. Clone what the other side needs instead: `new Map(cs.concepts)`. A loaded
+  `ConceptMap`, `ValueSet` or unit table carries no view and clones as it always did. That refusal is
+  deliberate rather than incidental. Hiding the view's methods would make the clone _succeed_ and
+  hand back a model
   whose indexes were empty while `count` / `conceptCount` / `edgeCount` still reported the loaded
   figures — this defect's own shape, arriving silently. It is pinned as a test, not left as prose.
 

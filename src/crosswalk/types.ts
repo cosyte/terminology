@@ -92,6 +92,9 @@ export interface GemEntry {
  * {@link entries} is a **read-only view**, not a `Map` you were handed, and each source's candidate
  * list is frozen: nothing that holds a loaded map can delete a source's mapping, or add a target the
  * steward's file never authored, and have {@link applyGem} answer from it.
+ *
+ * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+ * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
  */
 export interface GemMap {
   /** Which direction this file maps. Applied only this way. */
@@ -203,6 +206,9 @@ export interface ComplexMapEntry {
  * {@link entries} is a **read-only view**, not a `Map` you were handed, and each source's rule list
  * is frozen: nothing that holds a loaded map can delete a source concept's rules, or add one your
  * refset never carried, and have {@link applyComplexMap} resolve from it.
+ *
+ * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+ * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
  */
 export interface ComplexMap {
   /** The map version/release, when supplied — mappings are release-scoped. */

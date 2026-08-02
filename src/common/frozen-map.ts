@@ -40,14 +40,16 @@ interface FrozenMapView<K, V> extends ReadonlyMap<K, V> {
  * The three mutators here throw in both modes because they throw explicitly; assert the readings
  * regardless.
  *
- * **What the view costs, and why the cost is paid this way.** Not being a `Map` is observable: a view
- * is `instanceof Object` rather than `instanceof Map`, prints as a plain object, and **cannot be
- * structured-cloned**, so a loaded model can no longer be handed to `structuredClone`,
- * `v8.serialize` or `worker.postMessage` — clone what you need out of it instead
+ * **What the view costs, and why the cost is paid this way.** Not being a `Map` is observable, and
+ * measured rather than reasoned: a view is `instanceof Object` rather than `instanceof Map`, prints
+ * as a plain object, `Object.keys` lists its ten own methods, `JSON.stringify` renders it as
+ * `{"size":N}` where a `Map` rendered `{}`, and a model holding one **cannot be structured-cloned** —
+ * `structuredClone` and `worker.postMessage` raise a `DataCloneError`, `v8.serialize` a plain `Error`,
+ * both naming an uncloneable function. Clone what you need out of it instead
  * (`new Map(model.concepts)`). That refusal is deliberate: the view's methods are left **enumerable**
- * precisely so a clone attempt raises `DataCloneError` on one of them. Hiding them would make the
- * clone *succeed* and hand back a model whose indexes are empty while its counts still report the
- * loaded figures — the same shape as the defect this function exists to close, arriving silently.
+ * precisely so a clone attempt raises on one of them. Hiding them would make the clone *succeed* and
+ * hand back a model whose indexes are empty while its counts still report the loaded figures — the
+ * same shape as the defect this function exists to close, arriving silently.
  *
  * @param source - The built map. The caller must not retain a reference to it after wrapping.
  * @param what - What a refusal names, e.g. `"a loaded RxNorm graph's concepts"`. **A string literal

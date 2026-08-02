@@ -208,11 +208,11 @@ _names_, listed under [What is bundled](#what-is-bundled).
   NDC you asked about, so log the `code` and the locus rather than the whole result — a code _in
   patient context_ can be PHI.
 - **Zero runtime dependencies. Dual ESM + CJS.** Node stdlib only; built with `tsup`, validated with
-  `attw`. A release you load is frozen, its indexes included: an index a loaded model exposes as a
-  `ReadonlyMap` is a read-only **view** of a map rather than the map itself, so nothing holding it can
-  add, delete or clear an entry, whichever way it tries. A view is not a `Map` instance, so a loaded
-  model cannot be `structuredClone`d or posted to a worker — copy out what you need
-  (`new Map(cs.concepts)`). The bundled unit table is frozen deeply, atom by atom and definition by
+  `attw`. A release you load is frozen, its indexes included: a code system's concepts, a GEM's or a
+  complex map's entries and a drug graph's concepts, edges and NDCs are each a read-only **view** of a
+  map rather than the map itself, so nothing holding one can add, delete or clear an entry, whichever
+  way it tries. A view is not a `Map` instance, so a model carrying one cannot be `structuredClone`d
+  or posted to a worker — copy out what you need (`new Map(cs.concepts)`). The bundled unit table is frozen deeply, atom by atom and definition by
   definition, because it is shared with the engine's own reducer; its two lookup maps refuse `set`,
   `delete` and `clear` by name, and an entry forced past that through `Map.prototype` changes nothing
   the engine reads, because `parseUcum` resolves an atom by scanning the frozen atom array rather than

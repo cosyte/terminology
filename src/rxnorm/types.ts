@@ -218,6 +218,9 @@ export interface RxNormLoadWarning {
  * buys is the never-fabricate invariant surviving the handover — nothing that holds a loaded graph
  * can empty a medication's ingredient edges, or add an edge or concept the release never authored,
  * and leave {@link conceptCount} / {@link edgeCount} still reporting the loaded figures.
+ *
+ * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+ * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
  */
 export interface RxNormGraph {
   /** The release version (e.g. `"RXNORM_2026AA"`), when supplied — mappings are release-scoped. */

@@ -464,17 +464,42 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
     // still reported the loaded figure — this defect's own shape, arriving silently.
     const g = graph();
     expect(g.concepts).not.toBeInstanceOf(Map);
-    expect(Object.keys(g.concepts)).toContain("get");
+
+    // Each consequence is pinned as measured, because each one is written down as a fact on a public
+    // surface. The two clone paths do NOT raise the same class, and the docs say which is which.
+    expect(Object.keys(g.concepts)).toEqual([
+      "size",
+      "get",
+      "has",
+      "keys",
+      "values",
+      "entries",
+      "forEach",
+      "set",
+      "delete",
+      "clear",
+    ]);
+    expect(JSON.stringify(g.concepts)).toBe('{"size":2}');
 
     const err = attempt(() => structuredClone(g));
-    expect(err).toBeDefined();
     expect(err?.name).toBe("DataCloneError");
+    expect(err?.message).toContain("could not be cloned");
     const viaV8 = attempt(() => v8.deserialize(v8.serialize(g)));
-    expect(viaV8).toBeDefined();
+    expect(viaV8).toBeInstanceOf(Error);
+    expect(viaV8?.name).toBe("Error"); // NOT a DataCloneError — v8.serialize raises a plain Error
+    expect(viaV8?.message).toContain("could not be cloned");
 
     // The model itself is untouched by the failed attempt, and the entries clone fine on their own.
     expect(g.conceptCount).toBe(2);
     expect(ingredientsOf(g, "2").found).toBe(true);
     expect(structuredClone(new Map(g.concepts)).get("1")?.name).toBe("lisinopril");
+  });
+
+  it("leaves a model with no view cloning exactly as it did", () => {
+    // The refusal above is a property of carrying a view, not of being a loaded model — so the
+    // sentence in the docs that says so is checked rather than assumed.
+    expect(structuredClone(conceptMap()).group).toHaveLength(1);
+    expect(structuredClone(valueSet()).compose?.include).toHaveLength(1);
+    expect(structuredClone(loadUcumEssence()).atoms.length).toBeGreaterThan(300);
   });
 });

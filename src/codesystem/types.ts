@@ -116,6 +116,9 @@ export interface CodeSystem {
    * The concepts, keyed by `code`. A **read-only view**, not a `Map` you were handed: reads and
    * iteration behave as a `Map`'s do, adding / deleting / clearing is refused however it is
    * attempted, and every value is frozen.
+   *
+   * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+   * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
    */
   readonly concepts: ReadonlyMap<string, Concept>;
   /** The skipped-row warnings surfaced during load, in line order. Frozen; may be empty. */

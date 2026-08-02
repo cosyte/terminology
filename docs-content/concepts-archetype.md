@@ -176,13 +176,15 @@ reporting what was loaded.
 
 Three consequences to know before you write against one. `readonly` in the type is a compile-time
 claim and this is the run-time one, so the refusal happens whether or not you type-check. A view is
-**not** a `Map` instance — `instanceof Map` is `false`, `Object.keys` and `JSON.stringify` see its
-read methods rather than a `Map`'s nothing, and it prints as a plain object. And a loaded model
-therefore **cannot be structured-cloned**, so `structuredClone`, `v8.serialize` and
-`worker.postMessage` raise a `DataCloneError` on it; copy out what the other side needs instead
-(`new Map(cs.concepts)` clones fine). That refusal is deliberate rather than incidental: the
-alternative made the clone succeed and hand back a model whose indexes were empty while its counts
-still reported the loaded figures.
+**not** a `Map` instance: `instanceof Map` is `false`, it prints as a plain object, `Object.keys`
+lists its own methods, and `JSON.stringify` renders it as `{"size":2}` where a `Map` rendered `{}` —
+so a JSON round-trip of a loaded model carries a `size` over no entries, having never carried the
+entries either. And a model carrying a view **cannot be structured-cloned**: `structuredClone` and
+`worker.postMessage` raise a `DataCloneError`, `v8.serialize` a plain `Error`, both naming an
+uncloneable function. Copy out what the other side needs instead (`new Map(cs.concepts)` clones
+fine). That refusal is deliberate rather than incidental: the alternative made the clone succeed and
+hand back a model whose indexes were empty while its counts still reported the loaded figures. A
+loaded `ConceptMap`, `ValueSet` or unit table carries no view and clones as it always did.
 
 The **bundled UCUM table is the exception**, deliberately and as before: `atomByCode` and
 `prefixByCode` are real `Map`s whose `set`, `delete` and `clear` are replaced by a refusal, so an
