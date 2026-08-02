@@ -1,6 +1,6 @@
 {
   "name": "@cosyte/terminology",
-  "version": "0.0.7",
+  "version": "0.0.6",
   "description": "Terminology engine for US healthcare code systems in Node.js and TypeScript — FHIR $translate, $lookup, $validate-code and $expand over code systems, value sets and maps you supply.",
   "keywords": [
     "terminology",
