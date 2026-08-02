@@ -25,6 +25,67 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **A `UnitNode` you assembled yourself could change how `reduce` and `ucumEqual` answer for a unit
+  parsed out of the bundled UCUM table, for the rest of the process**
+  (`TERMINOLOGY-ATOMMEMO-POISONING`). `reduce` is exported and takes a caller-built node, and
+  nothing checks that the atoms on it came from the bundled table. Its per-atom memo, and the guard
+  against a definition that leads back to itself, were keyed on `atom.code` — a **string** — so an
+  atom you built wrote under the key of whichever shipped atom happened to share its code, and every
+  later reduction of that shipped atom read what yours had left.
+
+  Measured on `0.0.5`: one `reduce()` over a value-less atom coded `L`, as the first touch of `L` in
+  the process, made `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` both answer `true` where the
+  same calls without it answered `false`, and dropped `mmol/L` from `6.02214076e23 × m-3` to a
+  dimensionless `6.02214076e20` — **a concentration comparing equal to a mass**, from an engine
+  whose contract is never to fabricate. Two further readings on the same build: an atom coded `N`
+  and defined as `N` left the cycle guard armed, so every later `ucumEqual("N", "kg.m/s2")` threw;
+  and the value returned for a term with no factors was the engine's own module-global dimensionless
+  object, so mutating a result you had been handed turned `kg.m/s2` into `999000 × m2.g.s-2` and
+  made `ucumEqual("N", "kg.m/s2")` answer `false`.
+
+  Four changes:
+  - The memo and the cycle guard key on the **atom object**, in a `WeakMap` / `WeakSet`. The atoms
+    `parseUcum` resolves are the unit table's cached singletons, so a parsed expression still gets
+    one memo entry per atom; an atom you built gets its own entry and is collected with it. Measured
+    warm over ten mixed expressions, best of seven trials of 2,000,000 `reduce` calls, on two
+    different machines: identity-keyed came in at or ahead of string-keyed both times. Read that as
+    no measured cost rather than as a speed-up; the absolute figures are machine- and load-dependent
+    and are deliberately not quoted as a pair.
+  - An atom carrying no linear definition, and which is neither a base nor an arbitrary unit, is now
+    **refused** with `UCUM atom has no linear definition` rather than answered — and memoized — as
+    dimensionless. No expression `parseUcum` accepts reaches this, though **not** because every atom
+    in the bundled table has a linear definition: 21 of its 312 atoms, the special units, have none.
+    It is that an expression containing a special unit short-circuits to the opaque `special` form
+    before linear reduction, base and arbitrary units are answered directly, and every remaining atom
+    resolves. A node you assemble can reach it — including by defining an atom in terms of a special
+    unit such as `Cel`, which lands on the table's own `Cel`.
+  - The cycle guard releases its atom in a `finally`, so a throw from inside the recursion no longer
+    wedges that atom for the rest of the process.
+  - `reduce` no longer returns the module-global dimensionless object. What you get back is per-call
+    state, and mutating it cannot reach the engine.
+
+  Keying on identity was chosen over validating that each atom came from the bundled table: it needs
+  no provenance check on the hot path and adds no failure mode for real input, and it is the
+  narrower change. The cost is that an atom you built is answered on its own terms only — the
+  intended contract, not a regression. **No unit obtained from `parseUcum` changes its answer**: the
+  530-case UCUM conformance suite and the rest of the suite are unchanged and green, and the new
+  refusals are reachable only through a node you assembled. **The claim rests on one property, and
+  it is the one this repo asserts: every atom in the bundled table reduces, and none of them reaches
+  a refusal** (`test/ucum/reduce-memo.test.ts`, last case, over all 312). That is enough to cover
+  every expression `parseUcum` accepts rather than sampling them — an expression containing a
+  special unit short-circuits before linear reduction, linear reduction is compositional over atoms,
+  and the table's own definitions close over that same set, so once every atom answers there is
+  nothing left for a bigger corpus to vary. `test/ucum/functional.test.ts` separately drives the
+  vendored UCUM functional-test suite's unit strings through `reduce`.
+  **Do not restate this as more evidence than that.** Three drafts of this paragraph each claimed
+  more than the tree holds — two cited generated-corpus sizes that were not reproducible from their
+  own descriptions, and the third attributed a three-clause sweep to a file that pins one clause of
+  it. A before/after differential is a two-tree measurement and **no in-tree test can pin one**, by
+  construction; do not add a guard to make a sentence here true, shrink the sentence. The three
+  guards are now covered by tests
+  rather than by a `/* v8 ignore */` block, and each message is pinned by whole-message equality
+  rather than by a substring match.
+
 - **Consumer-supplied strings reached `TerminologyError.message`, `err.stack` and an
   `ExpansionDiagnostic`, contradicting this package's own "value-free by construction" claim**
   (`PHI-WARNING-MESSAGE-LEAK`). Three sites, found by binding
@@ -154,24 +215,27 @@ this file is maintained by hand (Changesets handles the version bump and publish
   `UnitNode`, and nothing checks that the atoms on it came from the vendored UCUM table, so a
   forged atom whose `value.unit` does not parse reaches the throw. Measured on `0.0.5`: a
   1,000,000-byte atom code produced a **1,000,042-byte** `Error.message`, with the same bytes in
-  `err.stack`. Both messages `reduce` can throw are now literals. The site had been marked `/* v8 ignore */` as
-  "unreachable with the shipped data", and the throw is now outside that block, with
+  `err.stack`. Every `Error` message `reduce` can throw is a literal — two of them at that point,
+  three after the memo fix recorded at the top of this section. The site had been marked `/* v8 ignore */` as
+  "unreachable with the shipped data", and the throw was moved outside that block, with
   `test/ucum/reduce.test.ts` pinning the message and the stack. **The two branches still inside the
-  block are not unreachable either, and the comment no longer says they are.** A draft of this slice
-  relabelled them "genuinely unreachable through the public API"; they are not, because `inProgress`
-  and `atomMemo` key on the atom's `code` string and nothing checks that an atom came from the
-  vendored table, so a caller-forged atom whose code collides with a shipped one re-enters the
-  cyclic guard (measured: `reduce` over a forged `mol` defined as `mol` throws it) and a forged atom
-  with no `value` falls through the second, which throws nothing — it memoizes dimensionless and
-  returns. The original "with the shipped data" scope was the defensible one and is restored, stated
+  block were not unreachable either, and the comment stopped saying they were.** A draft of that slice
+  relabelled them "genuinely unreachable through the public API"; they were not, because `inProgress`
+  and `atomMemo` keyed on the atom's `code` string and nothing checked that an atom came from the
+  vendored table, so a caller-forged atom whose code collided with a shipped one re-entered the
+  cyclic guard (measured: `reduce` over a forged `mol` defined as `mol` threw it) and a forged atom
+  with no `value` fell through the second, which threw nothing — it memoized dimensionless and
+  returned. The "with the shipped data" scope was the defensible one and was restored, stated
   as a coverage exclusion over a corrupt-table guard rather than as an assertion of unreachability.
-  Neither branch leaks — the one message inside the block is a literal — so nothing is deferred **on
-  the diagnostic surface**. What is deferred is not merely that the branches are reachable: that
-  second branch writes the forged atom's `code` into the module-global `atomMemo` before returning,
-  so one `reduce()` over a forged, value-less atom whose code collides with a shipped one poisons
+  Neither branch leaked — the one message inside the block was a literal — so nothing was deferred **on
+  the diagnostic surface**. What was deferred is not merely that the branches were reachable: that
+  second branch wrote the forged atom's `code` into the module-global `atomMemo` before returning,
+  so one `reduce()` over a forged, value-less atom whose code collided with a shipped one poisoned
   every later reduction of that atom in the process — enough to make `ucumEqual("mg/L", "mg")`
-  answer `true`. That is a **never-fabricate defect, not a diagnostic-surface one**, it is
-  byte-identical on `0.0.5`, and it is filed as its own item rather than folded in here. It is **not** in the slot table and
+  answer `true`. That is a **never-fabricate defect, not a diagnostic-surface one**, it was
+  byte-identical on `0.0.5`, and it was filed as its own item rather than folded in here. **It is
+  fixed in this same unreleased window — see the memo-poisoning entry at the top of this section —
+  and the `/* v8 ignore */` block is gone with it.** It is **not** in the slot table and
   cannot be: it throws an un-coded `Error`, so it can carry no `expectCode`, and every slot in
   that table names one. The 2026-07-30 ecosystem audit recorded this package as "one site"; with
   `ExpansionDiagnostic.system` and this, it was **three**.
