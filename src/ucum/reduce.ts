@@ -89,7 +89,7 @@ const DIMENSIONLESS: LinearReduction = Object.freeze({
  *
  * **Identity keying closes the forged-atom route and does not reach the mutation one, so the other
  * half of the answer lives in `essence.ts`.** An entry describing the atom it was computed from is
- * still a lie if that atom was rewritten before it was computed: through `0.0.5` the shared table
+ * still a lie if that atom was rewritten before it was computed: until this change the shared table
  * was `readonly` to TypeScript only, and defining the loaded litre as `1` before the litre's first
  * reduction made `ucumEqual("L", "1")` answer `true` for the life of the process, even after the
  * table was put back. The table is frozen now. Neither half substitutes for the other.

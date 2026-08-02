@@ -141,7 +141,7 @@ function sealLookup<V>(map: Map<string, V>): ReadonlyMap<string, V> {
  * Make the parsed table immutable **at run time**, not only to the type checker.
  *
  * Every field of {@link UcumEssence} and {@link UcumAtom} is `readonly`, which TypeScript erases:
- * until `0.0.5` inclusive nothing here froze anything, so a consumer holding the table
+ * until this change nothing here froze anything, so a consumer holding the table
  * {@link loadUcumEssence} handed it could write an atom's definition in place. That is not a
  * cosmetic hole. `reduce` memoizes each atom's reduction against the atom **object**, so corrupting
  * a loaded atom **before its first reduction** writes the memo, and the reading survives putting the
@@ -181,7 +181,7 @@ let cached: UcumEssence | undefined;
  *
  * One table is shared by every caller and by the engine itself, so it is handed out **frozen**: an
  * atom's definition cannot be rewritten in place, and neither can the `atoms` array the parser
- * scans. Through `0.0.5` it could be, and doing so before that atom's first reduction poisoned the
+ * scans. It used to be, and doing so before that atom's first reduction poisoned the
  * reduction memo for the life of the process — a fabricated unit equivalence that survived putting
  * the table back. A write is refused, which in strict mode means a `TypeError`.
  *

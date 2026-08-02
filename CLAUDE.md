@@ -295,7 +295,8 @@ a summary.
   **▶ THE TABLE IS FROZEN, AND THAT IS THE OTHER HALF OF THE MEMO ANSWER — NEITHER SUBSTITUTES FOR
   THE OTHER.** Identity keying closes the route where the atom was one the caller **built**; it does
   not reach the route where the atom is one the caller was **handed**. Through `bf153cb` and on
-  published `0.0.5`, `essence.ts` froze nothing, so rewriting a loaded atom's definition **before
+  published `0.0.5` **and `0.0.6`** — the latter is that commit plus a version bump, so it carries the
+  defect too — `essence.ts` froze nothing, so rewriting a loaded atom's definition **before
   that atom's first reduction** wrote the memo and the reading outlived putting the table back:
   defining the loaded litre as `1` made `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` answer
   `true`, and `mmol/L` fell from `6.0221407599999985e+23 × m-3` to a dimensionless `6.02214076e+20`.
