@@ -37,8 +37,12 @@ function readValue(block: string): { factor: number; unit: string } | undefined 
  * Parse a UCUM essence XML document into the prefix + atom tables. Exported for the drift/robustness
  * tests (feeding it malformed rows); production code calls {@link loadUcumEssence}, which caches.
  *
+ * The table it returns is **deeply frozen** — every atom, every atom's definition, every prefix and
+ * both arrays — so the `readonly` on {@link UcumEssence} is enforced when the code runs and not only
+ * when it compiles.
+ *
  * @param xml - The essence XML (the vendored verbatim document, or a test fragment).
- * @returns The parsed {@link UcumEssence} model.
+ * @returns The parsed {@link UcumEssence} model, frozen.
  * @example
  * ```ts
  * import { parseEssence } from "@cosyte/terminology/ucum/essence";
@@ -105,7 +109,68 @@ export function parseEssence(xml: string): UcumEssence {
 
   const atomByCode = new Map(atoms.map((a) => [a.code, a]));
   const prefixByCode = new Map(prefixes.map((p) => [p.code, p]));
-  return { prefixes, atoms, atomByCode, prefixByCode };
+  return freezeEssence({ prefixes, atoms, atomByCode, prefixByCode });
+}
+
+/** Refuse a write to the shared unit table. Named so the throw site reads as the table's own rule. */
+function refuseTableWrite(): never {
+  throw new TypeError("the UCUM unit table is immutable");
+}
+
+/**
+ * Refuse `set` / `delete` / `clear` on a lookup map, which `Object.freeze` cannot: a `Map` keeps its
+ * entries in internal slots, so freezing the object leaves the prototype's mutators working.
+ *
+ * **This closes the direct route and not every route, and the difference is measured rather than
+ * assumed.** `Map.prototype.set.call(table.atomByCode, …)` still inserts. What that reaches is
+ * bounded by where the maps are read: {@link parseUcum} resolves an atom by scanning `atoms`, never
+ * through `atomByCode`, so an entry forced in this way changes **no** reduction and no `ucumEqual`
+ * answer — only what the caller's own `atomByCode.get` hands back. Both halves are pinned in
+ * `test/ucum/essence-immutable.test.ts`.
+ */
+function sealLookup<V>(map: Map<string, V>): ReadonlyMap<string, V> {
+  return Object.defineProperties(map, {
+    set: { value: refuseTableWrite },
+    delete: { value: refuseTableWrite },
+    clear: { value: refuseTableWrite },
+  });
+}
+
+/**
+ * Make the parsed table immutable **at run time**, not only to the type checker.
+ *
+ * Every field of {@link UcumEssence} and {@link UcumAtom} is `readonly`, which TypeScript erases:
+ * until `0.0.5` inclusive nothing here froze anything, so a consumer holding the table
+ * {@link loadUcumEssence} handed it could write an atom's definition in place. That is not a
+ * cosmetic hole. `reduce` memoizes each atom's reduction against the atom **object**, so corrupting
+ * a loaded atom **before its first reduction** writes the memo, and the reading survives putting the
+ * table back exactly as shipped. Measured on `bf153cb` with the litre defined as `1`:
+ * `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` both answered `true` where the uncorrupted
+ * control answered `false`, and `mmol/L` fell from `6.0221407599999985e+23 × m-3` to a dimensionless
+ * `6.02214076e+20` — a concentration reading equal to a mass, out of an engine whose stated
+ * invariant is that it never fabricates.
+ *
+ * **The freeze has to be deep, and a shallow one is worth nothing here**: freezing the atom alone
+ * leaves `atom.value.unit = "1"`, which reproduces the same three readings. The `atoms` array is
+ * frozen too, because that is the one {@link parseUcum} scans — replacing an element there hands the
+ * parser a forged atom directly, with the same result and without touching the memo at all.
+ *
+ * Note that `Object.freeze` refuses a write by **throwing in strict mode and silently ignoring it in
+ * sloppy mode**. The invariant this function provides is therefore *the table does not change*,
+ * which holds in both; the `TypeError` a strict-mode caller sees is how that is observed, not what
+ * is promised.
+ */
+function freezeEssence(essence: UcumEssence): UcumEssence {
+  for (const atom of essence.atoms) {
+    if (atom.value) Object.freeze(atom.value);
+    Object.freeze(atom);
+  }
+  for (const prefix of essence.prefixes) Object.freeze(prefix);
+  Object.freeze(essence.atoms);
+  Object.freeze(essence.prefixes);
+  sealLookup(essence.atomByCode as Map<string, UcumAtom>);
+  sealLookup(essence.prefixByCode as Map<string, UcumPrefix>);
+  return Object.freeze(essence);
 }
 
 let cached: UcumEssence | undefined;
@@ -113,7 +178,13 @@ let cached: UcumEssence | undefined;
 /**
  * Load the UCUM essence table, parsing the embedded verbatim XML on first call and caching it.
  *
- * @returns The immutable in-memory {@link UcumEssence} model (7 base units, 24 prefixes, ~305 atoms).
+ * One table is shared by every caller and by the engine itself, so it is handed out **frozen**: an
+ * atom's definition cannot be rewritten in place, and neither can the `atoms` array the parser
+ * scans. Through `0.0.5` it could be, and doing so before that atom's first reduction poisoned the
+ * reduction memo for the life of the process — a fabricated unit equivalence that survived putting
+ * the table back. A write is refused, which in strict mode means a `TypeError`.
+ *
+ * @returns The shared, frozen in-memory {@link UcumEssence} model.
  * @example
  * ```ts
  * import { loadUcumEssence } from "@cosyte/terminology";

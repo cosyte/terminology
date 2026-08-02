@@ -251,10 +251,14 @@ a summary.
   measured on published `0.0.5`. It sat under a `/* v8 ignore */` labelled "unreachable with the
   shipped data". **A `v8 ignore` is an assertion about reachability; check it against the exported
   surface before you trust one — and check the WHOLE block, because the other branches in that one
-  were reachable too.** That block is now gone: all three corrupt-table guards in `reduceAtomLinear`
-  are reached by tests rather than excluded from coverage. Every `Error` that file constructs
-  carries a literal message; **do not put an atom back into one.** Pinned in
-  `test/ucum/reduce.test.ts`.
+  were reachable too.** That block is now gone. Of the three corrupt-table guards in
+  `reduceAtomLinear`, the two an assembled atom reaches are reached by tests rather than excluded
+  from coverage; the cyclic one is excluded, and **that exclusion is the opposite case to the one
+  above and has to stay that way** — it was checked against the exported surface and found
+  unreachable _because the table is frozen_, not asserted unreachable from a property of the shipped
+  data. If a future change hands `reduce` a table the caller supplies, the exclusion is wrong again.
+  Every `Error` that file constructs carries a literal message; **do not put an atom back into one.**
+  Pinned in `test/ucum/reduce.test.ts`.
 
   **`atomMemo` AND `inProgress` KEY ON THE ATOM OBJECT. NEVER RE-KEY THEM ON `atom.code`.** Keying
   on the string made them a channel between atoms that merely share a code, and nothing checks that
@@ -289,25 +293,50 @@ a summary.
   guards refuse. Do not restore it. The counts are asserted in `test/ucum/reduce-memo.test.ts` so
   the sentence above cannot drift from the table.
 
-  **▶ TWO `PRE-EXISTING` HOLES THAT SLICE DID NOT CLOSE, both identical on `c3c4988` and on
-  published `0.0.5`, both recorded rather than papered over.** (1) **`loadUcumEssence()` hands out a
-  MUTABLE atom table.** `UcumAtom`'s fields are `readonly` to TypeScript only; `essence.ts` freezes
-  nothing, so writing `atom.value` on a loaded atom in place still poisons that atom's memo for the
-  process. Identity keying closes the _forged_-atom route, not this one — and this repo's own tests
-  reach the cycle guard by doing exactly that to `Pa`. It needs a consumer to reach into engine
-  internals it was handed, so it is a backlog line, not `STOP-THE-LINE`. (2) **One over-scoped
-  `v8 ignore` survived the audit that deleted the block beside it**: the `/* v8 ignore next */` on
-  the `atom.base` line reads "base atoms always carry their dim", true of the table and false of the
-  exported surface — `reduce()` over a caller-built `{ base: true }` with no `dim` reaches the
-  `?? atom.code` fallback. Harmless in effect (a forged base atom leaves every table atom's canonical
-  unchanged, verified on both trees), but it is the same class of claim the paragraph above warns
-  about, in the same function. **Check the whole file, not the block you came for.**
+  **▶ THE TABLE IS FROZEN, AND THAT IS THE OTHER HALF OF THE MEMO ANSWER — NEITHER SUBSTITUTES FOR
+  THE OTHER.** Identity keying closes the route where the atom was one the caller **built**; it does
+  not reach the route where the atom is one the caller was **handed**. Through `bf153cb` and on
+  published `0.0.5`, `essence.ts` froze nothing, so rewriting a loaded atom's definition **before
+  that atom's first reduction** wrote the memo and the reading outlived putting the table back:
+  defining the loaded litre as `1` made `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` answer
+  `true`, and `mmol/L` fell from `6.0221407599999985e+23 × m-3` to a dimensionless `6.02214076e+20`.
+  Three routes reached it, and **a shallow freeze closes only one**: `atom.value = …`,
+  `atom.value.unit = …`, and replacing an element of the `atoms` array — the array `parseUcum`
+  scans, which hands the parser a forged atom without touching the memo at all. So the freeze is
+  deep, covers both arrays, and replaces the lookup maps' `set`/`delete`/`clear`, which
+  `Object.freeze` cannot reach on a `Map`.
+  **The guarantee is that the table does not change, NOT that a write throws** — `Object.freeze` is
+  a `TypeError` in strict mode and a silent no-op in sloppy mode, and this package ships a CJS build
+  a sloppy-mode caller can require. Assert the readings; assert the `TypeError` only as how a
+  strict-mode caller observes the refusal. **And do not widen it to the `Map`:**
+  `Map.prototype.set.call()` still inserts, which is bounded and asserted in both directions —
+  `parseUcum` scans `atoms` and never reads `atomByCode`, so a forced entry changes no reduction,
+  only what the caller's own `get` returns. Pinned in `test/ucum/essence-immutable.test.ts`, whose
+  cases each corrupt a **different** atom because the memo is first-touch.
+  **▶ FREEZING COST THE CYCLIC GUARD ITS LAST ROUTE, AND THE `Pa` TESTS THAT USED IT.** Those tests
+  corrupted the shared table in place; that is now the thing being refused. **A table copy does NOT
+  substitute** — measured, not assumed: a definition is resolved by `parseUcum` against the _loaded_
+  table, so a self-referential `Pa` taken off a `parseEssence` copy resolves to the shipped pascal
+  and answers `1000 × g.m-1.s-2`. That measurement is now a test, and it is what the guard's
+  coverage exclusion rests on. **Keep the guard**: a vendored-table bump that introduced a cycle is
+  what it is for, and without it that bump is unbounded recursion rather than a typed refusal.
+  **The over-scoped `v8 ignore` on the `atom.base` line is gone.** It read "base atoms always carry
+  their dim" — true of the table and false of the exported surface, since `reduce()` over a
+  caller-built `{ base: true }` with no `dim` reaches the `?? atom.code` fallback. The arm is
+  covered by a test now, and its harmlessness is asserted rather than asserted-in-prose: a forged
+  base atom is answered on its own code and leaves the table's base units reducing unchanged.
+  **Check the whole file, not the block you came for** — this one survived the audit that deleted
+  the block beside it.
 
-  **The three `reduce` messages are pinned by whole-message equality, and that is deliberate.**
-  `toThrowError(string)` is a **substring** match: a draft pinned two of them with it, and putting
-  the atom back into the message left the suite green. `test/ucum/reduce.test.ts` asserts each
-  message with `toBe` plus a length bound, and the two an assembled atom can reach also against
-  `err.stack` under a 100,000-byte code.
+  **The `reduce` messages an assembled atom can reach are pinned by whole-message equality, and that
+  is deliberate.** `toThrowError(string)` is a **substring** match: a draft pinned two of them with
+  it, and putting the atom back into the message left the suite green. `test/ucum/reduce.test.ts`
+  asserts each with `toBe`, a length bound, and `err.stack` under a 100,000-byte code. **That is two
+  of the three, and the third is not pinned by a call that throws it, because nothing throws it** —
+  freezing the table removed the last route to the cyclic guard. Its message is a literal with no
+  atom in scope, which is checkable by reading the line; the last case in that file asserts the
+  route is closed instead of asserting a message it can no longer obtain. **The unbounded value in
+  every one of these is the CALLER's atom code — do not read the third one's absence as slack.**
   `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
   a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
   deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,

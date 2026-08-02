@@ -208,7 +208,10 @@ _names_, listed under [What is bundled](#what-is-bundled).
   NDC you asked about, so log the `code` and the locus rather than the whole result — a code _in
   patient context_ can be PHI.
 - **Zero runtime dependencies. Dual ESM + CJS.** Node stdlib only; built with `tsup`, validated with
-  `attw`. Immutable by construction (every returned value is deep-frozen).
+  `attw`. The models the engine loads for you are frozen — the bundled unit table deeply so, atom by
+  atom and definition by definition, because it is shared with the engine's own reducer. The AST and
+  the reduction that `parseUcum` and `reduce` hand back are per-call values you own, and mutating one
+  changes nothing for anyone else.
 
 ## What is bundled
 

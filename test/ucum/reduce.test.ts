@@ -63,6 +63,12 @@ function valuelessAtomNode(code: string): UnitNode {
  * throw at that point; there are three now, and all three are literals. Because the code comes off a
  * **caller-built** node it is unbounded, so this was a second ~1 MB `Error.message` / `err.stack`
  * leak of the same shape as the CSV column-name one — at a site the ecosystem audit did not record.
+ *
+ * **Two of the three are pinned by a call that throws them; the third is not, because no call
+ * throws it any more.** Freezing the unit table removed the last route to the cyclic guard, so the
+ * last case here asserts that the route is closed rather than asserting a message it can no longer
+ * obtain. The unbounded value in every one of these is the **caller's** atom code, and neither
+ * reachable message carries it under a 100,000-byte one.
  */
 describe("reduce — the thrown message is value-free", () => {
   it("names no atom when a forged atom's definition does not parse", () => {
@@ -113,35 +119,35 @@ describe("reduce — the thrown message is value-free", () => {
     expect(e.stack ?? "").not.toContain(marker);
   });
 
-  it("names no atom when a definition leads back to itself, in the message or the stack", () => {
-    // This guard is not reachable with an assembled atom — a definition resolves against the bundled
-    // table, so an assembled atom can name a table atom but never be one. Corrupting a loaded atom
-    // in place is the way in, so the code here is the table's own and is bounded; the message is
-    // still asserted whole, because the rule is about the message, not about this atom's length.
+  it("cannot produce its third message at all, because the route to that guard is refused", () => {
+    // This case used to reach the cyclic guard by corrupting a loaded atom in place, which was the
+    // only way in once the memo was keyed on the atom object — and it was also a live defect, since
+    // the same write against a different atom fabricated a unit equivalence. The table is frozen
+    // now, so no call reaches the guard: an assembled atom resolves its definition against the
+    // loaded table, so it can name a table atom but never be one, and the table cannot be rewritten.
+    // Its message stays a literal with no atom in scope, which is checkable by reading the line and
+    // is the whole of what the rule asks of a message nothing can produce. The refusal is pinned in
+    // `essence-immutable.test.ts`; what is asserted here is that the route this file used is closed.
     const pascal = loadUcumEssence().atomByCode.get("Pa");
-    expect(pascal?.value).toBeDefined();
-    if (!pascal?.value) return;
-    const authored = pascal.value;
+    expect(pascal?.value).toEqual({ factor: 1, unit: "N/m2" });
+    if (!pascal) return;
 
-    let thrown: unknown;
-    try {
+    expect(() => {
       (pascal as { value?: { readonly factor: number; readonly unit: string } }).value = {
         factor: 1,
         unit: "Pa",
       };
-      const parsed = parseUcum("Pa");
-      if (!parsed.ok) throw new Error("fixture does not parse: Pa");
-      reduce(parsed.node);
-    } catch (err) {
-      thrown = err;
-    } finally {
-      (pascal as { value?: { readonly factor: number; readonly unit: string } }).value = authored;
-    }
+    }).toThrow(TypeError);
+    expect(pascal.value).toEqual({ factor: 1, unit: "N/m2" });
 
-    expect(thrown).toBeInstanceOf(Error);
-    const e = thrown as Error;
-    expect(e.message).toBe("cyclic UCUM atom definition in the unit table");
-    expect(e.message.length).toBeLessThan(100);
-    expect(e.message).not.toContain("Pa");
+    const parsed = parseUcum("Pa");
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(reduce(parsed.node)).toEqual({
+        kind: "linear",
+        factor: 1000,
+        dims: { g: 1, m: -1, s: -2 },
+      });
+    }
   });
 });

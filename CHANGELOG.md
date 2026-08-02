@@ -25,6 +25,63 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **The UCUM unit table `loadUcumEssence()` hands out was `readonly` to TypeScript only, so a unit's
+  definition could be rewritten in place — and doing so fabricated a unit equivalence that outlived
+  putting the table back** (`TERMINOLOGY-MUTABLE-ESSENCE-TABLE`). One table is shared by every caller
+  and by the engine's own reducer, `essence.ts` froze nothing, and `reduce` memoizes each atom's
+  reduction against the atom object. So corrupting a loaded atom **before that atom's first
+  reduction** wrote the memo, and the reading survived restoring the table exactly as shipped.
+
+  Measured on `bf153cb` and live on published `0.0.5`, defining the loaded litre as `1` with no prior
+  touch of `L`: `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` both answered `true` where the
+  same calls without it answered `false`, and `mmol/L` fell from `6.0221407599999985e+23 × m-3` to a
+  dimensionless `6.02214076e+20` — **a concentration comparing equal to a mass**. Two further routes
+  to the same readings on that build: writing the nested definition object in place
+  (`atom.value.unit = "1"`), and replacing an element of the `atoms` array, which is the one
+  `parseUcum` scans, so it hands the parser a forged atom without touching the memo at all.
+
+  This is the half that keying the memo on the atom **object** did not reach. That closed the route
+  where the atom was one you had _built_; this is the route where the atom is one you were _handed_,
+  and the consequence class is identical. Neither substitutes for the other.
+
+  The table is frozen when it is parsed, deeply: every atom, every atom's definition object, every
+  prefix, and both arrays. Shallow would have been worth nothing — freezing the atom alone leaves
+  `atom.value.unit`, which reproduces all three readings. `atomByCode` and `prefixByCode` refuse
+  `set`, `delete` and `clear`, which `Object.freeze` cannot do for a `Map`. `parseEssence` freezes
+  what it returns on the same rule.
+
+  **The guarantee is that the table does not change, not that a write throws.** `Object.freeze`
+  refuses a write by throwing in strict mode and ignoring it in sloppy mode, and this package ships a
+  CJS build a sloppy-mode caller can require; the table is the one that was parsed either way. The
+  tests assert the readings, and the `TypeError` only as how a strict-mode caller observes it.
+
+  **Two things this does not claim, both measured rather than reasoned.** `Map.prototype.set.call()`
+  can still force an entry into a lookup map — no `Map` can be made immutable in place — and what
+  that reaches is bounded and pinned in both directions: `parseUcum` resolves an atom by scanning
+  `atoms`, never through `atomByCode`, so a forced entry changes **no** reduction and no `ucumEqual`
+  answer, only what the caller's own `get` returns. And the values `parseUcum` and `reduce` hand back
+  are deliberately still per-call and mutable.
+
+  **No reduction changes.** 3,080 expressions built from the table — every atom bare, squared,
+  inverted and annotated; every prefix over rotating metric atoms; rotating ratios, products and
+  grouped powers; and the shapes the README and the tests name — plus 312 `ucumEqual` pairs, reduce
+  byte-identically on `bf153cb` and on this tree (3,393 output lines, one sha256).
+
+  One consequence, stated because it is not free: freezing the table removes the last route to
+  `reduce`'s cyclic-definition guard. A definition is resolved by `parseUcum` against the loaded
+  table, so an atom you assemble — or one off a second table you parsed yourself — can _name_ a table
+  atom but never _be_ one; reducing a self-referential `Pa` taken off a table copy resolves to the
+  shipped pascal and answers `1000 × g.m-1.s-2`, which is now pinned as a test. The guard is kept and
+  excluded from coverage rather than deleted: a vendored-table bump that introduced a definition
+  cycle is what it is for, and without it that bump is unbounded recursion instead of a typed
+  refusal.
+
+  Also here: the `/* v8 ignore next */` on `reduce`'s `atom.base` line is removed. It justified
+  itself with a property of the bundled table — every base atom there carries a `dim` — for a line
+  reachable through the exported surface with a caller-built `{ base: true }` atom that carries none.
+  That arm is answered on the atom's own code, is now covered by a test rather than excluded, and
+  changes nothing for the table's own base units.
+
 - **A `UnitNode` you assembled yourself could change how `reduce` and `ucumEqual` answer for a unit
   parsed out of the bundled UCUM table, for the rest of the process**
   (`TERMINOLOGY-ATOMMEMO-POISONING`). `reduce` is exported and takes a caller-built node, and
