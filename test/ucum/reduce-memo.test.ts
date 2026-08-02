@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { loadUcumEssence, parseUcum, reduce, ucumEqual, type UnitNode } from "../../src/index.js";
+import { parseEssence } from "../../src/ucum/essence.js";
 
 /**
  * `reduce` memoizes each atom's reduction in module-global state. Until `0.0.5` inclusive that memo,
@@ -10,16 +11,22 @@ import { loadUcumEssence, parseUcum, reduce, ucumEqual, type UnitNode } from "..
  * had left. `reduce` is exported and takes a caller-built `UnitNode`, and nothing validates that an
  * atom on it came from the bundled UCUM table, so this needs no unusual entry point.
  *
- * **This file has EIGHT tests. Five forge an atom; three do not.** Of the five, **four collide with
+ * **This file has NINE tests. Six forge an atom; three do not.** Of the six, **four collide with
  * a DIFFERENT shipped atom (`L`, `Hz`, `N`, `min`) and depend on being the first touch of that code
  * in this module instance** — a memo entry written by an earlier reduction would answer from the
  * cache and hide the defect entirely. Keep one atom per test, keep those four codes distinct, and
- * keep the whole-table sweep last: it touches every atom in the table. The fifth forged atom is
- * coded `XX` and deliberately collides with **nothing** — its subject is a definition that names a
- * special unit, not a collision. The three that forge nothing: the `Pa` case corrupts the loaded
- * table in place, the per-call-state case reduces an empty term, and the sweep reduces the table's
+ * keep the whole-table sweep last: it touches every atom in the table. The other two forged atoms
+ * are coded `XX` and `XY` and deliberately collide with **nothing** — their subjects are a
+ * definition that names a special unit, and a base atom carrying no `dim`. The three that forge nothing: the `Pa` case reduces an atom off a
+ * second table, the per-call-state case reduces an empty term, and the sweep reduces the table's
  * own atoms. **Recount when you add one** — a draft of this header said four and three, which was
  * both a wrong count and a wrong total.
+ *
+ * **The `Pa` case used to corrupt the loaded table in place, and no test here does that any more.**
+ * That write is refused: the shared table is frozen, because the same write against another atom
+ * fabricated a unit equivalence and outlived being undone. The mutation route and its refusal are
+ * `test/ucum/essence-immutable.test.ts`; what stays here is the mechanism measurement the coverage
+ * exclusion on the cyclic guard rests on.
  *
  * Measured on published `0.0.5`, and again on the base commit these tests were written against
  * (`c3c4988`, which carries the same memo, cycle guard and no-`value` branch — only the two `Error`
@@ -108,26 +115,31 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
     expect(ucumEqual("N", "kg.m/s2")).toBe(true);
   });
 
-  it("a cyclic definition in the table itself throws, and releases the atom (Pa)", () => {
-    const pascal = loadUcumEssence().atomByCode.get("Pa");
-    expect(pascal?.value).toBeDefined();
-    if (!pascal?.value) return;
-    const authored = pascal.value;
+  it("a self-referential atom off a second table resolves through the shipped one (Pa)", () => {
+    // This case used to corrupt the loaded table in place; the table is frozen now, so that write is
+    // refused. What it pins instead is the half of the cyclic guard's reachability that is easy to
+    // get wrong: **naming is not being.** (The guard IS reachable, through a `value` accessor that
+    // re-enters `reduce` — pinned in `reduce.test.ts`. Do not read this case as saying otherwise.)
+    // The atom here is self-referential **by construction**, off a table the caller parsed for
+    // itself, with no mutation anywhere; its
+    // definition is still resolved by `parseUcum` against the loaded table, so it *names* the
+    // shipped pascal rather than *being* it, and reduces to the pascal's own value.
+    const cyclic = parseEssence(
+      '<root><unit Code="Pa" isMetric="yes"><value value="1" Unit="Pa">Pa</value></unit></root>',
+    );
+    const cyclicPa = cyclic.atomByCode.get("Pa");
+    expect(cyclicPa?.value).toEqual({ factor: 1, unit: "Pa" });
+    expect(cyclicPa).not.toBe(loadUcumEssence().atomByCode.get("Pa"));
+    if (!cyclicPa) return;
 
-    try {
-      // Corrupting the loaded table in place is now the way to reach this guard, which is what it
-      // is for: an atom a caller assembles resolves its definition against the bundled table, so it
-      // can name a table atom but cannot become one.
-      (pascal as { value?: { readonly factor: number; readonly unit: string } }).value = {
-        factor: 1,
-        unit: "Pa",
-      };
-      expect(() => reduceUnit("Pa")).toThrowError("cyclic UCUM atom definition in the unit table");
-    } finally {
-      (pascal as { value?: { readonly factor: number; readonly unit: string } }).value = authored;
-    }
+    const node = {
+      kind: "term",
+      factors: [{ sign: 1, node: { kind: "simple", exponent: 1, atom: cyclicPa } }],
+    } as unknown as UnitNode;
+    const reduced = reduce(node);
+    expect(reduced).toEqual({ kind: "linear", factor: 1000, dims: { g: 1, m: -1, s: -2 } });
 
-    // The guard released the atom on the way out, so the authored definition reduces again.
+    // And the shipped pascal is untouched by having been named.
     expect(ucumEqual("Pa", "N/m2")).toBe(true);
   });
 
@@ -184,6 +196,35 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
     for (const special of ["Cel", "[pH]", "B", "Np"]) {
       expect(reduceUnit(special).kind).toBe("special");
     }
+  });
+
+  it("answers a forged base atom on its own code when it carries no dim, and moves no table atom", () => {
+    // `reduceAtomLinear`'s `atom.dim ?? atom.code` sat under a `/* v8 ignore next */` justified by a
+    // property of the bundled table — every base atom there carries a `dim`. `reduce` takes a
+    // caller-built node, so the arm is reachable through the exported surface, and the ignore was
+    // hiding it rather than describing it. Same class as the ignore beside it, which was deleted
+    // when its branches turned out to be reachable too; this is the one that survived that audit.
+    const node = {
+      kind: "term",
+      factors: [
+        {
+          sign: 1,
+          node: {
+            kind: "simple",
+            exponent: 1,
+            atom: { code: "XY", metric: false, base: true, special: false, arbitrary: false },
+          },
+        },
+      ],
+    } as unknown as UnitNode;
+
+    expect(reduce(node)).toEqual({ kind: "linear", factor: 1, dims: { XY: 1 } });
+
+    // Harmless is the claim, so it is asserted: a dim-less forged base atom is answered on its own
+    // code and leaves the table's base units reducing exactly as they did.
+    expect(loadUcumEssence().atomByCode.get("m")?.dim).toBe("m");
+    expect(reduceUnit("m")).toEqual({ kind: "linear", factor: 1, dims: { m: 1 } });
+    expect(reduceUnit("K")).toEqual({ kind: "linear", factor: 1, dims: { K: 1 } });
   });
 
   // Keep this last: it touches every atom in the table, so any test placed after it would no longer

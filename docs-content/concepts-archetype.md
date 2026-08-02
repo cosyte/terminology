@@ -7,8 +7,8 @@ sidebar_position: 1
 # Core Concepts
 
 `@cosyte/terminology` is a **terminology engine**, not a wire-format parser. It mirrors the FHIR
-**Terminology Module** — the industry's own architecture for keeping terminology a *swappable
-service* separate from the data that uses it — so its operations (`$translate`, `$lookup`,
+**Terminology Module** — the industry's own architecture for keeping terminology a _swappable
+service_ separate from the data that uses it — so its operations (`$translate`, `$lookup`,
 `$validate-code`, ValueSet `$expand` / binding, UCUM unit validation, and the published crosswalk
 resolvers) speak the FHIR shape every downstream tool already understands.
 
@@ -48,7 +48,7 @@ or map target.**
 
 Real steward maps (SNOMED→ICD-10-CM, the GEMs) are approximate, 1:many, and **non-invertible**.
 `translate` reads a map in its **authored direction only** — it matches a source coding against the
-map's *source-side* codes and never against targets — so a directional map cannot be run backwards.
+map's _source-side_ codes and never against targets — so a directional map cannot be run backwards.
 Reverse translation requires an explicit inverse map; it is never synthesized. The CMS GEMs make this
 explicit: the forward (9→10) and backward (10→9) files are **separate artifacts**, and `invertGem`
 throws `TERM_MAP_NOT_INVERTIBLE` rather than fabricate a transpose.
@@ -56,8 +56,8 @@ throws `TERM_MAP_NOT_INVERTIBLE` rather than fabricate a transpose.
 ## The crosswalk resolvers
 
 The published reference maps are the library's highest-risk surface, and the stewards say so in as
-many words — CMS: *"GEMs are not crosswalks. They are reference mappings"*; NLM: the SNOMED→ICD-10-CM
-map is *"semi-automated."* The resolvers honour that.
+many words — CMS: _"GEMs are not crosswalks. They are reference mappings"_; NLM: the SNOMED→ICD-10-CM
+map is _"semi-automated."_ The resolvers honour that.
 
 - **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`) — CMS **public-domain**. Each entry carries the
   steward's 5-position flags (**approximate | no-map | combination | scenario | choice-list**),
@@ -69,7 +69,7 @@ map is *"semi-automated."* The resolvers honour that.
   licensed; the engine bundles **no** SNOMED CT refset or release — it bundles the rule machinery and
   the individual concepts that machinery names, the map categories and the two gender findings).
   A source's **map
-  groups** are an AND (a manifestation code *and* an etiology code → two groups); within a group,
+  groups** are an AND (a manifestation code _and_ an etiology code → two groups); within a group,
   **priorities** are an if-then-else chain of `IFA` rules evaluated against caller-supplied
   `PatientContext` (age band, gender). A group whose decision needs context the caller did **not**
   supply is the typed `TERM_CROSSWALK_CONTEXT_REQUIRED` — the candidate rules and Map Advice ride
@@ -89,10 +89,10 @@ navigated over a **bring-your-own** RxNorm RRF release (`loadRxNormGraph` reads 
 the graph is entirely the caller's release, and a resolution is release-scoped.
 
 - **Direction is a documented trap, grounded firsthand.** RxNorm's `RXNREL` stores each relationship
-  as *"the relationship which the **second** concept (`RXCUI2`) HAS TO the **first** (`RXCUI1`)"* (NLM
+  as _"the relationship which the **second** concept (`RXCUI2`) HAS TO the **first** (`RXCUI1`)"_ (NLM
   RxNorm Technical Documentation §12.7; UMLS Reference Manual). So a row is read
   `RXCUI2 ⟶RELA⟶ RXCUI1`, and the loader normalizes every edge to `subject = RXCUI2`,
-  `object = RXCUI1`. A `has_ingredient` row therefore puts the concept that *has* the ingredient in
+  `object = RXCUI1`. A `has_ingredient` row therefore puts the concept that _has_ the ingredient in
   `RXCUI2` and what it has in `RXCUI1`. Getting this backwards is a wrong-medication bug, so it is
   pinned by fixtures.
 - **Direction is not topology.** Knowing how to read a row does not tell you which rows exist, and
@@ -110,7 +110,7 @@ the graph is entirely the caller's release, and a resolution is release-scoped.
   assuming it from the one you queried.
 - **A concept is typed by its defining atom, never by file position.** An `RXCUI` carries one
   defining atom (its normalized name: `IN`, `SCD`, `SCDF`, `BN`, and so on) plus any number of
-  synonym atoms, whose `TTY` (`PSN`, `SY`, `TMSY`) the NLM defines as a *"synonym of another TTY"*: it
+  synonym atoms, whose `TTY` (`PSN`, `SY`, `TMSY`) the NLM defines as a _"synonym of another TTY"_: it
   types a **name**, not a concept. RxNorm documents no ordering between an `RXCUI`'s atoms, so the
   loader takes the defining one wherever it sits and never falls back to a synonym. An `RXCUI` that no
   defining atom could type is left out of the graph and surfaced as `TERM_RXNORM_UNTYPED_CONCEPT`.
@@ -123,7 +123,7 @@ the graph is entirely the caller's release, and a resolution is release-scoped.
   resolvers (`ingredientsOf`, `doseFormsOf`, `consistsOf`) and the generic `relatedByRela` all follow
   authored predicates.
 - **Never fabricate.** A queried `RXCUI` absent from the release is a typed
-  `TERM_RXNORM_UNKNOWN_RXCUI`; a *present* concept with no such relationship is a found result with an
+  `TERM_RXNORM_UNKNOWN_RXCUI`; a _present_ concept with no such relationship is a found result with an
   **empty** target set (an honest "no such edge", distinct from "unknown concept"). An NDC not in the
   release is a typed `TERM_RXNORM_NDC_UNMAPPED`, never a guessed `RXCUI`.
 - **NDC↔RXCUI is many:1 and temporal.** `resolveNdc` carries the temporal status
@@ -135,9 +135,9 @@ the graph is entirely the caller's release, and a resolution is release-scoped.
   candidate carries `approximate: true` and a derived score). A "no match" is an empty array, never a
   nearest guess.
 
-> **Content posture.** This release ships the graph *mechanism* over the real RRF format, grounded
+> **Content posture.** This release ships the graph _mechanism_ over the real RRF format, grounded
 > firsthand on the RxNorm technical documentation; it bundles RxNorm's relationship and term-type
-> *names* but **no** RxNorm release. The
+> _names_ but **no** RxNorm release. The
 > public-domain Current Prescribable Content pack is not bundled either: bundling one requires a
 > genuine, verbatim RxNorm release, and none is fabricated to fill the gap.
 
@@ -157,9 +157,13 @@ branch on these, so a code's name is part of the public contract: renaming or re
 nothing your release or resource contained reaches a `message` or an `err.stack`, and the locus
 beside one is a line number, an index path into your own resource, or a fixed token. The **objects** are the opposite
 by design — a typed `unknown`/`unmapped` outcome names what you asked about, and a code
-*in patient context* can be PHI, so log the code and the locus rather than the whole result.
+_in patient context_ can be PHI, so log the code and the locus rather than the whole result.
 
 ## Immutability
 
-Every value the engine returns — a loaded `ConceptMap`, a `Coding`, a `TranslateResult` — is
-deep-frozen, so it is safe to share across a pipeline without defensive copying.
+A loaded `ConceptMap`, a `Coding` and a `TranslateResult` are deep-frozen. So is the bundled UCUM
+unit table, atom by atom: one table is shared by every caller and by the engine's own reducer, so a
+definition rewritten in place would change what a unit means for the whole process.
+
+What `parseUcum` and `reduce` hand back is deliberately **not** frozen, because it is yours rather
+than the engine's: both are built per call, and mutating one changes nothing for anyone else.
