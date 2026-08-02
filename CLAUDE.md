@@ -135,7 +135,9 @@ a summary.
 - **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
   `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`. TypeScript 5.9.x, exact-pinned.
 - **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
-  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`).
+  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
+  **`scripts/attw.mjs`, not the bare CLI** — see the guardrail below; the CLI reports a missing
+  `dist/` as "does not contain types" and **exits 0**.
 - **Node:** **>= 22** (CI matrix 22 + 24).
 - **Package manager:** `pnpm@10`.
 - **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
@@ -394,6 +396,50 @@ a summary.
   **active** ingredient is also not one recipe: from an `SCD` it is `consists_of` then
   `has_ingredient`, but an `SBD`'s `consists_of` returns its `SBDC` as well as the `SCDC`, and only
   the `SCDC` leads to the `IN`.
+- **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
+  BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli` opens with `if (!analysis.types) return 0`
+  — an untyped package is a legitimate npm package, so "no types at all" is a description, not a
+  problem, and the problem list is never consulted. No `--profile`, `--ignore-rules` or config
+  setting reaches that early return. For a package that ships types it means the declarations were
+  **not in the tarball**, which is a broken publish reported as a pass. On 2026-08-01, under a
+  six-worker parallel run, `verify.sh` printed **"✓ verify green" on a run where `attw` reported
+  "does not contain types"** — the only gate defect that run found which fails in the _shipping_
+  direction. `verify.sh`'s propagation was never at fault; the step lied to it.
+  **The race only supplies the condition.** Reproduced deterministically on a quiet box with no
+  concurrency: `rm -rf dist && pnpm attw`, and `rm -f dist/index.d.*ts && pnpm attw`, both print the
+  sentence and exit 0. The second is the realistic window — `tsup` emits JS in one pass and
+  declarations in a later one, so **every** build has an interval where `dist/` holds `.mjs`/`.cjs`
+  and no `.d.ts`; a concurrent build or `clean` in the same working tree lands `attw` in it. So the
+  answer is **not** a lock, a lease or a build queue: the gate must be able to say its own inputs
+  were missing, whatever removed them.
+  `scripts/attw.mjs` carries **two nets, and they catch different things** — a preflight that every
+  relative path `package.json` promises (`main`, `module`, `types`, `typings`, every string leaf of
+  `exports`) exists and is non-empty, which catches the race and _names the missing file_; and a
+  post-check on `attw`'s untyped sentence, which catches what the preflight structurally cannot —
+  declarations present on disk but excluded from the tarball by `files`/`.npmignore`. **No instance
+  of that second case is on record here** — do not cite `0.0.1`'s missing `vendor/ucum/NOTICE.md` as
+  one, which a draft of this entry did: `attw` analyses types, so it never saw that file and neither
+  net would catch it. `test/scripts/attw-gate.test.ts` pins both nets against the real binary,
+  including the upstream exit-0 itself, so an `attw` upgrade that reworks the wording or fixes the
+  exit code reds the suite instead of letting the net go quietly slack. It also pins a **negative
+  control** on a well-formed package, and that a real `attw` failure still fails — a gate that only
+  ever fails is not a gate, and one that swallows the status is not one either.
+  **The post-check reads a string, so what would hide that string is refused**, not tolerated.
+  **Three routes were measured** to hand back exit 0 over an untyped pack: `--quiet`,
+  `--format json`, and a `.attw.json` setting either (`readConfig()` applies it after argv).
+  `--config-path` is refused too, but **by inference, not measurement** — it would move the config
+  file out of view. The refusal is **by option name, wholesale, not by value** — a harmless
+  `--format` value blinds nothing and is refused anyway, which is the deliberate trade against
+  value-parsing them.
+  **This is a per-repo script, and every sibling that invokes the CLI directly still has the bare
+  invocation** — including
+  `config/scripts/parser-template/`, which `scaffold-parser.mjs` mints new repos from, so landing
+  this "in every repo" without that one leaves the defect being re-minted. **Do not write the repo
+  count down here**; a draft said "fourteen" and was wrong twice over (`config`'s own script only
+  delegates, and three of the manifests are nested — a template, a starter kit, and
+  `@cosyte/test-utils`). Derive it:
+  `find /workspace -name package.json -not -path '*/node_modules/*' | xargs grep -l '"attw":'`
+  (17 on the tree this was written against; `rg -l --glob '**/package.json' '"attw":'` agrees).
 
 ## Standing disciplines (every change)
 
