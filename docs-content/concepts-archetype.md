@@ -161,11 +161,9 @@ _in patient context_ can be PHI, so log the code and the locus rather than the w
 
 ## Immutability
 
-The models the engine loads for you — a `ConceptMap`, a `Coding`, a `TranslateResult` — are
-deep-frozen, so they are safe to share across a pipeline without defensive copying. So is the
-bundled UCUM unit table, atom by atom: one table is shared by every caller and by the engine's own
-reducer, so a definition rewritten in place would change what a unit means for the whole process.
+A loaded `ConceptMap`, a `Coding` and a `TranslateResult` are deep-frozen. So is the bundled UCUM
+unit table, atom by atom: one table is shared by every caller and by the engine's own reducer, so a
+definition rewritten in place would change what a unit means for the whole process.
 
-Two things are deliberately **not** frozen, because they are yours rather than the engine's: the AST
-`parseUcum` returns and the reduction `reduce` returns are built per call, and mutating one changes
-nothing for anyone else.
+What `parseUcum` and `reduce` hand back is deliberately **not** frozen, because it is yours rather
+than the engine's: both are built per call, and mutating one changes nothing for anyone else.
