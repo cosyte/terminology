@@ -129,28 +129,27 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
   // Reachability differs per guard, and this is deliberate. A caller-assembled atom reaches the two
   // below it: nothing checks an atom's provenance, and an atom **defined in terms of a special unit**
   // (`{ value: { unit: "Cel" } }`) lands on the table's own `Cel` in the no-linear-definition guard.
-  // The cyclic guard is reached by NEITHER, and both halves of that were measured. A definition is
-  // resolved by `parseUcum` against the loaded table, so an assembled atom — or one off a second
-  // table a caller built with `parseEssence` — can name a table atom but never be one, and the keys
-  // here are identities: reducing a self-referential `Pa` taken off a table copy resolves to the
-  // shipped pascal and answers 1000 g.m-1.s-2. That left corrupting a *loaded* atom in place, and
-  // the table is frozen now, so that route is gone too. What remains for this guard is a definition
-  // cycle in the vendored table itself, which the whole-table sweep in `reduce-memo.test.ts` asserts
-  // is not there. It is excluded from coverage rather than deleted: a vendor table bump that
-  // introduced a cycle is exactly what it is for, and without it that bump is unbounded recursion
-  // instead of a typed refusal.
+  // The cyclic guard is reached differently again, and this took three wrong descriptions to get
+  // right — do not re-derive it from the shape of the code, because the shape is misleading. Naming
+  // is not enough: a definition is resolved by `parseUcum` against the loaded table, so an assembled
+  // atom, or one off a second table built with `parseEssence`, can name a table atom but never be
+  // one; a self-referential `Pa` taken off a table copy resolves to the shipped pascal and answers
+  // 1000 g.m-1.s-2. Corrupting a *loaded* atom in place used to reach it and no longer does, because
+  // the table is frozen. **What reaches it is an ACCESSOR**: `UcumAtom.value` is `readonly` to
+  // TypeScript only, which a getter satisfies, and `atom.value.unit` is read *below*, after
+  // `inProgress.add(atom)` — so a caller's getter runs inside the recursion and can re-enter
+  // `reduce` with this very atom. No mutation, no table, no cast. That is a supported public call
+  // and it is pinned in `test/ucum/reduce.test.ts`, under a 100,000-byte atom code, so this guard
+  // is covered rather than excluded. A definition cycle in the vendored table would reach it too,
+  // and the whole-table sweep in `reduce-memo.test.ts` asserts there is not one today.
   //
   // Every message here is a literal. A caller-assembled `atom.code` is unbounded: interpolating one
   // produced a 1,000,042-byte `Error.message`, with those same bytes in `err.stack`, on `0.0.5`.
   // Do not put an atom back into a message, and do not memoize an answer for an atom none of these
-  // let through. The two an assembled atom can reach are pinned in `test/ucum/reduce.test.ts` by
-  // whole-message equality, a length bound, and `err.stack` under a 100,000-byte code. Equality is
-  // the load-bearing part — `toThrowError(string)` is a substring match, and a draft that used only
-  // that stayed green with the atom interpolated back in. The third message is no longer pinned by a
-  // test that reaches it, because nothing reaches it; it is a literal with no atom in scope, which
-  // is checkable by reading the line and is the whole of what the rule asks.
-  /* v8 ignore next 3 -- unreachable: see the reachability note above; kept as the typed refusal a
-     cyclic vendored table would otherwise turn into unbounded recursion */
+  // let through. All three are pinned in `test/ucum/reduce.test.ts` by whole-message equality, a
+  // length bound, and `err.stack` under a 100,000-byte caller-supplied code. Equality is the
+  // load-bearing part — `toThrowError(string)` is a substring match, and a draft that used only that
+  // stayed green with the atom interpolated back in.
   if (inProgress.has(atom)) {
     throw new Error("cyclic UCUM atom definition in the unit table");
   }
@@ -266,10 +265,11 @@ function serializeSpecial(node: UnitNode): string {
  * @throws {Error} If reducing `node` reaches an atom with no linear definition, or one whose
  *   definition does not parse. **No expression {@link parseUcum} accepts reaches either**; a node
  *   you assemble yourself can, including by defining an atom in terms of a special unit such as
- *   `Cel`, which lands on the table's own `Cel`. A third guard, against a definition that leads
- *   back to itself, guards the unit table rather than your input and no call can reach it: a
- *   definition is resolved against the loaded table, so your atom can name a table atom but never
- *   be one, and that table is frozen. The message names the fault, never the atom.
+ *   `Cel`, which lands on the table's own `Cel`. A third guard catches a definition that leads back
+ *   to itself. Naming a table atom does not reach it — a definition is resolved against the loaded
+ *   table, so your atom can name one but never be one — and neither does the table itself, which is
+ *   frozen; what reaches it is a `value` accessor that re-enters `reduce` for the same atom while
+ *   that atom is still being reduced. The message names the fault, never the atom.
  * @example
  * ```ts
  * import { parseUcum, reduce } from "@cosyte/terminology";

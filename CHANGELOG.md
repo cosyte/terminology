@@ -67,14 +67,17 @@ this file is maintained by hand (Changesets handles the version bump and publish
   grouped powers; and the shapes the README and the tests name — plus 312 `ucumEqual` pairs, reduce
   byte-identically on `bf153cb` and on this tree (3,393 output lines, one sha256).
 
-  One consequence, stated because it is not free: freezing the table removes the last route to
-  `reduce`'s cyclic-definition guard. A definition is resolved by `parseUcum` against the loaded
-  table, so an atom you assemble — or one off a second table you parsed yourself — can _name_ a table
-  atom but never _be_ one; reducing a self-referential `Pa` taken off a table copy resolves to the
-  shipped pascal and answers `1000 × g.m-1.s-2`, which is now pinned as a test. The guard is kept and
-  excluded from coverage rather than deleted: a vendored-table bump that introduced a definition
-  cycle is what it is for, and without it that bump is unbounded recursion instead of a typed
-  refusal.
+  One knock-on, stated because getting it wrong is easy: freezing the table removes **a** route to
+  `reduce`'s cyclic-definition guard, not the last one. Two routes that look like they should reach
+  it do not, and both are now pinned as tests — naming a table atom in a definition (it is resolved
+  against the loaded table, so your atom can _name_ one but never _be_ one; a self-referential `Pa`
+  taken off a table copy resolves to the shipped pascal and answers `1000 × g.m-1.s-2`), and
+  corrupting a loaded atom, which is what is now refused. The route that does reach it needs no table
+  at all: `UcumAtom.value` is `readonly` to TypeScript, which an **accessor** satisfies, and the
+  definition is read after the atom is marked in progress, so a getter can re-enter `reduce` for the
+  same atom. That is a supported public call, and the guard is pinned by it under a 100,000-byte atom
+  code — so all three of `reduce`'s messages are again asserted whole, against both `message` and
+  `err.stack`, with the caller's own code as the unbounded value in each.
 
   Also here: the `/* v8 ignore next */` on `reduce`'s `atom.base` line is removed. It justified
   itself with a property of the bundled table — every base atom there carries a `dim` — for a line

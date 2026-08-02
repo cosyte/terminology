@@ -251,12 +251,11 @@ a summary.
   measured on published `0.0.5`. It sat under a `/* v8 ignore */` labelled "unreachable with the
   shipped data". **A `v8 ignore` is an assertion about reachability; check it against the exported
   surface before you trust one — and check the WHOLE block, because the other branches in that one
-  were reachable too.** That block is now gone. Of the three corrupt-table guards in
-  `reduceAtomLinear`, the two an assembled atom reaches are reached by tests rather than excluded
-  from coverage; the cyclic one is excluded, and **that exclusion is the opposite case to the one
-  above and has to stay that way** — it was checked against the exported surface and found
-  unreachable _because the table is frozen_, not asserted unreachable from a property of the shipped
-  data. If a future change hands `reduce` a table the caller supplies, the exclusion is wrong again.
+  were reachable too.** That block is now gone: **all three** corrupt-table guards in
+  `reduceAtomLinear` are reached by tests rather than excluded from coverage, and the third one is
+  why this warning is the most expensive lesson in this file — a later slice asserted it unreachable,
+  excluded it, and was refuted on a route nobody had considered (see the accessor note below).
+  **`reduceAtomLinear` now carries no `v8 ignore` at all, and that is the intended end state.**
   Every `Error` that file constructs carries a literal message; **do not put an atom back into one.**
   Pinned in `test/ucum/reduce.test.ts`.
 
@@ -313,13 +312,23 @@ a summary.
   `parseUcum` scans `atoms` and never reads `atomByCode`, so a forced entry changes no reduction,
   only what the caller's own `get` returns. Pinned in `test/ucum/essence-immutable.test.ts`, whose
   cases each corrupt a **different** atom because the memo is first-touch.
-  **▶ FREEZING COST THE CYCLIC GUARD ITS LAST ROUTE, AND THE `Pa` TESTS THAT USED IT.** Those tests
-  corrupted the shared table in place; that is now the thing being refused. **A table copy does NOT
-  substitute** — measured, not assumed: a definition is resolved by `parseUcum` against the _loaded_
-  table, so a self-referential `Pa` taken off a `parseEssence` copy resolves to the shipped pascal
-  and answers `1000 × g.m-1.s-2`. That measurement is now a test, and it is what the guard's
-  coverage exclusion rests on. **Keep the guard**: a vendored-table bump that introduced a cycle is
-  what it is for, and without it that bump is unbounded recursion rather than a typed refusal.
+  **▶ THE CYCLIC GUARD IS REACHED BY AN ACCESSOR, AND THREE DESCRIPTIONS OF ITS REACHABILITY HAVE
+  NOW BEEN WRONG. DO NOT RE-DERIVE IT FROM THE SHAPE OF THE CODE.** `UcumAtom.value` is `readonly`
+  to **TypeScript only**, which a **getter** satisfies, and `reduceAtomLinear` reads
+  `atom.value.unit` **after** `inProgress.add(atom)` — so a caller's accessor runs inside the
+  recursion and can re-enter `reduce` with that same atom. No mutation, no table, no cast, and it
+  type-checks against the package's own exported types. **A refuter found this after a draft of this
+  slice asserted the guard was unreachable, excluded it from coverage, deleted the two tests that
+  reached it, and shipped "no call can reach it" into `dist/index.d.ts`.** It is pinned in
+  `test/ucum/reduce.test.ts` under a 100,000-byte caller-supplied atom code — a **stronger** pin
+  than the one it replaced, which used the table's own bounded `Pa`.
+  Two things that do **not** reach it, both measured, because both look like they should: **naming
+  is not being** — a definition resolves through `parseUcum` against the loaded table, so a
+  self-referential `Pa` off a `parseEssence` copy resolves to the shipped pascal and answers
+  `1000 × g.m-1.s-2` — and corrupting a loaded atom in place, which the freeze now refuses.
+  **Never put a `v8 ignore` on this guard.** Whatever route was closed last, it is a
+  caller-reachable throw carrying an unbounded caller code, so excluding it drops the value-free pin
+  that keeps that code out of `Error.message` and `err.stack`.
   **The over-scoped `v8 ignore` on the `atom.base` line is gone.** It read "base atoms always carry
   their dim" — true of the table and false of the exported surface, since `reduce()` over a
   caller-built `{ base: true }` with no `dim` reaches the `?? atom.code` fallback. The arm is
@@ -328,15 +337,13 @@ a summary.
   **Check the whole file, not the block you came for** — this one survived the audit that deleted
   the block beside it.
 
-  **The `reduce` messages an assembled atom can reach are pinned by whole-message equality, and that
-  is deliberate.** `toThrowError(string)` is a **substring** match: a draft pinned two of them with
-  it, and putting the atom back into the message left the suite green. `test/ucum/reduce.test.ts`
-  asserts each with `toBe`, a length bound, and `err.stack` under a 100,000-byte code. **That is two
-  of the three, and the third is not pinned by a call that throws it, because nothing throws it** —
-  freezing the table removed the last route to the cyclic guard. Its message is a literal with no
-  atom in scope, which is checkable by reading the line; the last case in that file asserts the
-  route is closed instead of asserting a message it can no longer obtain. **The unbounded value in
-  every one of these is the CALLER's atom code — do not read the third one's absence as slack.**
+  **The three `reduce` messages are pinned by whole-message equality, and that is deliberate.**
+  `toThrowError(string)` is a **substring** match: a draft pinned two of them with it, and putting
+  the atom back into the message left the suite green. `test/ucum/reduce.test.ts` asserts each with
+  `toBe`, a length bound, and `err.stack` — **all three now under a 100,000-byte caller-supplied
+  atom code**, which is the unbounded value in every one of them. The cyclic one used to be pinned
+  through the table's own `Pa`, whose code is bounded and so proved less; the accessor route below
+  replaced it.
   `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
   a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
   deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,

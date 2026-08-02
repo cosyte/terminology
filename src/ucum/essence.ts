@@ -38,8 +38,9 @@ function readValue(block: string): { factor: number; unit: string } | undefined 
  * tests (feeding it malformed rows); production code calls {@link loadUcumEssence}, which caches.
  *
  * The table it returns is **deeply frozen** — every atom, every atom's definition, every prefix and
- * both arrays — so the `readonly` on {@link UcumEssence} is enforced when the code runs and not only
- * when it compiles.
+ * both arrays — so the `readonly` on those is enforced when the code runs and not only when it
+ * compiles. The two lookup maps refuse `set` / `delete` / `clear`; a `Map` cannot be made immutable
+ * in place, so that is the direct route and not every route (see {@link sealLookup}).
  *
  * @param xml - The essence XML (the vendored verbatim document, or a test fragment).
  * @returns The parsed {@link UcumEssence} model, frozen.

@@ -116,10 +116,12 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
   });
 
   it("a self-referential atom off a second table resolves through the shipped one (Pa)", () => {
-    // This case used to corrupt the loaded table in place, which was the last route to the cyclic
-    // guard. The table is frozen now, and this is the measurement that says nothing else reaches
-    // it — the one the coverage exclusion on that guard rests on. The atom here is self-referential
-    // **by construction**, off a table the caller parsed for itself, with no mutation anywhere; its
+    // This case used to corrupt the loaded table in place; the table is frozen now, so that write is
+    // refused. What it pins instead is the half of the cyclic guard's reachability that is easy to
+    // get wrong: **naming is not being.** (The guard IS reachable, through a `value` accessor that
+    // re-enters `reduce` — pinned in `reduce.test.ts`. Do not read this case as saying otherwise.)
+    // The atom here is self-referential **by construction**, off a table the caller parsed for
+    // itself, with no mutation anywhere; its
     // definition is still resolved by `parseUcum` against the loaded table, so it *names* the
     // shipped pascal rather than *being* it, and reduces to the pascal's own value.
     const cyclic = parseEssence(
