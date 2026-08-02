@@ -9,29 +9,13 @@
  * @packageDocumentation
  */
 
+import { frozenMap } from "../common/frozen-map.js";
 import type { Writable } from "../common/writable.js";
 import { parseCsvSource } from "./csv.js";
 import { parseFhirCodeSystem } from "./fhir.js";
 import { parseFixedWidth } from "./fixed-width.js";
 import { parseRrf } from "./rrf.js";
 import type { CodeSystem, CodeSystemSource, Concept, LoadWarning } from "./types.js";
-
-/**
- * Seal a built concept map so the returned release is genuinely immutable — `Object.freeze` does not
- * stop `Map.set`/`delete`/`clear`, and a mutated map would let a caller inject a **fabricated**
- * concept past the never-fabricate invariant (and desync `count`). The mutators are replaced with a
- * throwing guard, mirroring how `Object.freeze` rejects writes in strict mode. Read/iteration are
- * untouched; the type is already `ReadonlyMap`.
- */
-function sealConceptMap(map: Map<string, Concept>): ReadonlyMap<string, Concept> {
-  const guard = (): never => {
-    throw new TypeError("Cannot mutate a loaded CodeSystem's concepts map (it is immutable)");
-  };
-  for (const method of ["set", "delete", "clear"] as const) {
-    Object.defineProperty(map, method, { value: guard, writable: false, configurable: false });
-  }
-  return map;
-}
 
 /**
  * Load a consumer-supplied code-system release into an immutable, queryable {@link CodeSystem}.
@@ -104,7 +88,11 @@ export function loadCodeSystem(source: CodeSystemSource): CodeSystem {
   }
 
   out.count = concepts.size;
-  out.concepts = sealConceptMap(concepts);
+  // A read-only view, not the map: `Object.freeze` below cannot reach a `Map`'s entries, and a
+  // mutated one would let a holder inject a **fabricated** concept past never-fabricate (and desync
+  // `count`). This used to replace the three mutators on the map itself, which left
+  // `Map.prototype.set.call(cs.concepts, …)` inserting; the view has no internal slot to write to.
+  out.concepts = frozenMap(concepts, "a loaded CodeSystem's concepts map");
   out.warnings = Object.freeze(warnings);
   return Object.freeze(out);
 }

@@ -165,5 +165,32 @@ A loaded `ConceptMap`, a `Coding` and a `TranslateResult` are deep-frozen. So is
 unit table, atom by atom: one table is shared by every caller and by the engine's own reducer, so a
 definition rewritten in place would change what a unit means for the whole process.
 
+An index a **release you load** exposes as a `ReadonlyMap` — the concepts of a code system, a GEM's or
+a complex map's entries, a drug graph's concepts, edges and NDCs — is a **read-only view** of a map
+rather than the map itself. Reads are exactly a `Map`'s (`get`, `has`, `size`, `keys`, `values`,
+`entries`, `forEach`, iteration, and `new Map(view)`), and adding, deleting or clearing is refused
+whichever way it is attempted. Why it matters is the never-fabricate invariant: without it, whatever
+holds a loaded release could empty a medication's ingredient edges, delete a diagnosis mapping, or add
+a target the steward's file never authored, and the engine would answer from it while `count` went on
+reporting what was loaded.
+
+Three consequences to know before you write against one. `readonly` in the type is a compile-time
+claim and this is the run-time one, so the refusal happens whether or not you type-check. A view is
+**not** a `Map` instance: `instanceof Map` is `false`, it prints as a plain object, `Object.keys`
+lists its own methods, and `JSON.stringify` renders it as `{"size":2}` where a `Map` rendered `{}` —
+so a JSON round-trip of a loaded model carries a `size` over no entries, having never carried the
+entries either. And a model carrying a view **cannot be structured-cloned**: `structuredClone` and
+`worker.postMessage` raise a `DataCloneError`, `v8.serialize` a plain `Error`, both naming an
+uncloneable function. Copy out what the other side needs instead (`new Map(cs.concepts)` clones
+fine). That refusal is deliberate rather than incidental: the alternative made the clone succeed and
+hand back a model whose indexes were empty while its counts still reported the loaded figures. A
+loaded `ConceptMap`, `ValueSet` or unit table carries no view and clones as it always did.
+
+The **bundled UCUM table is the exception**, deliberately and as before: `atomByCode` and
+`prefixByCode` are real `Map`s whose `set`, `delete` and `clear` are replaced by a refusal, so an
+entry forced through `Map.prototype` still lands. What that reaches is bounded — `parseUcum` resolves
+an atom by scanning the frozen `atoms` array, never through a lookup map, so a forced entry changes no
+validation, no reduction and no `ucumEqual` answer; only your own `get` is lied to.
+
 What `parseUcum` and `reduce` hand back is deliberately **not** frozen, because it is yours rather
 than the engine's: both are built per call, and mutating one changes nothing for anyone else.

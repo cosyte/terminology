@@ -23,6 +23,7 @@
  */
 
 import { TerminologyError, FATAL_CODES } from "../common/diagnostics.js";
+import { frozenMap } from "../common/frozen-map.js";
 import type { Writable } from "../common/writable.js";
 import type {
   CrosswalkNoMap,
@@ -113,21 +114,25 @@ export function loadGems(source: GemSource): GemMap {
     if (trimmed === "") continue;
     const fields = trimmed.split(/\s+/);
     if (fields.length !== 3) {
-      warnings.push({
-        code: "TERM_GEM_MALFORMED_ROW",
-        line: i + 1,
-        detail: `expected 3 whitespace-delimited fields, found ${String(fields.length)}`,
-      });
+      warnings.push(
+        Object.freeze({
+          code: "TERM_GEM_MALFORMED_ROW",
+          line: i + 1,
+          detail: `expected 3 whitespace-delimited fields, found ${String(fields.length)}`,
+        }),
+      );
       continue;
     }
     const [src, tgt, flagStr] = fields as [string, string, string];
     const flags = decodeFlags(flagStr);
     if (flags === undefined) {
-      warnings.push({
-        code: "TERM_GEM_MALFORMED_ROW",
-        line: i + 1,
-        detail: "flag field is not a 5-digit code",
-      });
+      warnings.push(
+        Object.freeze({
+          code: "TERM_GEM_MALFORMED_ROW",
+          line: i + 1,
+          detail: "flag field is not a 5-digit code",
+        }),
+      );
       continue;
     }
     const entry: Writable<GemEntry> = { source: src, flags };
@@ -139,11 +144,17 @@ export function loadGems(source: GemSource): GemMap {
     else entries.set(src, [frozen]);
     count++;
   }
+  // Freeze each source's candidate list, then hand out the index as a read-only view rather than the
+  // map itself. `Object.freeze` below reaches neither: a `Map`'s entries live in an internal slot,
+  // and the lists were only `readonly` to TypeScript. Without both, a holder could delete an
+  // ICD-9 → ICD-10 mapping, or push a target the steward's file never authored into one, and
+  // {@link applyGem} would answer from it.
+  for (const list of entries.values()) Object.freeze(list);
   return Object.freeze({
     direction: source.direction,
     ...(source.version !== undefined ? { version: source.version } : {}),
     count,
-    entries,
+    entries: frozenMap(entries, "a loaded GEM map's entries"),
     warnings: Object.freeze(warnings),
   });
 }

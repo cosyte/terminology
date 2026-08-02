@@ -100,8 +100,8 @@ export interface LoadWarning {
 
 /**
  * A loaded, immutable code-system release — the queryable model {@link loadCodeSystem} produces and
- * {@link lookup} / {@link validateCode} run over. Concepts are keyed by code for O(1) identity; the
- * map is exposed `readonly` and every concept is frozen.
+ * {@link lookup} / {@link validateCode} run over. Concepts are keyed by code for O(1) identity, and
+ * every concept is frozen.
  */
 export interface CodeSystem {
   /** The code system's canonical URI, when supplied by the source. */
@@ -112,7 +112,14 @@ export interface CodeSystem {
   readonly name?: string;
   /** The number of loaded concepts. */
   readonly count: number;
-  /** The concepts, keyed by `code`. Read-only; every value frozen. */
+  /**
+   * The concepts, keyed by `code`. A **read-only view**, not a `Map` you were handed: reads and
+   * iteration behave as a `Map`'s do, adding / deleting / clearing is refused however it is
+   * attempted, and every value is frozen.
+   *
+   * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+   * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
+   */
   readonly concepts: ReadonlyMap<string, Concept>;
   /** The skipped-row warnings surfaced during load, in line order. Frozen; may be empty. */
   readonly warnings: readonly LoadWarning[];
