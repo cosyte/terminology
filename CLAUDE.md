@@ -245,24 +245,67 @@ a summary.
   not "improve" it back into an echo, and do not settle for truncating one.
   A **fourth** site was found by the refuter after those three: `reduce` is exported, takes a
   caller-built `UnitNode`, and interpolated a forged atom's `code` into a plain `Error` — a
-  1,000,000-byte code gave a 1,000,042-byte `message` and the same bytes in `err.stack`. It sat under
-  a `/* v8 ignore */` labelled "unreachable with the shipped data" and is now outside that block.
-  **A `v8 ignore` is an assertion about reachability; check it against the exported surface before
-  you trust one — and check the WHOLE block, because the two branches still inside it are reachable
-  too.** `inProgress` and `atomMemo` key on the atom's `code` **string**, and nothing checks that an
-  atom came from the vendored table, so a forged atom whose code collides with a shipped one
-  re-enters the cyclic guard (`reduce` over a forged `mol` defined as `mol` throws it) and a forged
-  atom with no `value` falls through the next branch — which throws nothing; it memoizes
-  dimensionless and returns. A draft of that slice relabelled the block "genuinely unreachable
-  through the public API", which is how a defensible scoped claim ("…with the shipped data") became
-  a wrong absolute one; the scoped form is restored, worded as a coverage exclusion rather than a
-  reachability assertion. Neither branch leaks — the one message in there is a literal — but
-  **do not put an atom back into it.** Pinned now in `test/ucum/reduce.test.ts`.
-  **That no-`value` branch writes to the module-global `atomMemo` BEFORE returning, and that is a
-  live never-fabricate defect, unchanged since `0.0.5` and NOT fixed by that slice** — one exported
-  `reduce()` call with a forged, value-less atom whose `code` collides with a shipped one poisons
-  every later reduction of that atom in the process, so `ucumEqual("mg/L", "mg")` can be made to
-  answer `true`. It is its own item, not a claims fix; do not fold it into a docs slice.
+  1,000,000-byte code gave a 1,000,042-byte `message`, with those same bytes in `err.stack`,
+  measured on published `0.0.5`. It sat under a `/* v8 ignore */` labelled "unreachable with the
+  shipped data". **A `v8 ignore` is an assertion about reachability; check it against the exported
+  surface before you trust one — and check the WHOLE block, because the other branches in that one
+  were reachable too.** That block is now gone: all three corrupt-table guards in `reduceAtomLinear`
+  are reached by tests rather than excluded from coverage. Every `Error` that file constructs
+  carries a literal message; **do not put an atom back into one.** Pinned in
+  `test/ucum/reduce.test.ts`.
+
+  **`atomMemo` AND `inProgress` KEY ON THE ATOM OBJECT. NEVER RE-KEY THEM ON `atom.code`.** Keying
+  on the string made them a channel between atoms that merely share a code, and nothing checks that
+  an atom on a caller-built node came from the vendored table. Measured on published `0.0.5`, one
+  `reduce()` over a forged, value-less `L` as the first touch of `L`: `ucumEqual("L", "1")` and
+  `ucumEqual("mg/L", "mg")` both answered `true` where the unforged control answered `false`, and
+  `mmol/L` fell from `6.02214076e23 × m-3` to a dimensionless `6.02214076e20` — a concentration
+  reading equal to a mass. The same keying let a forged `N` defined as `N` wedge the shipped newton for the life
+  of the process, because `inProgress` was not released on a throw; it is released in a `finally`
+  now. **Identity keying was chosen over validating an atom's provenance because it leaves the hot
+  path alone** — the atoms `parseUcum` resolves are `loadUcumEssence`'s cached singletons, so a
+  parsed expression still finds one entry per atom. **Do not quote a benchmark pair for it**: three
+  drafts quoted three pairs, none reproduced, and a fourth measurement put the ratio on both sides
+  of 1. The docblock states the conclusion (no measured cost) and no figures, deliberately. The
+  no-`value` branch **refuses** rather than memoizing dimensionless: an atom with no linear
+  definition is not an atom equal to `1`. `reduce` also no longer hands back the module-global
+  dimensionless object, which a caller could mutate into the engine. Pinned in
+  `test/ucum/reduce-memo.test.ts`, red on `c3c4988` in every case it asserts.
+
+  **▶ AND THE REASON A PARSED EXPRESSION NEVER REACHES THOSE GUARDS IS `reduce`'s CONTROL FLOW, NOT
+  A PROPERTY OF THE TABLE. A refuter refused the first pass of that fix for saying otherwise.** Of
+  the table's 312 atoms, **28 carry no `value` at all — the 7 base units and the 21 special ones**
+  (`Cel`, `[pH]`, `B`, `Np`, `[degF]`, …), and the specials are neither base nor arbitrary, so they
+  are exactly what the no-linear-definition guard refuses. What keeps them out of it is that
+  `reduce` short-circuits a special-containing expression to the opaque `special` form **before**
+  any linear reduction, and base and arbitrary atoms return earlier still. Of the 291 non-special
+  atoms — the 7 base units plus the 284 that carry a `value` — every one reduces fully. **284 is the
+  count that carries a `value`, NOT the count of non-special atoms**; a draft attached it to the
+  wrong noun and both numbers are now asserted, so do not restore it. **A caller-assembled atom defined in terms of a special unit
+  (`{ value: { unit: "Cel" } }`) walks straight past that short-circuit and lands on the table's own
+  `Cel`** — so "an atom the bundled table never produced" is the wrong description of what these
+  guards refuse. Do not restore it. The counts are asserted in `test/ucum/reduce-memo.test.ts` so
+  the sentence above cannot drift from the table.
+
+  **▶ TWO `PRE-EXISTING` HOLES THAT SLICE DID NOT CLOSE, both identical on `c3c4988` and on
+  published `0.0.5`, both recorded rather than papered over.** (1) **`loadUcumEssence()` hands out a
+  MUTABLE atom table.** `UcumAtom`'s fields are `readonly` to TypeScript only; `essence.ts` freezes
+  nothing, so writing `atom.value` on a loaded atom in place still poisons that atom's memo for the
+  process. Identity keying closes the _forged_-atom route, not this one — and this repo's own tests
+  reach the cycle guard by doing exactly that to `Pa`. It needs a consumer to reach into engine
+  internals it was handed, so it is a backlog line, not `STOP-THE-LINE`. (2) **One over-scoped
+  `v8 ignore` survived the audit that deleted the block beside it**: the `/* v8 ignore next */` on
+  the `atom.base` line reads "base atoms always carry their dim", true of the table and false of the
+  exported surface — `reduce()` over a caller-built `{ base: true }` with no `dim` reaches the
+  `?? atom.code` fallback. Harmless in effect (a forged base atom leaves every table atom's canonical
+  unchanged, verified on both trees), but it is the same class of claim the paragraph above warns
+  about, in the same function. **Check the whole file, not the block you came for.**
+
+  **The three `reduce` messages are pinned by whole-message equality, and that is deliberate.**
+  `toThrowError(string)` is a **substring** match: a draft pinned two of them with it, and putting
+  the atom back into the message left the suite green. `test/ucum/reduce.test.ts` asserts each
+  message with `toBe` plus a length bound, and the two an assembled atom can reach also against
+  `err.stack` under a 100,000-byte code.
   `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
   a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
   deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,
@@ -294,6 +337,7 @@ a summary.
   the fallback. Classify it with the query echoes, never with `.targetSystem` / `.conceptMapUrl`,
   which really are read off the loaded map. The `translate` pin holds only because its fixture coding
   carries no `system`; its name says so.
+
 - Coverage: global >= 90% (lines/branches/functions/statements), enforced by `pnpm test:coverage`.
   **Per-directory thresholds now cover every source directory.** `vitest.config.ts` gates `common/`,
   `systems/`, `conceptmap/`, `codesystem/`, `valueset/`, `ucum/`, `crosswalk/` **and `rxnorm/`**.
