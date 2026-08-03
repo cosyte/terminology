@@ -449,34 +449,26 @@ a summary.
   and no `.d.ts`; a concurrent build or `clean` in the same working tree lands `attw` in it. So the
   answer is **not** a lock, a lease or a build queue: the gate must be able to say its own inputs
   were missing, whatever removed them.
-  `scripts/attw.mjs` carries **two nets, and they catch different things** — a preflight that every
-  relative path `package.json` promises (`main`, `module`, `types`, `typings`, every string leaf of
-  `exports`) exists and is non-empty, which catches the race and _names the missing file_; and a
-  post-check on `attw`'s untyped sentence, which catches what the preflight structurally cannot —
-  declarations present on disk but excluded from the tarball by `files`/`.npmignore`. **No instance
-  of that second case is on record here** — do not cite `0.0.1`'s missing `vendor/ucum/NOTICE.md` as
-  one, which a draft of this entry did: `attw` analyses types, so it never saw that file and neither
-  net would catch it. `test/scripts/attw-gate.test.ts` pins both nets against the real binary,
-  including the upstream exit-0 itself, so an `attw` upgrade that reworks the wording or fixes the
-  exit code reds the suite instead of letting the net go quietly slack. It also pins a **negative
-  control** on a well-formed package, and that a real `attw` failure still fails — a gate that only
-  ever fails is not a gate, and one that swallows the status is not one either.
-  **The post-check reads a string, so what would hide that string is refused**, not tolerated.
-  **Three routes were measured** to hand back exit 0 over an untyped pack: `--quiet`,
-  `--format json`, and a `.attw.json` setting either (`readConfig()` applies it after argv).
-  `--config-path` is refused too, but **by inference, not measurement** — it would move the config
-  file out of view. The refusal is **by option name, wholesale, not by value** — a harmless
-  `--format` value blinds nothing and is refused anyway, which is the deliberate trade against
-  value-parsing them.
-  **This is a per-repo script, and every sibling that invokes the CLI directly still has the bare
-  invocation** — including
-  `config/scripts/parser-template/`, which `scaffold-parser.mjs` mints new repos from, so landing
-  this "in every repo" without that one leaves the defect being re-minted. **Do not write the repo
-  count down here**; a draft said "fourteen" and was wrong twice over (`config`'s own script only
-  delegates, and three of the manifests are nested — a template, a starter kit, and
-  `@cosyte/test-utils`). Derive it:
-  `find /workspace -name package.json -not -path '*/node_modules/*' | xargs grep -l '"attw":'`
-  (17 on the tree this was written against; `rg -l --glob '**/package.json' '"attw":'` agrees).
+  **▶ THE GATE IS DESCRIBED IN `scripts/attw.mjs`'s DOCBLOCK, AND ONLY THERE. DO NOT RESTATE ITS
+  RULES HERE.** That file names the two nets, the argument **allow-list** (`--profile` and
+  `--no-definitely-typed`; everything else refused, so no spelling has to be enumerated), the
+  `.attw.json` refusal no argument guard can reach, and what the preflight deliberately does **not**
+  conclude about attw's exit code. Every one of those claims is measured against this repo's pinned
+  binary and pinned in `test/scripts/attw-gate.test.ts`. This paragraph used to carry its own copy
+  of the rules, and the copy went stale first: it claimed refusal "by option name, wholesale" of a
+  three-item list, which a fused `-fjson` walked straight past, and it called `--config-path`
+  refused "by inference, not measurement" when the real-file half is measurable in one command.
+  A guard described in several files at once drifts in the copies nobody is editing.
+  **What belongs here and nowhere else:** do not cite `0.0.1`'s missing `vendor/ucum/NOTICE.md` as
+  an instance of the post-check's case, which a draft of this entry did — `attw` analyses types, so
+  it never saw that file and neither net would catch it.
+  **This is a per-repo script and every sibling now carries its own copy**, ported from this one
+  during the 2026-08-03 drain, so a fix here is not a fix there. `config/scripts/parser-template/`
+  has a copy too, and `scaffold-parser.mjs` mints new repos from it, so a defect left in the
+  template is re-minted into every future parser. **Do not write the repo count down here**; a draft
+  said "fourteen" and was wrong twice over (`config`'s own script only delegates, and several of the
+  manifests are nested — a template, a starter kit, and `@cosyte/test-utils`). Derive it:
+  `find /workspace -name package.json -not -path '*/node_modules/*' | xargs grep -l '"attw":'`.
 
 ## Standing disciplines (every change)
 

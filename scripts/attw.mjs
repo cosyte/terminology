@@ -2,6 +2,13 @@
 /**
  * scripts/attw.mjs — the `attw` publish gate, made to report its own failure.
  *
+ * ▶ THIS FILE IS THE ONE AUTHORITATIVE DESCRIPTION OF THE GATE. The changeset, the
+ *   CHANGELOG entry and this repo's `CLAUDE.md` point here rather than restating
+ *   the rules, deliberately: the previous shape of this guard was described in
+ *   several committed files at once, and every drift between those copies was a
+ *   claim that had been edited in some of them and not the others. Edit this
+ *   docblock; leave the pointers alone.
+ *
  * ▶ WHY THIS WRAPPER EXISTS: `attw` PRINTS "This package does not contain types."
  *   AND EXITS 0. That is not a bug in `attw` — an untyped package is a legitimate
  *   npm package, so the CLI treats "no types at all" as a *description*, not a
@@ -34,19 +41,33 @@
  *
  *   The second is the realistic one: `tsup` emits JS in one pass and the
  *   declaration files in a later pass, so there is a window in every build where
- *   `dist/` holds `.mjs`/`.cjs` and no `.d.ts` — measured at 4.95s on one real
- *   build of this package. A concurrent build or `pnpm clean` in the same working
- *   tree lands `attw` in that window. Which is why this is not answered with a
- *   lock or a build queue: the gate is supposed to be able to tell you its own
- *   inputs were missing, whatever removed them.
+ *   `dist/` holds `.mjs`/`.cjs` and no `.d.ts`. That window is SECONDS, NOT
+ *   MILLISECONDS, and no width is quoted here on purpose — independent
+ *   measurement sets across this ecosystem disagreed with each other, and the
+ *   figure this file used to quote described one box on one day. A concurrent
+ *   build or `pnpm clean` in the same working tree lands `attw` in that window.
+ *   Which is why this is not answered with a lock or a build queue: the gate is
+ *   supposed to be able to tell you its own inputs were missing, whatever removed
+ *   them.
  *
  * ▶ TWO NETS, and they catch different things — keep both:
  *
  *   1. PREFLIGHT (structural, no string matching). Every relative artifact path
- *      `package.json` promises — `main`, `module`, `types`, `typings`, and every
- *      string leaf of `exports` — must exist and be non-empty before `attw` runs.
- *      This is the one that catches the observed race, and it names the missing
- *      file instead of leaving the reader to infer it.
+ *      `package.json` promises — `main`, `module`, `types`, `typings`, `bin`, and
+ *      every string leaf of `exports` — must exist and be non-empty before `attw`
+ *      runs. This is the one that catches the observed race, and it names the
+ *      missing file instead of leaving the reader to infer it.
+ *
+ *      TWO THINGS IT USED TO WALK PAST, both closed here. (a) `bin` was never
+ *      read, so a package could ship a manifest promising a command that is not in
+ *      the tarball and this gate would say nothing — `attw` never looks at `bin`
+ *      at all. This package declares no `bin` today; the half is here because this
+ *      file is the shape every sibling copies, and it is pinned on a fixture that
+ *      does declare one. (b) A path written WITHOUT a leading `./` was skipped,
+ *      silently. `"types": "dist/index.d.ts"` is legal and is the spelling npm's
+ *      own documentation uses, so that dropped a real promise while the gate still
+ *      reported it had checked. `exports` leaves are different and are left alone:
+ *      Node requires `./` there, so a leaf without it is not a path of ours.
  *
  *   2. POST-CHECK. If `attw` still reports an untyped package, fail. The preflight
  *      cannot see this case: the declaration files can be present on disk and
@@ -55,31 +76,94 @@
  *      `attw --pack` exists to catch, and the whole point here is that it catches
  *      it silently.
  *
- *   The post-check matches `attw`'s untyped sentence, which is a plain,
- *   un-chalked string in `dist/render/untyped.js`. That makes it blindable, so the
- *   arguments and config that would blind it are REFUSED rather than tolerated —
- *   see BLINDING below. `test/scripts/attw-gate.test.ts` pins both nets against
- *   the real binary, so if an `attw` upgrade reworks the wording or fixes the exit
- *   code, the suite reds and tells you to revisit this file rather than letting
- *   the net go quietly slack.
+ *   The post-check matches `attw`'s untyped sentence, which is a plain, un-chalked
+ *   string in `dist/render/untyped.js`. That makes it blindable, so the arguments
+ *   and config that would blind it are REFUSED — see BLINDING below.
+ *   `test/scripts/attw-gate.test.ts` pins both nets against the real binary, so if
+ *   an `attw` upgrade reworks the wording or fixes the exit code, the suite reds
+ *   and tells you to revisit this file rather than letting the net go quietly
+ *   slack.
  *
- * ▶ BLINDING. Three routes were measured to restore the exact false green, each
- *   by making the untyped sentence absent from what this script can read:
- *   `--quiet` (output goes to a sink), `--format json` (the JSON render omits the
- *   sentence), and a `.attw.json` setting either of those, which `readConfig()`
- *   applies after argv. All are refused below, along with `--config-path`, which
- *   would move the config file out of view — that one by inference, not because it
- *   was measured. Bare `attw` exits 0 in the three measured cases too, so refusing
- *   is not a regression against the old script — it is the difference between a
- *   gate and a gate-shaped thing.
+ * ▶ WHAT THE PREFLIGHT CANNOT CONCLUDE, AND WHY IT NO LONGER TRIES. This script
+ *   used to end its preflight failure with a sentence naming the exit code `attw`
+ *   "would have" produced. It is gone rather than reworded, because THE PREFLIGHT
+ *   READS THE MANIFEST AND NEVER THE TARBALL, and the tarball is what decides.
+ *   `analysis.types` comes from `containsTypes()` in `@arethetypeswrong/core`'s
+ *   `createPackage.js`, which is `listFiles(directory).some(ts.hasTSFileExtension)`
+ *   — ANY TypeScript-extension file in the PACKED TARBALL, not the set `exports`
+ *   declares, and computed before any entrypoint is resolved. So a package whose
+ *   `files` packs a whole `dist/` can lose every DECLARED declaration and still
+ *   hand `attw` an undeclared chunk declaration to find, at which point it exits 1
+ *   and any "would have exited 0" sentence here is false. A partial loss `attw`
+ *   catches by itself; only a total one is the false green. A gate that reds
+ *   correctly and then explains itself with a falsehood teaches the next reader
+ *   the wider, wrong story, and this file gets copied.
  *
- *   The refusal is BY OPTION NAME, WHOLESALE, not by value. `--format table-flipped`
- *   still prints the sentence and blinds nothing, and is refused anyway. That is
- *   the deliberate trade: value-parsing these would be a third moving part in the
- *   guard, and being over-strict about an argument nobody passes to a repo's own
- *   publish gate costs less than a route back to a false green.
+ * ▶ BLINDING, AND WHY THE ARGUMENT GUARD IS AN ALLOW-LIST RATHER THAN A DENY-LIST.
+ *   Measured here, against this repo's pinned binary, on a package whose tarball
+ *   carries no types — each of these restores the exact false green by making the
+ *   untyped sentence absent from what this script can read, while `attw` exits 0:
  *
- * Other arguments are forwarded, so `--profile node16` and friends still work.
+ *       --quiet / -q            output empty, exit 0
+ *       --format json / -f json sentence absent, output NOT empty, exit 0
+ *       -fjson / -Pf json / -Pfjson
+ *                               same, exit 0 — a value fused to a short flag, and
+ *                               a short flag inside a cluster
+ *       --config-path <real file> setting quiet or format
+ *                               sentence absent, exit 0
+ *       .attw.json {"quiet":true} or {"format":"json"}
+ *                               sentence absent, exit 0 (readConfig() applies it
+ *                               after argv)
+ *       --help / -h / --version / -V
+ *                               exit 0, output NOT empty, no sentence — the gate
+ *                               cannot tell either from a pass
+ *
+ *   THE DENY-LIST THIS FILE SHIPPED WITH DID NOT HOLD, AND IT WAS NOT ONE MISSING
+ *   SPELLING. It refused a fixed set of tokens by `arg.split("=")[0]`, which is
+ *   token equality rather than option-name matching, so `-fjson` was neither `-f`
+ *   nor `--format` and walked straight through. `-q` in a cluster was caught only
+ *   by the empty-transcript net below, which cannot backstop `-f` at all because
+ *   JSON output is not empty. `--help` and `--version` were invisible to both
+ *   halves. Enumerating spellings buys exactly one more evasion per round.
+ *
+ *   So the guard is total instead: an ALLOW-LIST of the two arguments this gate's
+ *   own callers pass. Everything else is refused, including a
+ *   `--format table-flipped` that would blind nothing — "harmless" is a judgement
+ *   this script cannot make from an option name, and being over-strict about an
+ *   argument nobody passes to a repo's own publish gate costs less than a route
+ *   back to a false green. `--config-path` and every future spelling fall out of
+ *   this for free rather than needing a line each. Widening the set is a
+ *   deliberate one-line edit.
+ *
+ *   NEITHER ALLOWED ARGUMENT IS PASSED BY THIS PACKAGE'S OWN `attw` SCRIPT, AND
+ *   BOTH SENTENCES DESCRIBING THEM WERE WRONG WHEN PORTED — check them here, not
+ *   against a sibling.
+ *     `--profile` selects the resolution profile. `package.json` passes none, so
+ *     the gate runs `attw`'s default `strict`; several sibling manifests DO pass
+ *     `--profile node16`, and the suite passes a profile to prove the value is
+ *     forwarded rather than dropped. Its value is bounded by `attw` itself, which
+ *     rejects anything outside its own choices.
+ *     `--no-definitely-typed` suppresses the DefinitelyTyped lookup, which only
+ *     exists on the `--from-npm` path; on `--pack` — the path this gate always
+ *     takes — it is INERT. It is allowed because this repo's test suite passes it,
+ *     and nothing else does.
+ *
+ *   The `.attw.json` refusal stays, because it is not an argument: `readConfig()`
+ *   applies it after argv, so no argument guard of any shape can reach it.
+ *
+ *   ▶ AND THAT REFUSAL IS NAME-SCOPED WHERE `readConfig()` IS NOT — A KNOWN LIMIT,
+ *   FILED RATHER THAN CLOSED. It predates the allow-list, and the allow-list
+ *   closes only its argv half (`--definitely-typed` on argv is now refused, where
+ *   the deny-list forwarded it); the config route below is untouched.
+ *   `readConfig()` calls `setOptionValueWithSource` for EVERY key except
+ *   `configPath`/`help`/`version`, so a committed `.attw.json` reaches
+ *   options this script does not name — `definitelyTyped` pointed at a `.tgz`, for
+ *   one, which merges those types in and can make an untyped tarball analyse as
+ *   typed. It needs a committed config file, which is a reviewable artifact rather
+ *   than an argv nobody reads. Do not answer it by adding a key: that is the
+ *   deny-list this file just retired on the argument side, and the total form
+ *   (refuse a `.attw.json` outright) is a behaviour change for callers who
+ *   legitimately have one, which is a decision, not a fix.
  */
 
 import { spawnSync } from "node:child_process";
@@ -88,7 +172,6 @@ import { fileURLToPath } from "node:url";
 
 const ATTW_BIN = fileURLToPath(new URL("../node_modules/.bin/attw", import.meta.url));
 const UNTYPED = "This package does not contain types.";
-const DECLARATION = /\.d\.[cm]?ts$/;
 const args = process.argv.slice(2);
 
 const die = (msg) => {
@@ -96,15 +179,32 @@ const die = (msg) => {
   process.exit(1);
 };
 
-// ---- Refuse what would blind the post-check --------------------------------
-const BLINDING = new Set(["-q", "--quiet", "-f", "--format", "--config-path"]);
-const blinding = args.filter((a) => BLINDING.has(a.split("=")[0]));
-if (blinding.length > 0) {
-  die(
-    `${blinding.join(", ")} is refused wholesale, by option name and not by value.\n` +
-      `  This gate reads attw's printed output, attw exits 0 on an untyped package,\n` +
-      `  and some values of these options hide that output. Run it without them.`,
-  );
+// ---- Only the arguments this gate can vouch for are forwarded ---------------
+// ALLOW-LIST, NOT A DENY-LIST, AND THAT IS THE WHOLE POINT — see BLINDING above.
+const ALLOWED = new Set(["--profile", "--no-definitely-typed"]);
+const forwarded = [];
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+  const name = arg.split("=")[0];
+  if (!ALLOWED.has(name)) {
+    die(
+      `${arg} is not an argument this gate accepts.\n` +
+        `  It forwards an ALLOW-LIST — ${[...ALLOWED].join(", ")} — rather than refusing a\n` +
+        `  list of spellings. This gate reads attw's printed output and attw exits 0 on an\n` +
+        `  untyped package, so anything that changes what attw prints can hide the one\n` +
+        `  sentence net 2 reads. Widening this set is a deliberate one-line edit; check\n` +
+        `  first that the option cannot suppress or reformat attw's output.`,
+    );
+  }
+  forwarded.push(arg);
+  // `--profile` takes a value. A fused `--profile=node16` carries its own; a
+  // separated one must claim the next argument, or that value would be read as an
+  // option on the next turn of this loop and refused.
+  if (name === "--profile" && !arg.includes("=")) {
+    const value = args[++i];
+    if (value === undefined) die(`--profile was given with no value.`);
+    forwarded.push(value);
+  }
 }
 try {
   const config = JSON.parse(readFileSync(".attw.json", "utf8"));
@@ -120,19 +220,38 @@ try {
   // No .attw.json, or unreadable/invalid — attw itself reports the latter.
 }
 
-/** Every relative path `package.json` promises to ship, deduped. */
+/**
+ * Every relative path `package.json` promises to ship, deduped and normalized to a
+ * leading `./` so two spellings of one promise are not checked twice.
+ */
 function declaredArtifacts(pkg) {
   const found = new Set();
-  const add = (v) => {
+  // `main`, `module`, `types`, `typings` and `bin` are ALWAYS paths, never package
+  // specifiers, and the `./` prefix is optional on all of them. Only an absolute
+  // path (not ours to promise) or a pattern is skipped.
+  const addPath = (v) => {
+    if (typeof v !== "string" || v === "") return;
+    if (v.startsWith("/") || v.includes("*")) return;
+    const rel = v.startsWith(".") ? v : `./${v}`;
+    if (rel === "./package.json") return;
+    found.add(rel);
+  };
+  // An `exports` target is required by spec to be `./`-relative, so a leaf that is
+  // not one is a package specifier or a pattern, and is not a file of ours.
+  const addTarget = (v) => {
     if (typeof v !== "string") return;
     // Skip wildcard subpath patterns (they name a set, not a file) and the
-    // manifest itself, which is always in the tarball by definition.
+    // manifest itself, which is in the tarball by definition.
     if (!v.startsWith(".") || v.includes("*") || v === "./package.json") return;
     found.add(v);
   };
-  for (const key of ["main", "module", "types", "typings"]) add(pkg[key]);
+  for (const key of ["main", "module", "types", "typings"]) addPath(pkg[key]);
+  // `bin` is a bare string, or a flat map of command name to path.
+  if (typeof pkg.bin === "string") addPath(pkg.bin);
+  else if (pkg.bin && typeof pkg.bin === "object")
+    for (const v of Object.values(pkg.bin)) addPath(v);
   const walk = (node) => {
-    if (typeof node === "string") add(node);
+    if (typeof node === "string") addTarget(node);
     else if (node && typeof node === "object") for (const v of Object.values(node)) walk(v);
   };
   walk(pkg.exports);
@@ -159,25 +278,23 @@ for (const rel of declaredArtifacts(pkg)) {
   if (size === 0) broken.push({ rel, why: "empty" });
 }
 if (broken.length > 0) {
-  // Only claim the exit-0 counterfactual when a DECLARATION file is among the
-  // casualties. With the declarations intact and only JS missing, attw reports
-  // no problems at all and still exits 0 — a different silence, not this one.
-  const declarationsHit = broken.some(({ rel }) => DECLARATION.test(rel));
+  // No counterfactual about attw's exit code here, on purpose — see "WHAT THE
+  // PREFLIGHT CANNOT CONCLUDE" above before adding one back.
   die(
     `package.json promises files the build has not produced:\n` +
       broken.map(({ rel, why }) => `    ${rel} (${why})\n`).join("") +
       `\n  Run the build first. If you DID build, something removed or truncated the\n` +
       `  output underneath this run — a concurrent build or \`clean\` in the same\n` +
       `  working tree will do it, and \`tsup\` writes JS before declarations, so there\n` +
-      `  is a window where the .d.ts files do not exist yet.\n` +
-      (declarationsHit
-        ? `  attw would have reported "${UNTYPED}" and EXITED 0 on this tree.\n`
-        : `  attw does not gate these: it analyses types, and exits 0 here.\n`),
+      `  is a window of seconds in every build here where the .d.ts files do not\n` +
+      `  exist yet.\n` +
+      `  attw was not run: this check reads the manifest, and what attw would have\n` +
+      `  reported depends on what the packed tarball carries, which it cannot see.\n`,
   );
 }
 
 // ---- Run attw ---------------------------------------------------------------
-const res = spawnSync(ATTW_BIN, ["--pack", ".", ...args], {
+const res = spawnSync(ATTW_BIN, ["--pack", ".", ...forwarded], {
   encoding: "utf8",
   stdio: ["inherit", "pipe", "pipe"],
 });
