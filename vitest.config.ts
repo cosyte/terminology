@@ -70,7 +70,7 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * a 5 s ceiling over a ~117 ms `node` spawn (~33x). Halving the ceiling still bought headroom,
  * because the trim shrank the thing being measured faster than the ceiling shrank.
  *
- * **Measure before bounding, in both directions.** The six argument-refusal cases in `attw-gate` look
+ * **Measure before bounding, in both directions.** The argument-refusal cases in `attw-gate` look
  * like they belong with the slow ones and do not: the wrapper rejects the flag before it ever invokes
  * `attw`, so they run no `npm pack` and finish in ~200 ms. And the case that actually came closest to
  * the removed ceiling — 9,318 ms against 10,000 ms under load, on correct code — was an `attw` case

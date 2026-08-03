@@ -64,7 +64,7 @@ this file is maintained by hand (Changesets handles the version bump and publish
   roughly doubling the property-suite peaks. An earlier draft of this change measured only the plain
   run, recorded 499 ms, and was refuted for it.
 
-  **Two things measurement corrected.** The six argument-refusal cases in `attw-gate` look like they
+  **Two things measurement corrected.** The argument-refusal cases in `attw-gate` look like they
   belong with the slow ones and do not: the wrapper rejects the flag before invoking `attw`, so they
   run no `npm pack` and finish in ~200 ms. And the case that actually approached the old ceiling —
   **9,318 ms against 10,000 ms** under load, a 682 ms margin on correct code — was an `attw` case
@@ -74,6 +74,54 @@ this file is maintained by hand (Changesets handles the version bump and publish
   re-measures rather than inherits them.
 
 ### Fixed
+
+- **The publish gate's argument guard refused a fixed LIST of blinding spellings, and `-fjson` was
+  not on it — a value fused to a short flag hid the one sentence the gate reads, and it handed back a
+  pass over a tarball carrying no types** (`ATTW-GUARD-ALLOWLIST`). Development tooling only —
+  `scripts/attw.mjs` ships in no tarball, and the public surface, build output and runtime behaviour
+  are unchanged.
+
+  **The rules of the gate are stated once, in `scripts/attw.mjs`'s docblock. This entry points at it
+  rather than repeating them**, and `CLAUDE.md`'s paragraph now does the same. The guard was
+  described in several committed files at once and the copies drifted: `CLAUDE.md` claimed a refusal "by
+  option name, wholesale" that a fused short option walked past, and called `--config-path` refused
+  "by inference, not measurement" when the real-file half takes one command to measure.
+
+  **The remedy is an ALLOW-LIST, so no spelling is enumerated.** The gate forwards `--profile` and
+  `--no-definitely-typed` and refuses everything else, including options that blind nothing:
+  "harmless" is not a judgement a script can make from an option name. Measured on `7bdd5f5` against
+  this repo's pinned `@arethetypeswrong/cli@0.18.4`, on a fixture whose tarball carries no types —
+  `-fjson`, `-Pf json` and `-Pfjson` each exited **0** with the untyped sentence absent and a
+  non-empty transcript, so the empty-output net could not backstop them; `--help`, `-h`, `--version`
+  and `-V` did the same. `--config-path` naming a real file that sets `format` blinded identically,
+  while the nonexistent path the old test named blinds **nothing** — `readConfig()` swallows the
+  `ENOENT` and the sentence is still printed, so that test asserted a refusal over a case that could
+  not have hurt the gate. Both halves are pinned now.
+
+  **The preflight walks two promises it used to skip**, each measured to leave bare `attw` at exit 0:
+  `bin`, which `attw` does not look at at all, so a manifest could promise a command absent from the
+  tarball; and a path written without a leading `./`, which is legal and is the spelling npm's own
+  documentation uses, so `"main": "dist/index.js"` was dropped silently while the gate reported it
+  had checked. This package declares no `bin` — that half is pinned on a fixture that does, because
+  every sibling copies this file.
+
+  **A false explanation of a correct red is deleted rather than reworded.** The preflight used to
+  name the exit code `attw` "would have" produced. It reads the manifest and never the tarball, and
+  the tarball decides: `analysis.types` is `containsTypes()` in `@arethetypeswrong/core`, which is
+  `listFiles(directory).some(ts.hasTSFileExtension)` — any TypeScript-extension file in the packed
+  tarball, computed before an entrypoint is resolved. A package packing a whole `dist/` can lose
+  every declared declaration and still hand `attw` an undeclared chunk declaration, at which point it
+  exits 1 and the sentence is false. The failure now says what it checked and that it cannot speak
+  for `attw`.
+
+  **A limit found while grading this, filed rather than closed.** The `.attw.json` refusal names
+  `quiet` and `format`, but `readConfig()` sets an option value for **every** key except
+  `configPath`, `help` and `version` — so a committed config reaches options this gate does not name,
+  `definitelyTyped` pointed at a `.tgz` among them, which merges those types in and can make an
+  untyped tarball analyse as typed. It predates this change, and the allow-list closes only its argv
+  half — `--definitely-typed` on argv is now refused, where the deny-list forwarded it — while the
+  config route is untouched. Adding a key would rebuild, on the config side, the deny-list this
+  change retires on the argument side.
 
 - **A symbolic link under a scan root read CLEAN on BOTH of the PHI scanner's enumerating routes, so
   a link pointing at a file full of real identifiers passed the gate twice over**
