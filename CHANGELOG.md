@@ -57,8 +57,8 @@ this file is maintained by hand (Changesets handles the version bump and publish
   route's own path scope reaches them. A `--raw` record that does not parse refuses as well, rather
   than being skipped into a silently shortened list.
 
-  **`T` (typechange) is in the `--diff-filter`, and leaving it out made the mode check unreachable for
-  the commonest shape.** Replacing a **tracked** regular file with a link is neither an add nor a
+  **`T` (typechange) is in the `--diff-filter`, and leaving it out made the mode check unreachable
+  whenever the file being replaced was already tracked.** Replacing a **tracked** regular file with a link is neither an add nor a
   modify: git raises `:100644 120000 <sha> <sha> T`, so `--diff-filter=AM` deleted the record before
   any mode could be read and the hook passed the link green. Measured on git 2.39.5: with `AM` the
   raw output for that stage is empty. Typechange carries a single path, exactly like `A` and `M`, so

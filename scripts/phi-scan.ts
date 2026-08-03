@@ -56,9 +56,9 @@
  * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error).
  *
  * ---------------------------------------------------------------------------
- * AN ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2). It is never
- * skipped, because BOTH enumerating routes are blind to it in a way that reads
- * as clean:
+ * AN IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2). It is
+ * never silently skipped, because BOTH enumerating routes are blind to it in a
+ * way that reads as clean:
  *
  *   - the walk enumerates `Dirent.isFile()`, which is an lstat answer, so a
  *     symbolic link is neither a file nor a directory and used to fall out of
@@ -74,6 +74,12 @@
  * on them would be a claim about something no commit contains. Refusing states
  * the only true thing available: there is an entry here the scan cannot account
  * for, so the scan is not clean.
+ *
+ * "In scope" is each route's own existing boundary, not a new one: the walk
+ * still excludes a gitignored entry (the same rule that already excludes a
+ * gitignored file, so links do not get a second, stricter boundary of their
+ * own), and `--staged` still only looks at `test/fixtures/**` and `src/**.ts`.
+ * This narrows what those scopes ADMIT; it does not widen the scopes.
  *
  * A refusal names the entry's own repo-relative path and an engine-owned token
  * for its kind. IT NEVER REPORTS THE LINK TARGET, which is text off the working
@@ -419,7 +425,7 @@ function buildTargetsForStaged(): Target[] {
     // `git show :<path>` answers all three without complaint.
     //
     // `T` (TYPECHANGE) IS IN THE FILTER, AND LEAVING IT OUT MADE THE MODE CHECK
-    // BELOW UNREACHABLE FOR THE COMMONEST SHAPE. Replacing a TRACKED regular
+    // BELOW UNREACHABLE WHENEVER THE FILE WAS ALREADY TRACKED. Replacing a TRACKED regular
     // file with a link is not an add and not a modify — git raises it as `T`
     // (`:100644 120000 <sha> <sha> T`), so `--diff-filter=AM` deleted the record
     // before any mode could be read and the hook passed the link green.
