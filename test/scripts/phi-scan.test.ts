@@ -248,6 +248,7 @@ describe("phi-scan: the all-mode walk refuses a non-regular entry", () => {
     expect(r.stderr).toContain("src/one.ts");
     expect(r.stderr).toContain("src/two.ts");
     expect(r.stderr).toContain("2 entries");
+    expectNoPhi(r.stderr);
   });
 
   it("still scans ordinary files in the same walk root (the refusal is not the only outcome)", () => {
@@ -305,6 +306,65 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     expect(r.code, `stderr: ${r.stderr}`).toBe(2);
     expect(r.stderr).toContain("src/leak.ts");
     expect(r.stderr).toContain("a symbolic link");
+    expectNoPhi(r.stderr);
+  });
+
+  it("refuses a TYPECHANGE — a tracked regular file replaced by a link (exit 2)", () => {
+    // The shape `--diff-filter=AM` used to delete before any mode could be read.
+    // Replacing a TRACKED file with a link is neither an add nor a modify: git
+    // raises `:100644 120000 <sha> <sha> T`, and without `T` in the filter the
+    // record never existed, so the pre-commit hook passed the link green.
+    const root = makeRepo();
+    git(root, ["add", "src/ordinary.ts"]);
+    git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "base"]);
+
+    writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+    rmSync(join(root, "src", "ordinary.ts"));
+    symlinkSync(join("..", TARGET_NAME), join(root, "src", "ordinary.ts"));
+    git(root, ["add", "src/ordinary.ts"]);
+
+    // The premise: git really does raise this as a typechange, not A or M.
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AM"]).trim()).toBe("");
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).toContain(" 120000 ");
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/ordinary.ts");
+    expect(r.stderr).toContain("a symbolic link");
+    expectNoPhi(r.stderr);
+  });
+
+  it("scans the other direction of a typechange — a link replaced by a real file (exit 1)", () => {
+    const root = makeRepo();
+    symlinkSync("ordinary.ts", join(root, "src", "link.ts"));
+    git(root, ["add", "src/link.ts"]);
+    git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "base"]);
+
+    rmSync(join(root, "src", "link.ts"));
+    writeFileSync(join(root, "src", "link.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/link.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("refuses a staged gitlink under a scanned prefix (exit 2)", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "test"), { recursive: true });
+    mkdirSync(join(root, "test", "fixtures"));
+    const nested = join(root, "test", "fixtures", "nested");
+    mkdirSync(nested);
+    git(nested, ["init", "-q", "."]);
+    writeFileSync(join(nested, "payload.txt"), SYNTHETIC_PHI);
+    git(nested, ["add", "payload.txt"]);
+    git(nested, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "n"]);
+    git(root, ["add", "test/fixtures/nested"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/nested");
+    expect(r.stderr).toContain("a gitlink");
     expectNoPhi(r.stderr);
   });
 

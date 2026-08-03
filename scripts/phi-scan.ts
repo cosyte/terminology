@@ -77,7 +77,10 @@
  *
  * A refusal names the entry's own repo-relative path and an engine-owned token
  * for its kind. IT NEVER REPORTS THE LINK TARGET, which is text off the working
- * tree and can itself carry PHI (`../patients/RIVERA-JUANITA-1978-03-14.txt`).
+ * tree and can itself carry PHI — a target path of the shape
+ * `../patients/<surname>-<given>-<dob>.txt` is the whole reason. The shape is
+ * written out rather than an example, because a diagnostic ABOUT a PHI leak is
+ * itself a PHI surface, and that applies to the prose explaining it too.
  * ---------------------------------------------------------------------------
  */
 
@@ -414,7 +417,15 @@ function buildTargetsForStaged(): Target[] {
     // `--name-only` because the DESTINATION MODE is the only thing that
     // distinguishes a staged regular file from a staged symlink or gitlink, and
     // `git show :<path>` answers all three without complaint.
-    listBuf = execFileSync("git", ["diff", "--cached", "--raw", "-z", "--diff-filter=AM"], {
+    //
+    // `T` (TYPECHANGE) IS IN THE FILTER, AND LEAVING IT OUT MADE THE MODE CHECK
+    // BELOW UNREACHABLE FOR THE COMMONEST SHAPE. Replacing a TRACKED regular
+    // file with a link is not an add and not a modify — git raises it as `T`
+    // (`:100644 120000 <sha> <sha> T`), so `--diff-filter=AM` deleted the record
+    // before any mode could be read and the hook passed the link green.
+    // Typechange carries a single path, exactly like `A` and `M`, so admitting
+    // it costs the two-field stride below nothing.
+    listBuf = execFileSync("git", ["diff", "--cached", "--raw", "-z", "--diff-filter=AMT"], {
       encoding: "buffer",
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -424,8 +435,15 @@ function buildTargetsForStaged(): Target[] {
     );
   }
 
-  // `--raw -z` emits `<info>\0<path>\0` per record; `--diff-filter=AM` excludes
-  // the rename/copy statuses, which are the only ones carrying a second path.
+  // `--raw -z` emits `<info>\0<path>\0` per record. `R` (rename) and `C` (copy)
+  // are the only statuses carrying a SECOND path, and the filter excludes both,
+  // so the stride is two fields. If one ever reached here the stride would
+  // desync and the next record would fail to parse, which REFUSES — the same
+  // outcome as any other unparseable record, and the safe one.
+  //
+  // Excluding `R`/`C` also means this route does not enumerate a staged rename
+  // at all. That is PRE-EXISTING and is not narrowed here: admitting them needs
+  // the two-path record shape handled, which is a scope decision, not this one.
   // A record that does not parse REFUSES rather than being skipped: a silently
   // shortened list is exactly the shape this scan must never report clean over.
   const fields = listBuf.toString("utf8").split("\0");
