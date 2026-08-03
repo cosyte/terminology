@@ -44,8 +44,16 @@ const WRAPPER = join(REPO_ROOT, "scripts", "attw.mjs");
 const ATTW_BIN = join(REPO_ROOT, "node_modules", ".bin", "attw");
 const UNTYPED = "This package does not contain types.";
 const OFFLINE = ["--no-definitely-typed"];
-// Each case shells out to `attw --pack`, which runs a real `npm pack`; two of those
-// in one test comfortably exceeds this suite's 10s default.
+// Each case below that reaches `attw` shells out to `attw --pack`, which runs a real
+// `npm pack`; two of those in one test comfortably exceeds the suite default, which is
+// Vitest's own 5 s (`vitest.config.ts` deliberately sets no global timeout — read the
+// docblock there before adding one). That is genuinely slow work rather than a fixed
+// start-up tax, so it is bounded here, per-test, instead of being traded for a raised
+// global that every fast test would inherit.
+//
+// NOT every case in this file needs it: the six argument-refusal cases are refused by
+// the wrapper before `attw` is ever spawned, so they run no `npm pack` and finish in
+// ~200 ms. They deliberately carry no budget.
 const SPAWN_TIMEOUT = 60_000;
 
 interface RunResult {

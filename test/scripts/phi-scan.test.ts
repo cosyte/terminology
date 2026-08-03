@@ -34,6 +34,39 @@ const REPO_ROOT = process.cwd();
 const SCANNER_PATH = join(REPO_ROOT, "scripts", "phi-scan.ts");
 const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
 
+/**
+ * WHY THE SWEEP SPAWNS `node` AND NOT `tsx`, THOUGH `pnpm phi-scan` USES `tsx`.
+ *
+ * This file spawns the scanner once per case, and the cost of every one of those
+ * spawns is start-up, not scanning — the fixtures are a few hundred bytes each.
+ * Measured on this box (2026-08-03, 12-CPU cgroup quota, 10 warmed runs each,
+ * same scanner, same argv): a `tsx` start had a **median of 500 ms** against
+ * **141 ms** for `node` running the same TypeScript through its native type
+ * stripping. That is a fixed ~360 ms tax per case, and it is the reason this file
+ * was the second-largest in the suite.
+ *
+ * Nothing under test changes: `node` and `tsx` hand the scanner the same argv, the
+ * same cwd and the same stdio, and node's stripping emits no warning to pollute
+ * stderr — which matters here, because several cases assert on stderr exactly.
+ * Both were checked to produce byte-identical stdout/stderr and the same exit code
+ * on a clean file (0) and on a violator (1) before this was changed.
+ *
+ * TWO THINGS THIS COSTS, AND HOW EACH IS PAID:
+ *   - the `tsx` entry point itself is no longer exercised by the sweep, so ONE
+ *     test below still spawns `tsx` explicitly to pin the real `pnpm phi-scan`
+ *     path. Delete that test and a tsx-only breakage ships silently.
+ *   - node's type stripping is on by default from **Node 22.18**, while
+ *     `engines.node` here is `>=22.0.0`. CI runs the 22 + 24 matrix, both of which
+ *     resolve above that, so CI is unaffected; a developer on 22.0–22.17 running
+ *     the suite locally would need a newer 22. Stripping is erased-types-only, and
+ *     the scanner uses no TypeScript construct that needs emit, which the
+ *     tsx-pinned test reds if it ever stops being true.
+ */
+const NODE_BIN = process.execPath;
+
+/** Per-test budget for the one case that deliberately pays a `tsx` cold start. See its comment. */
+const TSX_PARITY_TIMEOUT = 30_000;
+
 let dir: string;
 
 interface RunResult {
@@ -43,6 +76,16 @@ interface RunResult {
 }
 
 function runScanner(args: string[]): RunResult {
+  const r = spawnSync(NODE_BIN, [SCANNER_PATH, ...args], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    shell: false,
+  });
+  return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+}
+
+/** The `tsx` invocation `pnpm phi-scan` actually uses — kept for the one test that pins it. */
+function runScannerViaTsx(args: string[]): RunResult {
   const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], {
     cwd: REPO_ROOT,
     encoding: "utf8",
@@ -80,6 +123,70 @@ describe("phi-scan starter: the cross-cutting floor catches SSN + email", () => 
     expect(r.stderr).toMatch(/jane\.doe@hospital\.org/);
     expect(r.stderr).toMatch(/non-test domain/);
   });
+});
+
+describe("phi-scan: the `tsx` entry point `pnpm phi-scan` uses is the same scanner", () => {
+  // THE ONE TEST THAT STILL PAYS THE tsx COLD START, and it is the backstop for every
+  // other case in this file. The rest spawn `node` (see NODE_BIN above) because a tsx
+  // start measured ~360 ms dearer per case, but `pnpm phi-scan` — the script the commit
+  // gate and CI actually invoke — runs `tsx scripts/phi-scan.ts`. Without this case,
+  // a breakage on the real entry point (a tsx upgrade, a TypeScript construct node's
+  // erasure-only stripping rejects but tsx compiles, a loader difference) would ship
+  // green.
+  //
+  // It asserts EQUIVALENCE rather than merely "tsx works": both runners must agree on
+  // exit code, stdout and stderr byte-for-byte. That is what makes the cheaper runner
+  // below trustworthy — if the two ever diverge, this reds instead of the sweep silently
+  // testing something the gate does not run.
+  //
+  // BOTH OUTCOMES ARE RUN, BECAUSE THE SCANNER USES A DIFFERENT CHANNEL FOR EACH, and
+  // comparing an empty channel to an empty channel proves nothing. A violator writes its
+  // hits to **stderr** and nothing at all to stdout; a clean file writes `OK — no hits`
+  // to **stdout** and nothing to stderr. A violator-only parity check therefore asserts
+  // `"" === ""` on stdout, which is exactly the vacuous half this case existed to avoid.
+  // Each channel is asserted non-empty on the run that populates it, so neither
+  // comparison can pass by both sides being absent.
+  it(
+    "agrees with the `node` runner on exit code, stdout and stderr, on a hit and on a miss",
+    () => {
+      const violator = join(dir, "tsx-parity-violator.txt");
+      writeFileSync(violator, "patient ssn 123-45-6789 on file\n");
+      const clean = join(dir, "tsx-parity-clean.txt");
+      writeFileSync(clean, "just some ordinary text, no identifiers here\n");
+
+      // A hit: exit 1, and the finding rides on stderr.
+      const hitNode = runScanner([violator]);
+      const hitTsx = runScannerViaTsx([violator]);
+      expect(hitTsx.code, `tsx stderr: ${hitTsx.stderr}`).toBe(1);
+      expect(hitTsx.code).toBe(hitNode.code);
+      expect(hitTsx.stderr).not.toBe("");
+      expect(hitTsx.stderr).toBe(hitNode.stderr);
+      expect(hitTsx.stdout).toBe(hitNode.stdout);
+
+      // A miss: exit 0, and the report rides on stdout — the channel the hit case
+      // cannot exercise, and the one `tsx` would have to break silently.
+      const missNode = runScanner([clean]);
+      const missTsx = runScannerViaTsx([clean]);
+      expect(missTsx.code, `tsx stderr: ${missTsx.stderr}`).toBe(0);
+      expect(missTsx.code).toBe(missNode.code);
+      expect(missTsx.stdout).not.toBe("");
+      expect(missTsx.stdout).toBe(missNode.stdout);
+      expect(missTsx.stderr).toBe(missNode.stderr);
+    },
+    // It pays BOTH start-ups on purpose, and twice over since the fix above runs a
+    // hit and a miss, so it is the slowest case in this file by construction and it
+    // declares its own budget rather than leaning on the suite-wide default.
+    // THIS IS THE MOST LOAD-SENSITIVE CASE IN THE SUITE, AND ITS RECORDED PEAK HAS
+    // ALREADY BEEN WRONG TWICE — treat any figure here as a floor, not a bound.
+    // Measured 2026-08-03 on a 12-CPU quota: **3.9 s** worst across sequential runs
+    // (plain and `vitest run --coverage` alike) with a fourteen-worker fleet
+    // resident, and **7.4 s** with four full suites running concurrently. So 30 s is
+    // ~7.7x the sequential worst and ~4x the concurrent one. Two earlier drafts
+    // recorded 1.2 s and 2.6 s and both were refuted by re-measurement; if you
+    // re-derive this, include a coverage run AND a concurrent one. The budget still
+    // fails a wedged spawn well inside the 120 s a hung subprocess would take.
+    TSX_PARITY_TIMEOUT,
+  );
 });
 
 describe("phi-scan starter: clean + allow-listed content passes", () => {
@@ -162,7 +269,7 @@ function gitOut(cwd: string, args: string[]): string {
 }
 
 function runIn(cwd: string, args: string[]): RunResult {
-  const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], { cwd, encoding: "utf8", shell: false });
+  const r = spawnSync(NODE_BIN, [SCANNER_PATH, ...args], { cwd, encoding: "utf8", shell: false });
   return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 

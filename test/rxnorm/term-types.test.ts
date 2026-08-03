@@ -49,6 +49,25 @@ import { only } from "../helpers.js";
 import { consoRow, relRow } from "./fixtures.js";
 
 /**
+ * The per-test budget for the two 200,000-row bulk cases below.
+ *
+ * Those two are the only genuinely slow tests in this file: they build a
+ * 200,000-row RRF body to drive the loader past the engine's spread-argument
+ * limit, so their cost is real work that scales with the box, not a fixed
+ * start-up tax that could be trimmed away.
+ *
+ * They carry an explicit budget rather than leaning on the suite-wide default,
+ * because a global raise sized to the slowest test in a repo is a ceiling every
+ * other test inherits — it makes a genuinely hung fast test look merely slow.
+ * Measured 2026-08-03 on a 12-CPU cgroup quota with a fourteen-worker fleet
+ * running, across ten full runs — **six of them `vitest run --coverage`, which
+ * is the slower execution CI also gates on**. They peaked at **4.2 s**, so 30 s
+ * is ~7x that. An earlier draft recorded 2.0 s from plain runs only and was
+ * refuted for it; include the coverage run if you re-derive this.
+ */
+const BULK_TIMEOUT = 30_000;
+
+/**
  * The RxNorm `TTY` vocabulary with each term type's **verbatim Appendix 5 name**, transcribed from
  * the NLM RxNorm Technical Documentation, Appendix 5 (its Normalized Names and Synonyms tables). `ET`
  * is in neither table, so its value here is the UMLS expansion of the abbreviation the appendix
@@ -272,31 +291,39 @@ describe("an RXCUI no defining atom could type is skipped and SURFACED", () => {
     ]);
   });
 
-  it("surfaces a very large number of skips without crashing", () => {
-    // A caller who hands `loadRxNormGraph` the wrong file, or a genuinely broken release, produces
-    // one warning per row, and RRF files run to millions of rows. Collecting them must not become a
-    // call with one argument per warning: that throws past the engine's argument limit, turning a
-    // documented never-crash diagnostic path into an untyped `RangeError`.
-    const n = 200_000;
-    const conso = [
-      ...Array.from({ length: n }, () => "too|few|columns"),
-      consoRow({ rxcui: "1", tty: "IN", str: "a real ingredient" }),
-    ].join("\n");
-    const g = loadRxNormGraph({ conso, rel: "" });
-    expect(g.warnings).toHaveLength(n);
-    expect(getConcept(g, "1")?.tty).toBe("IN");
-  });
+  it(
+    "surfaces a very large number of skips without crashing",
+    () => {
+      // A caller who hands `loadRxNormGraph` the wrong file, or a genuinely broken release, produces
+      // one warning per row, and RRF files run to millions of rows. Collecting them must not become a
+      // call with one argument per warning: that throws past the engine's argument limit, turning a
+      // documented never-crash diagnostic path into an untyped `RangeError`.
+      const n = 200_000;
+      const conso = [
+        ...Array.from({ length: n }, () => "too|few|columns"),
+        consoRow({ rxcui: "1", tty: "IN", str: "a real ingredient" }),
+      ].join("\n");
+      const g = loadRxNormGraph({ conso, rel: "" });
+      expect(g.warnings).toHaveLength(n);
+      expect(getConcept(g, "1")?.tty).toBe("IN");
+    },
+    BULK_TIMEOUT,
+  );
 
-  it("surfaces a very large number of untypeable RXCUIs without crashing", () => {
-    // Same limit, reached through the new code path rather than the pre-existing one.
-    const n = 200_000;
-    const conso = Array.from({ length: n }, (_, i) =>
-      consoRow({ rxcui: String(i + 1), tty: "SY", str: "a synonym" }),
-    ).join("\n");
-    const g = loadRxNormGraph({ conso, rel: "" });
-    expect(g.warnings).toHaveLength(n);
-    expect(g.conceptCount).toBe(0);
-  });
+  it(
+    "surfaces a very large number of untypeable RXCUIs without crashing",
+    () => {
+      // Same limit, reached through the new code path rather than the pre-existing one.
+      const n = 200_000;
+      const conso = Array.from({ length: n }, (_, i) =>
+        consoRow({ rxcui: String(i + 1), tty: "SY", str: "a synonym" }),
+      ).join("\n");
+      const g = loadRxNormGraph({ conso, rel: "" });
+      expect(g.warnings).toHaveLength(n);
+      expect(g.conceptCount).toBe(0);
+    },
+    BULK_TIMEOUT,
+  );
 
   it("still reports a missing RXCUI as a malformed row, whatever the TTY", () => {
     const g = loadRxNormGraph({

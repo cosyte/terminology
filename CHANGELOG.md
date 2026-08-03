@@ -23,6 +23,56 @@ this file is maintained by hand (Changesets handles the version bump and publish
   without evaluating a part expansion still has to report. Reading `d.system` is now a type error.
   The rationale, and the other three sites, are under **Fixed** below.
 
+- **The test suite no longer sets a global timeout, and its one repeated start-up tax is gone**
+  (`PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX`). Development tooling only — `vitest.config.ts` and the
+  test suite. No source file, no build output and no part of the public surface is touched.
+
+  **The trim came first, and it was the larger win.** `test/scripts/phi-scan.test.ts` spawns the
+  scanner at twenty call sites, and the cost of each spawn was start-up, not scanning — the fixtures
+  are a few hundred bytes. Measured on a 12-CPU cgroup quota, warmed runs of each against the same
+  scanner and argv: a `tsx` start had a median around **470–500 ms** against **141–200 ms** for
+  `node` running the same TypeScript through its native type stripping — roughly 300 ms a spawn.
+  That roughly halved the file: a plain base run measured **13,925 ms** over 21 cases, and plain runs
+  after the change measured **5,657 ms and 6,853 ms** over 22. Both runners were checked to produce
+  byte-identical stdout and stderr and the same exit code, on a clean file and on a violator, before
+  the change; several cases assert on stderr exactly.
+
+  `pnpm phi-scan` still runs `tsx`, so one case still spawns it and asserts the two runners **agree**
+  on exit code, stdout and stderr — a parity assertion, so a divergence reds rather than letting the
+  sweep quietly test something the gate does not run. Node's type stripping is on by default from
+  **22.18** while `engines.node` is `>=22.0.0`; the CI matrix is 22 + 24 and both resolve above that,
+  but a developer on 22.0–22.17 would need a newer 22 to run the suite.
+
+  **`testTimeout: 10_000` and `hookTimeout: 10_000` are removed**; the shared `@cosyte/vitest-config`
+  sets no timeout at all. A global timeout asserts the **machine**, not the code: sized for the
+  slowest test in the repo and then inherited by every other test, so a genuinely hung fast test
+  looks merely slow instead of broken. `hookTimeout` was pure noise — Vitest's default hook timeout
+  is **exactly** 10,000 ms, so the literal restated it. Both defaults were established by measuring a
+  deliberately over-running test and hook, not by reading the documentation.
+
+  **Per-test, never global.** Every test whose cost is not fixed now declares its own budget beside
+  the work. The `attw-gate` cases that run a real `npm pack` have carried an explicit 60 s one all
+  along; three groups were added — the two 200,000-row bulk cases in
+  `test/rxnorm/term-types.test.ts`, the single `tsx`-parity case, and **all of `test/property/**`**,
+  whose runtime varies with the fast-check draw as well as with the box, since this package pins no
+  seed by design. With those declared, every remaining test peaked at **689 ms\*\*, a ~7x margin
+  against the 5 s default the config now inherits.
+
+  **The method is part of the claim.** Ten full runs on a contended box (12-CPU cgroup quota,
+  fourteen-worker fleet), of which **six were `vitest run --coverage`**. That is not optional: CI
+  gates on `pnpm test` _and_ `pnpm test:coverage`, and the instrumented run is materially slower,
+  roughly doubling the property-suite peaks. An earlier draft of this change measured only the plain
+  run, recorded 499 ms, and was refuted for it.
+
+  **Two things measurement corrected.** The six argument-refusal cases in `attw-gate` look like they
+  belong with the slow ones and do not: the wrapper rejects the flag before invoking `attw`, so they
+  run no `npm pack` and finish in ~200 ms. And the case that actually approached the old ceiling —
+  **9,318 ms against 10,000 ms** under load, a 682 ms margin on correct code — was an `attw` case
+  that already had its own 60 s budget, so the global was never what stood between it and a false
+  red. The `attw` cost itself is genuine work (a real `npm pack` runs ~1,550 ms), so it is bounded
+  rather than trimmed. These figures describe one box on one day and are recorded so the next reader
+  re-measures rather than inherits them.
+
 ### Fixed
 
 - **A symbolic link under a scan root read CLEAN on BOTH of the PHI scanner's enumerating routes, so
