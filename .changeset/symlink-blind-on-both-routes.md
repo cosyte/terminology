@@ -1,0 +1,17 @@
+---
+"@cosyte/terminology": patch
+---
+
+A symbolic link under a scan root read clean on both of the PHI scanner's enumerating routes, so a link pointing at a file full of real identifiers passed the gate twice over.
+
+Development tooling only: `scripts/phi-scan.ts` ships in no tarball and the package's public surface is unchanged.
+
+Reproduced before any fix, with a synthetic name-bearing payload (a person name, a DOB, a dashed SSN and an email at a non-test domain) placed outside the walk roots and a link to it at `src/leak.ts`. The all-mode sweep printed `OK — no hits` and exited 0; the `--staged` sweep, after `git add`, printed `OK — no hits` and exited 0. Naming the link's target explicitly on the command line found both shapes and exited 1, so the payload was always detectable — the two routes simply never looked at it.
+
+The two blindnesses are separate mechanisms and needed separate fixes. The walk enumerates `Dirent.isFile()`, which is an **lstat** answer, so a link is neither a file nor a directory and fell out of the loop with no record that anything had been skipped; `isDirectory()` answers false for a linked directory too, so a whole subtree could disappear the same way. The `--staged` route reads content with `git show :<path>`, and **git stores a symbolic link as its target path under mode `120000`**, so it was handed the target's path text and scanned that. That second route is this repo's `pre-commit` hook, which is exactly where the claim that `--staged` covers a link would have been trusted.
+
+**Neither route is made to follow the link.** Following would read bytes the enumeration does not control — outside the repo, a loop, a device, a FIFO that blocks the gate forever — and git does not carry those bytes anyway, so a hit on them would be a claim about something no commit contains. Instead the enumeration is narrowed: an entry under a scan root that is not a regular file **refuses the scan** (exit 2, the existing "could not complete" code), naming every offender rather than the first. The walk classifies by `Dirent` (symbolic link, FIFO, socket, block device, character device); `--staged` now reads `git diff --cached --raw -z` instead of `--name-only` so the destination mode is visible, and refuses mode `120000` and `160000` (a gitlink). A `--raw` record that does not parse refuses as well, rather than being skipped into a silently shortened list.
+
+**A refusal names the entry's own repo-relative path and an engine-owned token for its kind, and never the link target** — a target path is text off the working tree and can itself carry PHI. That is asserted rather than argued: the pinning payload and the target's own filename both carry a synthetic person name, and every refusal message is checked to contain none of it.
+
+**What this does not cover, stated narrowly.** Explicit-path mode already read through a link and reported the target's hits (measured); it is unchanged. The `--staged` scope is unchanged too — still `test/fixtures/**` and `src/**.ts` — so a staged link outside that scope is still not looked at, and narrowing what the scope admits is not the same as widening the scope. A tracked file absent from the worktree is still caught at `git add` time only. And the scanner still has no tolerance for a file that vanishes between enumeration and read, so an untracked transient appearing under a walk root can still refuse a whole sweep; that is a different defect, it fails closed, and it is not addressed here.
