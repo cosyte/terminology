@@ -148,6 +148,20 @@
  *     takes — it is INERT. It is allowed because this repo's test suite passes it,
  *     and nothing else does.
  *
+ *   BOTH ARE PINNED AS FORWARDED, EACH ON ITS OWN. `--profile` is measurable
+ *   through `attw`'s own answer, because the profile changes that answer. INERT
+ *   MEANS UNOBSERVABLE, so `--no-definitely-typed` is not: accepting it and then
+ *   dropping it on the floor looks identical from outside, and it rides along on
+ *   every run the suite makes, which is why nothing noticed.
+ *   `test/scripts/attw-gate.test.ts` therefore reads the argv off an `attw` shim.
+ *   THE CONTROL BESIDE IT IS WHAT CARRIES THE WEIGHT: given no arguments the shim
+ *   must see `--pack .` and nothing else, which reds a gate that hard-codes the
+ *   flag rather than forwarding it, and which a positive assertion alone cannot
+ *   tell apart. A second control asserts that a refused argument never reaches
+ *   the shim at all. That one SHARPENS the refusal cases rather than standing in
+ *   for them: a gate forwarding its whole argv is already caught, many ways over,
+ *   by the refusals themselves.
+ *
  *   The `.attw.json` refusal stays, because it is not an argument: `readConfig()`
  *   applies it after argv, so no argument guard of any shape can reach it.
  *
