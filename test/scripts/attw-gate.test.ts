@@ -35,6 +35,20 @@
  *     `--emoji`). One test measures, on this binary, that the blinding ones really
  *     do hand back exit 0 with the untyped sentence unreadable, so the refusals
  *     stay load-bearing rather than merely green.
+ *  7. THAT THE ALLOW-LISTED ARGUMENTS ARE ACTUALLY FORWARDED, each pinned on its
+ *     own, against an `attw` shim that prints the argv it was handed. Point 6
+ *     covers only the refusal half. `--no-definitely-typed` rides along on every
+ *     other run in this file, to keep the gate off the network, and that is
+ *     precisely why nothing here used to pin it: a wrapper that accepted it and
+ *     then dropped it on the floor kept the whole suite green. The real CLI cannot
+ *     settle the question, because it reports on a tarball rather than on its own
+ *     arguments and that flag suppresses a lookup the `--pack` path never makes.
+ *     The controls beside the pins are the load-bearing half. With no arguments
+ *     the shim must see `--pack .` and nothing else, so a gate that hard-coded
+ *     the flag fails, which a positive assertion alone cannot tell apart. The
+ *     second control, that a refused argument never reaches the
+ *     shim, is a SHARPENING rather than a catch of its own: a gate forwarding its
+ *     whole argv is already refused, many ways over, by point 6.
  *
  * The fixtures are minimal throwaway packages in a temp dir — nothing about this
  * repo's own build, so the test does not need one and cannot race one. `attw` is
@@ -51,7 +65,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -105,6 +119,8 @@ let binMissing: string;
 let binStringMissing: string;
 /** A missing `main`, declared without the optional leading `./` — attw is green. */
 let barePathMissing: string;
+/** A package whose `attw` binary is a shim that prints the argv it was handed. */
+let argvProbe: string;
 
 function writePkg(dir: string, pkg: Record<string, unknown>, files: Record<string, string>): void {
   mkdirSync(dir, { recursive: true });
@@ -240,7 +256,57 @@ beforeAll(() => {
     },
     { "index.d.ts": "export declare const a: number;\n" },
   );
+
+  // THE ARGV PROBE, and it is a different kind of fixture from every one above:
+  // the others are packages `attw` analyses, this one replaces `attw`. The real
+  // CLI cannot answer "what did the gate forward?" because it reports on a
+  // tarball and never on its own arguments, so the answer is read off a shim.
+  //
+  // The wrapper resolves its binary as `../node_modules/.bin/attw` relative to
+  // its OWN file rather than to the working directory, so reaching the shim means
+  // running the wrapper from inside the probe package. The copy below is taken
+  // from this repo's `scripts/attw.mjs` at setup time, and a test asserts the two
+  // are byte-identical rather than leaving that to inspection.
+  argvProbe = join(root, "argv-probe");
+  mkdirSync(join(argvProbe, "scripts"), { recursive: true });
+  // No `main`, `module`, `types`, `typings`, `bin` or `exports`, so the preflight
+  // has no promise it could find broken and every run below reaches the spawn.
+  writeFileSync(
+    join(argvProbe, "package.json"),
+    JSON.stringify(
+      { name: "attw-gate-fixture-argvprobe", version: "1.0.0", private: true },
+      null,
+      2,
+    ),
+  );
+  writeFileSync(join(argvProbe, "scripts", "attw.mjs"), readFileSync(WRAPPER));
+  const probeBin = join(argvProbe, "node_modules", ".bin");
+  mkdirSync(probeBin, { recursive: true });
+  // One argument per line, so an argument carrying a space cannot be read back as
+  // two. The unconditional first line is required: net 2 of the wrapper treats an
+  // empty transcript as a failure, deliberately, and a probe that tripped it
+  // would make every case below fail for the wrong reason.
+  writeFileSync(
+    join(probeBin, "attw"),
+    `#!/bin/sh\necho "attw argv probe: the arguments handed to this shim follow"\n` +
+      `for a in "$@"; do printf 'argv> %s\\n' "$a"; done\n`,
+  );
+  chmodSync(join(probeBin, "attw"), 0o755);
 });
+
+/**
+ * Run the wrapper against the argv probe and report what `attw` was handed. An
+ * empty array means `attw` was never reached at all, which is what a refused
+ * argument has to produce.
+ */
+function forwardedArgv(args: string[]): RunResult & { argv: string[] } {
+  const r = run(process.execPath, [join(argvProbe, "scripts", "attw.mjs"), ...args], argvProbe);
+  const argv = r.out
+    .split("\n")
+    .filter((line) => line.startsWith("argv> "))
+    .map((line) => line.slice("argv> ".length));
+  return { ...r, argv };
+}
 
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
@@ -469,11 +535,17 @@ describe("the argument allow-list", () => {
   );
 
   it(
-    "forwards the two arguments it does accept, with the value, in both spellings",
+    "forwards --profile's value to attw, in both spellings, measured by attw's own answer",
     () => {
       // The other half of an allow-list: it must not refuse the arguments the gate
       // is for, and it must hand `--profile` its VALUE rather than dropping it or
       // reading it as an option on the next turn of the loop.
+      //
+      // THIS CASE COVERS `--profile` ONLY, and its name used to say "the two
+      // arguments it does accept", which it never measured: `--no-definitely-typed`
+      // changes nothing attw does on the `--pack` path, so no assertion about
+      // attw's answer can see whether it was forwarded or dropped. That half is
+      // pinned against the argv probe, in the block below.
       //
       // Asserting an exit code alone would not show that. The ESM-only fixture is
       // the one that answers differently per profile — measured on this binary,
@@ -526,4 +598,74 @@ describe("the argument allow-list", () => {
     },
     SPAWN_TIMEOUT,
   );
+});
+
+describe("the allow-listed arguments are FORWARDED, each pinned on its own", () => {
+  // WHY THIS BLOCK EXISTS. The allow-list has two halves and only one of them was
+  // covered. Refusal is pinned above, sixteen ways. Forwarding was pinned for
+  // `--profile` alone, through a fixture whose answer changes with the profile,
+  // and `--no-definitely-typed` had no pin at all: it is passed by every other
+  // case in this file so the gate stays off the network, so it rode along on every
+  // run, and a wrapper that accepted it and then dropped it kept the suite green.
+  //
+  // These cases carry no explicit budget. They spawn the wrapper against a shim
+  // rather than the real CLI, so no `npm pack` runs and each finishes in ~200 ms,
+  // the same reason the refusal cases above carry none.
+
+  it("runs this repo's own scripts/attw.mjs, byte for byte", () => {
+    // The probe needs its own copy of the wrapper, because the wrapper finds its
+    // binary beside its own file. That copy is written from `WRAPPER` earlier in
+    // this same run, so today it CANNOT have drifted: this asserts the property
+    // rather than proving it, and it is here as a tripwire for the day the copy
+    // becomes a checked-in or hand-written one. `config` already maintains two
+    // committed copies of this script, which is where the same assertion is
+    // load-bearing rather than belt-and-braces.
+    const probe = readFileSync(join(argvProbe, "scripts", "attw.mjs"));
+    expect(probe.equals(readFileSync(WRAPPER))).toBe(true);
+  });
+
+  it("hands attw exactly `--pack . --no-definitely-typed`", () => {
+    const r = forwardedArgv(OFFLINE);
+    expect(r.code, r.out).toBe(0);
+    expect(r.argv).toEqual(["--pack", ".", "--no-definitely-typed"]);
+  });
+
+  it("NEGATIVE CONTROL: with no arguments, attw is handed `--pack .` and nothing else", () => {
+    // This is what makes the case above a PIN rather than a description. A
+    // wrapper that hard-coded `--no-definitely-typed` into its own spawn and threw
+    // its argv away would satisfy that assertion and fail this one. Without it,
+    // the pin would hold over a gate that no longer forwards anything.
+    const r = forwardedArgv([]);
+    expect(r.code, r.out).toBe(0);
+    expect(r.argv).toEqual(["--pack", "."]);
+  });
+
+  it("forwards `--profile` with its value, in both spellings", () => {
+    // Pinned here at the argv, as well as above through attw's own answer. The
+    // separated spelling has to claim the next argument explicitly, or the value
+    // would be read as an option on the next turn of the loop and refused.
+    expect(forwardedArgv(["--profile", "node16"]).argv).toEqual([
+      "--pack",
+      ".",
+      "--profile",
+      "node16",
+    ]);
+    expect(forwardedArgv(["--profile=node16"]).argv).toEqual(["--pack", ".", "--profile=node16"]);
+  });
+
+  it("NEGATIVE CONTROL: a refused argument never reaches attw at all", () => {
+    // The second thing the pins above must not be satisfiable by: a gate that
+    // forwarded its whole argv would pass both of them, and would reopen every
+    // route in the wrapper's own BLINDING note.
+    //
+    // THIS IS A SHARPENING, NOT THE CATCH, and saying otherwise would credit it
+    // with work the file already did. The refusal cases above red that gate many
+    // times over, and did so before this block existed. What this adds is the
+    // argv-level fact behind the refusal: not merely that the gate exits non-zero
+    // and prints a complaint, but that `attw` was never reached at all.
+    const r = forwardedArgv([...OFFLINE, "--quiet"]);
+    expect(r.code).not.toBe(0);
+    expect(r.out).toContain("is not an argument this gate accepts");
+    expect(r.argv).toEqual([]);
+  });
 });

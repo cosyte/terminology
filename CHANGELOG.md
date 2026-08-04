@@ -9,6 +9,76 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ## [Unreleased]
 
+### Fixed
+
+- **Nothing pinned that the publish gate FORWARDS `--no-definitely-typed`, so a gate that accepted
+  the flag and then dropped it would have looked exactly like one that forwards it**
+  (`TERMINOLOGY-ATTW-FORWARDING-UNPINNED`). Development tooling only: `scripts/attw.mjs` ships in no
+  tarball, and the public surface, build output and runtime behaviour are unchanged. No executable
+  line of the gate moved; the only edit to that file is one docblock paragraph.
+
+  **The gap was structural, not one forgotten assertion.** Every case in
+  `test/scripts/attw-gate.test.ts` passes `--no-definitely-typed`, to keep the gate off the network,
+  so the flag rode along on every run and no assertion ever depended on it arriving. The allow-list
+  covered the acceptance half incidentally, since removing the flag from it kills every other case at
+  the argument guard; the forwarding half was covered by nothing at all. The one test whose name said
+  otherwise, `"forwards the two arguments it does accept"`, measured `--profile` alone, and its name
+  is corrected here rather than left overclaiming.
+
+  **`attw` itself cannot settle it, which is why the answer is a shim.** The CLI reports on a packed
+  tarball, never on its own arguments, and on the `--pack` path this gate always takes the flag
+  suppresses a DefinitelyTyped lookup that is never made. Inert means unobservable: accepting the
+  flag and dropping it produces byte-identical output to forwarding it. The pin therefore runs this
+  repo's own `scripts/attw.mjs` against a fixture package whose `node_modules/.bin/attw` prints the
+  argv it was handed. The wrapper resolves its binary beside its own file rather than from the
+  working directory, so the probe needs its own copy of the script, and the suite asserts that copy
+  is byte-identical to the real one instead of trusting it.
+
+  **The negative controls are the load-bearing half, and they are committed rather than merely run.**
+  A test that would pass whether or not the flag is forwarded proves nothing. Given no arguments the
+  shim must see `--pack .` and nothing else, which reds a gate that hard-codes the flag into its own
+  spawn, which a positive assertion alone cannot tell apart. A second control
+  asserts that a refused argument never reaches the shim at all; that one sharpens the existing
+  refusal cases rather than catching anything they miss.
+
+  **Three counterfactuals were run against the real script, over the whole of
+  `test/scripts/attw-gate.test.ts` rather than the new block alone.** Dropping the forwarding reds
+  three cases, the new positive pin among them, and leaves both new controls green. Hard-coding the
+  flag into the spawn and discarding the argv also reds three, but the pairing is what matters: the
+  positive pin stays GREEN while the bare-`--pack .` control reds. That is the precise failure this
+  change exists to make visible.
+  Bypassing the allow-list so the whole argv is forwarded reds eighteen, of which seventeen are
+  refusal cases that were here already; the new refusal control is the eighteenth and adds only "and
+  `attw` never saw it". **So that control sharpens an existing guard rather than being what stops a
+  forward-everything gate from passing**, and it is recorded that way instead of being credited with
+  the catch.
+
+  **Unchanged, and not claimed to be closed: the `.attw.json` route.** `readConfig()` applies a
+  committed config file after argv and sets an option value for every key it carries, so a config
+  file wins regardless of the argument allow-list and no argv-level pin can reach it. This change
+  narrows nothing there, and the gate's docblock keeps stating it as the known limit it is.
+
+## Released, pending a per-version split
+
+> **Everything between this heading and `[0.0.1]` has already SHIPPED.** It accumulated under
+> `[Unreleased]` across the releases from `0.0.2` through `0.0.9`, because this file is maintained by
+> hand and the Changesets changelog generator is off (`"changelog": false` in
+> `.changeset/config.json`), so no release run ever moved an entry out of that section. Reading any
+> of it as work still awaiting a release was wrong, which is why the heading changed and the entries
+> did not.
+>
+> **What is deliberately NOT done here, and is tracked as `TERMINOLOGY-CHANGELOG-GAP`:** splitting
+> this into one `## [x.y.z]` section per published version, and the founder-owned question of whether
+> to turn the generator on across the repos that share this layout. No version from `0.0.2` to
+> `0.0.9` has a section of its own below, and none has a compare link. The `[Unreleased]` link at the
+> foot of this file now spans `v0.0.9...HEAD`, which is what that section actually holds; it spanned
+> `v0.0.1...HEAD` while this block was mislabelled.
+>
+> **`0.0.3` never reached npm, and LEAVING it that way is the deliberate part.** The gap itself was
+> a consequence, not a choice: a leftover changeset meant that release run only opened the next
+> version PR, and the content shipped in `0.0.4`. It is not a hole to be filled, because publishing a
+> `0.0.3` now would place it after `0.0.4` in registry order.
+
 ### Changed
 
 - **Breaking: `ExpansionDiagnostic.system` is replaced by `ExpansionDiagnostic.path`.** The field
@@ -1058,5 +1128,5 @@ ladder (`0.0.x` until first alpha).
   `WARNING_CODES` entry, and the parse-oriented option/warning types). This package is an engine, not
   a parser; that placeholder surface never shipped.
 
-[Unreleased]: https://github.com/cosyte/terminology/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/cosyte/terminology/compare/v0.0.9...HEAD
 [0.0.1]: https://github.com/cosyte/terminology/releases/tag/v0.0.1
