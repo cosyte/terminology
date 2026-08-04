@@ -1030,7 +1030,9 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
     // true: `parseCsv`, `parseRrfLine`, `parseUcum`, `ucumEqual`, `reduce`, `loadUcumEssence`,
     // `validateCode`, `makeStatus`, `asTermType`, the `src/valueset/filters.ts` helpers and the
     // row-shaped `loadComplexMap` are all exported and all unslotted. What bounds the table is the
-    // enumeration in the header and in `CLAUDE.md`, reviewed by a human — never this number.
+    // enumeration in the header and in `documentation/agent-notes.md` (relocated out of `CLAUDE.md`
+    // on 2026-08-04; `CLAUDE.md` keeps the imperative and points there), reviewed by a human —
+    // never this number.
     expect(slots).toHaveLength(SLOT_COUNT);
   });
 });

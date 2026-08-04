@@ -171,8 +171,8 @@ a summary.
   special unit walks straight past the short-circuit. Why:
   `documentation/agent-notes.md#why-a-parsed-expression-never-reaches-those-guards`
 - **The UCUM table is FROZEN, and that is the other half of the memo answer — neither substitutes for
-  the other.** Identity keying closes the atom the caller *built*; the freeze closes the atom the
-  caller was *handed*. The freeze is **deep**, covers **both** arrays, and replaces the lookup maps'
+  the other.** Identity keying closes the atom the caller _built_; the freeze closes the atom the
+  caller was _handed_. The freeze is **deep**, covers **both** arrays, and replaces the lookup maps'
   `set`/`delete`/`clear`. **The guarantee is that the table does not change, NOT that a write throws**
   (`Object.freeze` is a silent no-op in the sloppy-mode CJS a caller can require) — assert the
   readings. **Do not widen it to the `Map`.** Published `0.0.5` **and `0.0.6`** carry the defect. Why:
@@ -228,7 +228,7 @@ a summary.
   weaken the pinned fixtures on that ground. Why:
   `documentation/agent-notes.md#the-rxnorm-edge-direction-convention-and-the-authored-topology`
 - **A concept is typed by a DEFINING atom, and the vocabulary is the FULL Appendix 5 one.** A synonym
-  atom types a *name*, never a concept; an `RXCUI` no defining atom could type is **skipped** and
+  atom types a _name_, never a concept; an `RXCUI` no defining atom could type is **skipped** and
   surfaced as `TERM_RXNORM_UNTYPED_CONCEPT` rather than typed from a synonym — a fabricated `tty` is a
   claim the caller cannot detect. Both halves were wrong at once and silent (`RXCUI 370659` loaded as
   `TMSY` with zero warnings). Why: `documentation/agent-notes.md#a-concept-is-typed-by-a-defining-atom`
@@ -280,7 +280,6 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md` 
    got built" commentary belong in the changeset, `CHANGELOG.md`, the commit, the PR and the
    roadmap. Gated by `pnpm check:no-internal-refs` and
    `.github/workflows/no-internal-refs.yml` (check-run context **`no-internal-refs`**, no matrix).
-
    - **▶ THE GATE KEYS ON KNOWN PROJECT PREFIXES, NEVER THE `WORD-N` SHAPE, AND THIS IS THE REPO WHERE
      THAT MATTERS MOST.** A shape rule matches 89 tokens here and **all 89 are the consumer's reference
      material** — `ICD-10-CM`, `ICD-9`, `RFC-4180`, and the UCUM expressions `OHM-1`, `CM-1`,
