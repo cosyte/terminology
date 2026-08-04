@@ -211,6 +211,13 @@
 #                          not ours to sweep, and sweeping it would be the one edit the
 #                          UCUM License forbids. NOTICE.md is carved OUT of this exclusion
 #                          and scanned (above) — it is our prose and it now ships.
+#   * documentation/       the agent-facing narrative relocated out of CLAUDE.md on
+#                          2026-08-04 (`agent-notes.md`). PROSE, but internal by
+#                          definition and NOT named in package.json's `files`, so no
+#                          consumer receives it. It is one of the places the identifiers,
+#                          phase language and meta-repo paths stripped off the public
+#                          surface are SUPPOSED to live, so scanning it would red on
+#                          correct content. Recorded rather than left excluded by silence.
 #   * CLAUDE.md, .github/, .changeset/, scripts/, test/
 #                          internal by definition, or code rather than prose.
 #   * src/ DOC COMMENTS    IN SCOPE, as a THIRD PASS at the bottom of this file, with its
