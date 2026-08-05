@@ -601,3 +601,104 @@ exit status is lost.
 `.github/workflows/no-internal-refs.yml` existed cannot emit `no-internal-refs`, so its PR sits
 pending rather than failing. That is the documented price of requiring a context, not a defect:
 rebase the branch. Expect it every time a context is added here.
+
+## The phi-scan staged route states its own enumeration
+
+**▶ THE `--staged` ROUTE ASKS GIT FOR ITS RECORD SET ON THE COMMAND LINE, AND EVERY FLAG IN THAT
+ARGUMENT LIST IS LOAD-BEARING. Do not shorten it.** The route is
+`git diff --cached --raw -z --no-renames --ignore-submodules=none --diff-filter=AMTU`, and it is the
+pre-commit half of the PHI gate — the all-mode sweep is the backstop, so anything this route drops
+is dropped at exactly the moment a commit is being made.
+
+**What was open, all measured on git 2.39.5 in throwaway repositories, all reported as `OK — no
+hits` and exit 0:**
+
+- **A staged RENAME.** Detection is on by git's default and `R` is returned by neither `AM` nor
+  `AMT`, so `git mv <tracked link> test/fixtures/<name>` staged as
+  `:120000 120000 <sha> <sha> R100` with **two** paths and the status filter deleted the record
+  outright. Not only a **mode** gap: a rename that also SUBSTITUTES a real-looking value into the
+  moved file staged as an `R` record at mode 100644 and its new content went unread the same way, while
+  naming the same destination directly returned a hit.
+- **A staged COPY.** Under `diff.renames=copies` a copy of an out-of-scope PHI-bearing file into a
+  scan root stages as a genuine `C100` and was dropped identically. **No rename fixture reaches this
+  case.** The precondition is easy to state too broadly: configuration-only copy detection also needs
+  the copy SOURCE modified in the same staged diff, or git finds no copy source, the record arrives
+  as an ordinary `A` that even the old argv enumerated, and the fixture proves nothing.
+- **A scan ROOT'S own path.** An index entry at exactly `test/fixtures` or exactly `src` escaped a
+  prefix test that required the trailing slash, so a whole walk root replaced by a link went
+  unjudged. The `.ts` suffix rule is deliberately NOT applied to `src`'s own name: that rule is a
+  judgement about bytes the route could have read, and the name of an entry that replaced a walk root
+  is no evidence about what is on the other side of it.
+- **A staged GITLINK under `diff.ignoreSubmodules=all`.** That setting ERASES the record, so a
+  refusal the route already had never fired: exit 2 on the default, exit 0 with the setting, same
+  index.
+- **An UNMERGED path.** Returned by neither `AM` nor `AMT`, so a conflicted in-scope path made the
+  route report clean over an index it structurally cannot read.
+
+**▶ `--no-renames` CLOSES THE FIRST TWO WITH ZERO STRIDE WORK, AND THE "needs the two-path record
+shape, a scope decision" FRAMING THIS ROUTE ONCE CARRIED WAS MEASURED FALSE.** It shipped, so it is
+withdrawn in place rather than deleted. With detection off the destination arrives as an ordinary
+single-path `A` and the source as a `D` the filter already drops. Verified under
+`diff.renames=true|copies|false|1` with `diff.renameLimit=1`: every one yields the same single-path
+records, so the two-field stride is **structural** rather than conditional on the caller's config.
+
+**▶ NEVER WRITE "STRICT SUPERSET" HERE, AND NEVER WRITE THE RELATION UNSCOPED.** **Of
+`--no-renames` alone, holding the rest of the argv fixed:** the new enumeration **contains** the old
+one — **equal** whenever git emitted no `R` and no `C`, larger only when it did. The loose form of
+that sentence was refuted in a sibling and the ecosystem backlog item carried it too — this repo is
+where that porting trap originated, so do not re-import it, and **do not port the unscoped form out
+of here either.** Unscoped it is FALSE for this route: on an index holding one unmerged path and no
+rename or copy anywhere, `--diff-filter=AMT` returns nothing while the current argv returns
+`:100644 000000 <sha> 0000000 U`, so git emitted no `R` and no `C` and the enumerations are still not
+equal. The equality is a property of that ONE FLAG, not of the argv.
+
+**▶ `U` IS CLOSED BY A DIFFERENT MECHANISM AND THE TWO MUST NOT BE CONFLATED.** It is closed by
+being IN `--diff-filter=AMTU`; `--no-renames` does not carry it, and dropping `U` from the filter on
+the belief that the flag covers it reopens the gap (measured: 1 case reds). Likewise the gitlink half
+is closed by `--ignore-submodules=none` alone (measured: 1 case reds when it is removed). Git itself
+refuses to commit while a path is unmerged, so `U` was never a route to a committed leak — what it
+was is the gate attesting clean over a state it never observed, and `pnpm phi-scan --staged` is run
+by hand and from scripts as well as from the hook.
+
+**▶ `-M`, `-C` AND `--find-copies-harder` EACH TURN DETECTION BACK ON OVER THE TOP OF
+`--no-renames` AND EMPTY THIS ROUTE AGAIN.** Do not add them. `--find-copies-harder` does so in
+EITHER order, so never write that a later `--no-renames` undoes them. The argv-coupling case guards
+GIT's premise rather than the scanner's argv, so it does not by itself fail if someone edits the
+scanner; the suite as a whole does — injecting `-M` reds 2 cases and `--find-copies-harder` reds 3,
+both measured rather than recalled, because a sibling shipped this warning inverted.
+
+**▶ AND `-B` IS NOT INERT. DO NOT RESTORE THAT READING — IT WAS WRITTEN HERE ONCE AND A REFUTER
+CAUGHT IT.** The "inert" measurement was taken on a RENAME stage, the one stage where `-B` does
+nothing, and the sentence then generalised. On a COMPLETE REWRITE `-B` breaks the pairing, the
+`--diff-filter` letter is `B` and not `M`, `AMTU` drops the record outright, and the gate reports
+`OK — no hits` over a staged dashed SSN: measured on the same index, exit 1 without the flag and
+exit 0 with it. It empties this route through the status FILTER rather than by re-enabling
+detection — a different mechanism, the same answer. **A sibling repository ships the "inert" claim
+over the same `AMTU` filter; it is wrong there too, and that is its own item, not this one's.**
+
+**A refusal message was false and is corrected.** `git show :<path>` "hands back its target path
+rather than any content" holds only for mode 120000; on a staged gitlink it fails outright
+(`fatal: bad object`, exit 128), and the same sentence was emitted for gitlinks and for the mode
+fallback. It now states what the INDEX holds.
+
+**NO TEST HERE RUNS `git merge`, DELIBERATELY.** `git merge` resolves the COMMITTER IDENTITY up front
+and exits 128 with "Committer identity unknown" before merging anything when it cannot find one. A
+developer's box has a global identity or auto-detects one; a CI runner has neither, so a fixture
+built that way passes locally and fails on CI **on its own premise**. What this route reads is an
+INDEX STATE, so the unmerged fixtures are built with `git update-index --index-info` — smaller, no
+branches, no merge strategy, no identity, and `git status` still reports `UU`, which is git
+confirming the construction. Every commit helper passes `-c user.email` / `-c user.name` explicitly.
+Re-run the suite under `env -i` before trusting it.
+
+**TWO THINGS MEASURED OPEN AND DELIBERATELY LEFT.** With a scan root replaced by a link to a regular
+file, the all-mode walk raises an uncaught `ENOTDIR` and exits **1** — the code this contract
+reserves for HITS — with a v8 stack trace in place of the scanner's own diagnostic; a missing
+allow-list throws out of the same route the same way, because `loadAllowList()` runs outside every
+`try`. Both are fail-closed rather than silent, and both belong to the separate exit-code work.
+
+**AND ONE THING THAT IS TRUE HERE FOR A REASON THAT WILL STOP BEING TRUE.** A regular blob staged at
+exactly a scan root is scanned at the SAME tier as one under it — measured, equal hit counts — only
+because `scanTarget` has ONE tier, the SSN/email floor, and it keys on nothing about the path. A
+sibling that dispatches a format-aware tier off the path prefix gives such a blob the shape pass
+only. **Implementing the fenced TODO section with a path-keyed dispatch breaks this**, and a case in
+`test/scripts/phi-scan.test.ts` is what says so.

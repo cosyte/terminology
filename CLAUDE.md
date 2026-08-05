@@ -197,6 +197,19 @@ a summary.
   `Property.code` or `RxNormEdge.predicate`** — a FHIR `code` has no `maxLength` and `RELA` is an open
   vocabulary, and both are match keys, so truncating turns a hit into a miss. Why:
   `documentation/agent-notes.md#the-diagnostic-surface-slot-table`
+- **▶ THE `phi-scan --staged` ARGV IS THE GATE. EVERY FLAG IN IT IS LOAD-BEARING; DO NOT SHORTEN IT.**
+  `--no-renames` (a staged rename or copy into a scan root was dropped outright and the hook passed it
+  green at PRE-COMMIT), `--ignore-submodules=none` (`diff.ignoreSubmodules=all` erased a staged
+  gitlink), and `U` in `--diff-filter=AMTU` — **`U` is closed by being in the FILTER, not by
+  `--no-renames`; do not conflate them.** **Never add `-M`, `-C` or `--find-copies-harder`** — each
+  turns detection back on over the top of `--no-renames`, `--find-copies-harder` in EITHER order.
+  **`-B` IS NOT INERT EITHER — never add it, and never restore the "inert" reading**: it breaks the
+  pairing on a complete rewrite, whose filter letter is `B`, so `AMTU` drops the record and the gate
+  reports clean over a staged SSN. **Never write "strict superset": of `--no-renames` alone the
+  enumerations are EQUAL when nothing is renamed or copied**, and this repo is where that porting
+  trap originated. **No test here may run `git merge`** — it resolves the committer
+  identity up front and exits 128, so it passes locally and reds on CI on its own premise. Why:
+  `documentation/agent-notes.md#the-phi-scan-staged-route-states-its-own-enumeration`
 - **Result echoes are deliberately NOT bounded — bounding them would fabricate.** `lookup`,
   `translate`, `applyGem`, `resolveNdc`, `resolveSystem` echo the caller's own query on their typed
   `unknown`/`unmapped` outcomes. **It is not one field per echo**: `translate` returns the coding's
