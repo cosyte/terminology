@@ -702,3 +702,118 @@ because `scanTarget` has ONE tier, the SSN/email floor, and it keys on nothing a
 sibling that dispatches a format-aware tier off the path prefix gives such a blob the shape pass
 only. **Implementing the fenced TODO section with a path-keyed dispatch breaks this**, and a case in
 `test/scripts/phi-scan.test.ts` is what says so.
+
+## The all-mode observation rule is per-root
+
+**▶ ALL-MODE REFUSES (exit 2) UNLESS EVERY MEMBER OF `SCAN_ROOTS` YIELDED AT LEAST ONE FILE THAT WAS
+ACTUALLY READ**, and the refusal names the starved roots. Before 2026-08-05 there was **no
+observation rule here at all** — not the global "observed zero files in total" form the siblings
+carried, none — so `pnpm phi-scan` with no arguments, which is what CI runs, could print
+`[phi-scan] OK — no hits` and exit **0** having read nothing.
+
+**THE STARVED STATE WAS LIVE, NOT HYPOTHETICAL, AND THAT IS WHAT MAKES THIS REPO THE WORSE HALF.**
+The scanner declared two roots, `test/fixtures` and `src`, and `test/fixtures` has **never existed
+in this repository's history**: `git log -- test/fixtures` is empty, every test here is inline
+TypeScript (`find test -type f -not -name '*.ts'` returns nothing), and the throwaway-repo helper in
+`test/scripts/phi-scan.test.ts` has only ever created `scripts/` and `src/`. So the clean line was
+being printed over an unopened root on every run the gate has ever made.
+
+**Measured on `0fe4b84` on a clone, three ways, each `[phi-scan] OK — no hits` at exit 0:** `src`
+moved aside, `src` replaced by a **dangling symlink** (each leaving all 39 source files unread), and
+the fixture root — which needed no manipulation to reproduce.
+
+**▶ THE DANGLING CASE IS THE SHARPEST AND NOTHING ELSE IN THE SCANNER CAN SEE IT.** `existsSync`
+**follows** the link and answers false, so `walk()` returns before `readdirSync` and the
+not-a-regular-file refusal never fires — that rule only ever classifies entries found **inside** a
+root, and this is the root itself. Absent, dangling and empty are one state to the walk.
+
+**▶ AND THIS REPORTER PRINTS NO DENOMINATOR, WHICH IS A WEAKER SIGNAL THAN A SIBLING THAT DOES.**
+`report` writes `OK — no hits` and no file count, so nothing on stdout looked wrong; a sibling at
+least printed a plausible-looking `76 file(s) scanned` over an unread corpus. **Adding a count is a
+DIFFERENT rule and was deliberately not done with this one** — do not smuggle it in under it.
+
+**▶ IT IS WRITTEN PER-ROOT THOUGH ONLY ONE ROOT IS DECLARED.** The global form is satisfied by any
+one surviving file, so a single `src/` module would vouch for a whole fixture corpus the moment a
+second root appeared. Writing it per-root now is what stops that shape arriving with the root.
+
+**▶ `test/fixtures` IS NO LONGER A DECLARED WALK ROOT, AND THAT REMOVAL IS NOT A NARROWING.** If the
+directory ever comes back, `buildTargetsForAll` **refuses** (exit 2) naming `SCAN_ROOTS`, rather
+than reporting clean over content nothing walks.
+
+**▶ IT FIRES ONLY WHERE ITS OWN PRINTED REMEDY WOULD HELP, AND BOTH HALVES OF THAT COST A REFUTER
+PASS.** A first draft filtered `RETIRED_WALK_ROOTS` on nothing but `existsSync`, so (a) following the
+message ("add the path back to `SCAN_ROOTS`") reproduced the identical refusal, and (b) it refused
+over an EMPTY `test/fixtures`, over one holding only MARKDOWN the walk skips anyway, and over a
+GITIGNORED one — three states where the remedy leaves the gate refusing, where the superseded scanner
+exited 0, and the last of which invents a second, stricter gitignore boundary beside the single one
+this file keeps. **A gate that cannot be satisfied gets deleted.** The filter now uses `rootOf` AND a
+content test mirroring the walk's own rules (`walk` + `gitIgnored`), so all three exit 0 again, and
+the recovery path is **pinned by a test**, not asserted: a copy of the scanner with the second root
+declared is spawned in a throwaway repo and the fixture is then really READ (exit 1 on its violator),
+not merely tolerated. **TWO EXCEPTIONS ARE DELIBERATE, AND DO NOT WRITE "one"** — a refuter counted.
+Both count as content, because a scan that cannot account for something must not report clean: a path
+the walk CANNOT LIST, where declaring it hits the unwrapped `readdirSync` and exits 1; and a path
+holding only a NON-REGULAR entry, where declaring it lands on `refuseUnscannable` at exit 2. Both
+behave identically at `0fe4b84`, so neither is a regression. Measured base-vs-head over all five states: empty 0/0, markdown-only 0/0,
+gitignored 0/0, real content 1/2, a regular file at that path 1/2. **The `--staged` predicate is deliberately NOT
+"resynced" to `SCAN_ROOTS`** — it still enumerates `test/fixtures/**` and that path's own name, and
+narrowing what the pre-commit route enumerates is the opposite of the work this scanner keeps being
+asked to do. The two predicates are separate on purpose; do not unify them.
+
+**THE STARVATION REFUSAL NEVER SWALLOWS A FINDING.** Hits from the roots that DID yield are printed
+before it, and the exit code is still 2. **SCOPE THAT SENTENCE TO THE STARVATION BRANCH AND NO
+WIDER** — a refuter measured the unscoped form false. The reappearing-corpus refusal, like the
+not-a-regular-entry and unmerged refusals it sits beside, throws out of `buildTargetsForAll` before
+anything is scanned, so with a violator in `src` AND content at `test/fixtures` the base scanner
+printed two hit groups at exit 1 and this one prints none at exit 2. Fail-closed, PRE-EXISTING in
+shape, and unchanged. **With one root that line is unreachable from this repository's own
+configuration** (starved ⟹ empty target list ⟹ no hits), so it is NOT left as an untested promise:
+the same patched-copy harness declares a second root, starves it, and asserts the hit is printed and
+the exit code is still 2. Without that, adding a root would silently start swallowing findings and
+nothing would red.
+
+**WIDENING WAS RUN AS A MUTATION RATHER THAN ARGUED.** Dropping the `args.mode === "all"` guard reds
+**10** cases; removing the per-root rule reds **4**; removing the reappearing-corpus refusal reds
+**3**; removing the print-hits-first line reds **1**; making that refusal ignore `SCAN_ROOTS` again
+reds **1**; putting it back on bare `existsSync` reds **3**; emptying `SCAN_ROOTS` reds **14**.
+`--staged` and named-path mode enumerate no root, so neither can make a per-root promise.
+
+**▶ AND DO NOT WRITE DOWN HOW MANY CASES ARE RED AGAINST THE SUPERSEDED SCANNER.** One draft did,
+correctly; two more cases were added in the same slice, the number was then wrong in three artifacts
+at once, and a refuter measured it. Re-derive it against `0fe4b84` instead.
+
+**▶ FOUR LIMITS ARE OPEN AND EACH IS PINNED BY A CHARACTERIZATION TEST — AND THE LIST IS RE-DERIVED
+HERE, NOT INHERITED.** Two entries that a sibling records as closed are **open** here. Measured with
+the rule in place: a directory missing from **inside** a root is still unobserved (`mv src/ucum ..`
+prints `OK — no hits` at exit 0 with 6 sources unread; non-vacuous, since a violator planted there
+exits 1 while it is present); a root that is **itself a symlink to a directory** is followed, so the
+rule is satisfied by whatever is behind it; the rule is a **floor of one** file; and **ANY DIRECTORY
+THE WALK CANNOT LIST exits 1 — the code this contract reserves for HITS — not 2**, because `walk()`
+here does not wrap `readdirSync`, so the error escapes `buildTargetsForAll`, is not an
+`InvocationError`, and reaches node's default handler. **State that one generally, not as "a root
+that is a regular file"**: measured as `ENOTDIR` on a regular-file root and on a root linking to a
+file, and as `EACCES` on `mkdir src/locked && chmod 000 src/locked`, at depth, with the per-root
+rule satisfied by the other 39 files. **The sibling's `walk()` does wrap it and refuses at 2 there;
+do not port that reading in.** It belongs with the separate exit-code work, alongside the missing
+allow-list that throws the same way because `loadAllowList()` sits outside every `try`.
+
+**AND TWO MORE BOUNDS, BOTH `PRE-EXISTING`, WRITTEN DOWN SO NOTHING ABOVE READS AS COMPLETENESS.**
+(1) The reappearing-corpus refusal sees only what `existsSync` can resolve. A **dangling** link at
+`test/fixtures` is deliberately not seen — that guard catches a CORPUS arriving where nothing is
+walked, and a dangling link holds none — **but the same mechanism is silent over a real corpus
+behind a directory that cannot be traversed** (`chmod 000 test` with `test/fixtures/leak.txt`
+present: `existsSync` answers false, exit 0; identical before this change, so not a narrowing). The
+stated reason does not cover that case; do not let it stand in for one. (2) **ALL-MODE WALKS `src`
+AND NOTHING ELSE.** Every tracked file under `test/` is under no scan root, so the observation rule
+can be fully satisfied while none of it is read: measured back to back, `pnpm phi-scan` clean at
+exit 0 while naming a file under `test/` directly returns hits at exit 1 over the same bytes. Count
+them with `find test -type f | wc -l` rather than trusting a number; widening the walk is
+`PHI-SCAN-WALK-ROOT-SCOPE`, separate work with its own two-sided trap, because this floor is
+SSN/email only.
+
+**ANTI-VACUITY IS PART OF THE FIX, NOT A NICETY.** A starvation test whose corpus held nothing worth
+finding would pass against the very bug it claims to close. **One case carries that weight
+explicitly** — it scans the same tree twice, as a hit with the root present and as a refusal with it
+starved. The absent- and dangling-root cases plant no payload and do not claim to: they assert an
+exit 2, which an empty corpus cannot satisfy the way it can satisfy an exit 0. **Do not write "every
+starvation case is paired with a hit"** — a refuter measured that false.
