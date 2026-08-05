@@ -11,6 +11,101 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **The PHI commit-gate's `--staged` route was blind to a staged RENAME or COPY, so an ordinary
+  `git mv` into a scan root printed its clean line and exited 0 at pre-commit**
+  (`PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT`). Development tooling only: `scripts/phi-scan.ts` ships in
+  no tarball, and the public surface, build output and runtime behaviour are unchanged.
+
+  **The hole.** Rename detection is on by git's default, and `git diff --cached --raw
+--diff-filter=AMT` returns neither `R` (rename) nor `C` (copy). So `git mv <tracked link>
+test/fixtures/<name>` staged as `:120000 120000 <sha> <sha> R100` with **two** paths and the
+  status filter deleted the record outright: measured on git 2.39.5 in a throwaway repository, the
+  index held a mode-120000 entry under a scan root and `pnpm phi-scan --staged` reported clean. It
+  was never only a **mode** gap. A rename that also SUBSTITUTES a real-looking value into the moved
+  file passed identically, measured at mode 100644, while naming the same destination
+  directly returned a hit. The gap was at **pre-commit**, where `simple-git-hooks` runs
+  `pnpm phi-scan --staged`; the all-mode sweep is the backstop and saw both.
+
+  **The remedy is `--no-renames`, with no record-stride work.** With detection off git emits no `R`
+  and no `C` at all: the destination arrives as an ordinary single-path `A` and the source as a `D`
+  the filter already drops. **This route's own previous disclosure — that admitting `R`/`C` needed
+  the two-path record shape handled, "which is a scope decision" — was measured FALSE and is
+  withdrawn in place rather than deleted, because it shipped.** Verified under
+  `diff.renames=true|copies|false|1` with `diff.renameLimit=1`: every one yields the same
+  single-path records, so the two-field stride is STRUCTURAL rather than conditional on the caller's
+  configuration. **State the relation exactly, and SCOPE it. Of `--no-renames` alone, holding the
+  rest of the argv fixed: the new enumeration CONTAINS the old one — EQUAL whenever git emitted no
+  `R` and no `C`, larger only when it did.** It is a superset, not a strictly larger set. **That
+  equality is NOT a claim about the route as a whole** — the whole-argv change also adds the
+  unmerged and gitlink records below, so on an index holding an unmerged path the two enumerations
+  differ while git emitted no `R` and no `C` at all. The corollary, because it is easy to misread as "nobody was affected": a
+  caller who had already set `diff.renames=false` was covered before this, and everybody on git's
+  default was not.
+
+  **The `C` half is real and no rename fixture reaches it.** Under `diff.renames=copies`, copying an
+  out-of-scope file carrying the same payload INTO a scan root stages as a genuine `C100` two-path
+  record and was dropped identically: exit 0 before, exit 1 after. One precondition, recorded because
+  it is easy to state too broadly: configuration-only copy detection also needs the copy SOURCE
+  modified in the same staged diff, or git finds no copy source, the record arrives as an ordinary
+  `A` that even the previous argv enumerated, and the fixture proves nothing.
+
+  **Three further enumeration holes in the same route, each measured open here rather than assumed.**
+  An index entry at exactly `test/fixtures` or exactly `src` escaped a prefix test that required the
+  trailing slash (exit 0 over a staged mode-120000 entry at each), so a whole scan root replaced by a
+  link went unjudged — **the one ADDITION to this route's path scope in this change, named as an
+  addition rather than filed under narrowing.** `diff.ignoreSubmodules=all` ERASED a staged gitlink
+  from the enumeration entirely, so a refusal the route already had never fired (exit 2 on the
+  default, exit 0 with that config, same index); closed by `--ignore-submodules=none`, the same
+  remedy family. And an UNMERGED path was returned by neither `AM` nor `AMT`, so a conflicted
+  in-scope path made the route report clean over an index it structurally cannot read; it is now
+  enumerated so it can be REFUSED. **`U` is closed by a DIFFERENT mechanism and the two must not be
+  conflated: by being in `--diff-filter=AMTU`, not by `--no-renames`.** Git itself refuses to commit
+  while a path is unmerged, so that one was never a route to a committed leak; what it was is the
+  gate attesting clean over a state it never observed.
+
+  **One refusal message was false and is corrected, not softened.** It asserted that `git show
+:<path>` "hands back its target path rather than any content", which holds only for mode 120000;
+  on a staged gitlink it fails outright, and the same sentence was emitted for gitlinks and for the
+  mode fallback. It now says what the INDEX holds instead of what `git show` would answer.
+
+  **Twelve cases added**, most of them asserting git's own premise before the scanner's behaviour,
+  because the remedy rests on what git emits. Eight run red against the previous scanner; the other four
+  are the configuration sweep, two flag-coupling premises and an out-of-scope control, green on both
+  by design. **The argv coupling is pinned, and a first draft of this entry had half of it BACKWARDS.**
+  `-M`, `-C` and `--find-copies-harder` each turn detection back on over the top of `--no-renames`
+  and empty the route again; `--find-copies-harder` does so in EITHER order, so nothing here says a
+  later `--no-renames` undoes them. **`-B` IS NOT INERT, AND CALLING IT SO WAS THE PERMISSIVE HALF OF
+  A STANDING DIRECTIVE.** That reading came from a rename stage, the one stage where `-B` does
+  nothing. On a COMPLETE REWRITE `-B` breaks the pairing, the `--diff-filter` letter is `B` and not
+  `M`, `AMTU` drops the record outright, and the gate reports clean over a staged dashed SSN
+  (measured, same index: exit 1 without the flag, exit 0 with it). It empties this route through the
+  status FILTER rather than by re-enabling detection — a different mechanism, the same answer: do not
+  add it. Corrected in place rather than deleted, because an "inert" reading is exactly what gets
+  ported onward, and a case now pins it. That case guards GIT's premise rather than the scanner's argv, so it does not by
+  itself fail if someone adds `-M` to the scanner; the suite as a whole does. **Every flag is
+  counterfactually measured against the final suite of 34:** injecting `-M` reds 2 cases, `-C` reds
+  3, `--find-copies-harder` reds 3 and `-B` reds 1; removing `--ignore-submodules=none` reds 1, and
+  dropping `U` from the filter reds 1. Before the `-B` case was added, injecting `-B` red nothing,
+  which is how the false "inert" claim survived a first pass. Every case builds a
+  throwaway git repository, so no rename, copy, conflict or violator enters the committed corpus.
+  **No case runs `git merge`:** it resolves the COMMITTER IDENTITY up front and exits 128 before
+  merging anything when it cannot find one, which passes on a developer's box and fails on a runner,
+  so the unmerged fixtures are built with `git update-index --index-info` against an index state —
+  what this route actually reads, and `git status` still reports `UU`. The suite was re-run under
+  `env -i` with no discoverable git identity: 34 pass.
+
+  **Measured and deliberately NOT closed here, both PRE-EXISTING and identical before this change.**
+  With a scan root replaced by a link to a regular file the all-mode walk raises an uncaught
+  `ENOTDIR` and exits **1**, a code this contract reserves for HITS, with a stack trace in place of
+  the scanner's own diagnostic; a missing allow-list throws out of the same route the same way. Both
+  are fail-closed rather than silent, and belong to the separate exit-code work. And one property
+  that is newly true rather than unchanged, because such a blob was previously out of scope
+  entirely: a
+  regular blob staged at exactly a scan root is scanned at the SAME tier as one under it, which is
+  true **here** only because `scanTarget` has one tier — the SSN/email floor — and keys on nothing
+  about the path. Implementing the fenced TODO section with a path-keyed dispatch would break that,
+  and a case now says so.
+
 - **Nothing pinned that the publish gate FORWARDS `--no-definitely-typed`, so a gate that accepted
   the flag and then dropped it would have looked exactly like one that forwards it**
   (`TERMINOLOGY-ATTW-FORWARDING-UNPINNED`). Development tooling only: `scripts/attw.mjs` ships in no
@@ -247,7 +342,11 @@ this file is maintained by hand (Changesets handles the version bump and publish
   still **not** enumerated by `--staged` at all, so a staged rename that also appends PHI passes that
   route — pre-existing, unchanged here, and admitting it needs the two-path record shape handled,
   which is a scope decision rather than this one; CI's all-mode sweep does read the resulting
-  worktree file. A tracked file **absent from the worktree** is still caught at `git add` time only.
+  worktree file. **[Superseded — see the `[Unreleased]` entry above. `R`/`C` ARE now enumerated, and
+  the reason given here for deferring them — that it needs the two-path record shape handled, "which
+  is a scope decision" — was MEASURED FALSE: `--no-renames` closes it with no stride work. This
+  sentence is left standing rather than rewritten because it shipped, and because it is the sentence
+  this repo exported to the ecosystem backlog and to sibling repos.]** A tracked file **absent from the worktree** is still caught at `git add` time only.
   And the scanner still has no tolerance for a file that vanishes between enumeration and read, so an
   untracked transient appearing under a walk root can still refuse a whole sweep; that is a different
   defect, it fails closed, and it is not addressed here.

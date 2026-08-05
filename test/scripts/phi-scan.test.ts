@@ -509,3 +509,417 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The `--staged` route's ENUMERATION, not its scan: what git is asked for.
+//
+// Every case here builds a throwaway git repository, and MOST of them assert
+// GIT'S OWN output before the scanner's, because the remedy rests on what git
+// emits rather than on anything this file controls. Two do not: the two cases
+// about an entry standing where a scan ROOT used to be rest on the scanner's
+// path scope rather than on any git behaviour. No rename, no copy and no
+// conflict is ever created in the committed corpus.
+//
+// No case runs `git merge`. `git merge` resolves the COMMITTER IDENTITY up front
+// and exits 128 before merging anything when it cannot find one, so a fixture
+// built that way passes on a developer's box (which has a global identity, or
+// auto-detects one) and fails on CI on its own premise. What this route reads is
+// an INDEX STATE, so the unmerged fixtures below are built with
+// `git update-index --index-info`: smaller, no branches, no merge strategy, no
+// identity — and `git status` still reports `UU`, which is git confirming the
+// construction.
+// ---------------------------------------------------------------------------
+
+/** Commit with an explicit identity — a CI runner has none to discover. */
+function commit(cwd: string, message: string): void {
+  git(cwd, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", message]);
+}
+
+/**
+ * Filler with enough distinct lines for git to estimate similarity over, so an
+ * edited copy still pairs as a rename rather than arriving as an unrelated
+ * add. Joined with `\n`: git hashes content in chunks, and a fixture that is one
+ * long line lands as a `D` plus `A` pair, which would make the case under test
+ * unreachable by fixture.
+ */
+function filler(tag: string): string {
+  return (
+    Array.from({ length: 40 }, (_, n) => `${tag} line ${String(n)}: filler for chunk hashing`).join(
+      "\n",
+    ) + "\n"
+  );
+}
+
+/** Build a genuinely unmerged index entry at `path` — stages 1/2/3, no stage 0. */
+function makeUnmerged(root: string, path: string, stage2: string): void {
+  const hash = (content: string): string => {
+    const r = spawnSync("git", ["hash-object", "-w", "--stdin"], {
+      cwd: root,
+      input: content,
+      encoding: "utf8",
+      shell: false,
+    });
+    if ((r.status ?? -1) !== 0) throw new Error(`hash-object failed: ${r.stderr}`);
+    return (r.stdout ?? "").trim();
+  };
+  const base = hash("export const a = 0;\n");
+  const theirs = hash("export const a = 2;\n");
+  const ours = hash(stage2);
+  git(root, ["rm", "-q", "--cached", path]);
+  const r = spawnSync("git", ["update-index", "--index-info"], {
+    cwd: root,
+    input:
+      `100644 ${base} 1\t${path}\n` +
+      `100644 ${ours} 2\t${path}\n` +
+      `100644 ${theirs} 3\t${path}\n`,
+    encoding: "utf8",
+    shell: false,
+  });
+  if ((r.status ?? -1) !== 0) throw new Error(`update-index failed: ${r.stderr}`);
+}
+
+describe("phi-scan: --staged sees a staged RENAME (rename detection is on by default)", () => {
+  it("git really does stage `git mv` of a tracked link as a two-path R100 that AMT deletes", () => {
+    // The premise the whole remedy rests on. `R` is returned by neither `AM` nor
+    // `AMT`, so the record does not merely arrive in an awkward shape — it is
+    // gone.
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+    symlinkSync(TARGET_NAME, join(root, "toplink.txt"));
+    git(root, ["add", "toplink.txt", TARGET_NAME, "src/ordinary.ts"]);
+    commit(root, "base");
+
+    git(root, ["mv", "toplink.txt", "test/fixtures/leak.txt"]);
+
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).toMatch(/ R100\t/);
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+    // …and the link really did land under a scan root, at mode 120000.
+    expect(gitOut(root, ["ls-files", "--stage", "test/fixtures/leak.txt"])).toMatch(/^120000 /);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/leak.txt");
+    expect(r.stderr).toContain("a symbolic link");
+    expectNoPhi(r.stderr);
+  });
+
+  it("reads a rename that also SUBSTITUTES a value into the moved file (exit 1)", () => {
+    // Not only a MODE gap: an ordinary regular file renamed into a scan root with
+    // an edit in the same stage went unread too.
+    const root = makeRepo();
+    writeFileSync(join(root, "draft.txt"), `${filler("draft")}Contact: placeholder@example.com\n`);
+    git(root, ["add", "draft.txt"]);
+    commit(root, "base");
+
+    git(root, ["mv", "draft.txt", "src/notes.ts"]);
+    writeFileSync(
+      join(root, "src", "notes.ts"),
+      `${filler("draft")}Contact: juanita.rivera@example-hospital.org\n`,
+    );
+    git(root, ["add", "src/notes.ts"]);
+
+    // The premise: a CONTENT rename, at a regular-file mode, still dropped by AMT.
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).toMatch(/^:100644 100644 \w+ \w+ R\d+\t/m);
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/notes.ts");
+    expect(r.stderr).toContain("juanita.rivera@example-hospital.org");
+  });
+
+  it("reads a genuine C100 COPY into a scan root under `diff.renames=copies` (exit 1)", () => {
+    // The `C` half is a SEPARATE hole and no rename fixture reaches it. The
+    // precondition is easy to state too broadly: config-only copy detection also
+    // needs the COPY SOURCE modified in the same staged diff. Without that git
+    // finds no copy source, the record arrives as an ordinary `A` that even the
+    // previous argv enumerated, and the fixture proves nothing.
+    const root = makeRepo();
+    const payload = `${filler("outside")}SSN: 123-45-6789\n`;
+    writeFileSync(join(root, "outside.txt"), payload);
+    git(root, ["add", "outside.txt"]);
+    commit(root, "base");
+
+    writeFileSync(join(root, "src", "copied.ts"), payload);
+    writeFileSync(join(root, "outside.txt"), `${payload}trailing modification\n`);
+    git(root, ["add", "src/copied.ts", "outside.txt"]);
+    git(root, ["config", "diff.renames", "copies"]);
+
+    // The premise, in both directions: a real `C100`, and `AMT` deletes it.
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).toMatch(/ C100\t/);
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"])).not.toContain(
+      "src/copied.ts",
+    );
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/copied.ts");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("enumerates the same paths under every rename-detection configuration", () => {
+    // `--no-renames` makes the two-field record stride STRUCTURAL rather than
+    // conditional on the caller's git config. Asserted on an index holding an
+    // add, a modify and a rename at once, so a setting that changed the pairing
+    // would show up as a changed path set.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "kept.ts"), "export const kept = 1;\n");
+    writeFileSync(join(root, "src", "moved-from.ts"), filler("moved"));
+    git(root, ["add", "src/kept.ts", "src/moved-from.ts", "src/ordinary.ts"]);
+    commit(root, "base");
+
+    writeFileSync(join(root, "src", "kept.ts"), "export const kept = 2;\n"); // M
+    writeFileSync(join(root, "src", "added.ts"), "export const added = 3;\n"); // A
+    git(root, ["mv", "src/moved-from.ts", "src/moved-to.ts"]); // R
+    git(root, ["add", "src/kept.ts", "src/added.ts"]);
+
+    const enumerated = (cfg: string): string[] =>
+      gitOut(root, [
+        "-c",
+        `diff.renames=${cfg}`,
+        "-c",
+        "diff.renameLimit=1",
+        "diff",
+        "--cached",
+        "--raw",
+        "--no-renames",
+        "--ignore-submodules=none",
+        "--diff-filter=AMTU",
+      ])
+        .split("\n")
+        .filter((l) => l.length > 0)
+        .map((l) => l.split("\t")[1] ?? "")
+        .sort();
+
+    const baseline = enumerated("true");
+    expect(baseline).toEqual(["src/added.ts", "src/kept.ts", "src/moved-to.ts"]);
+    for (const cfg of ["copies", "false", "1"]) {
+      expect(enumerated(cfg), `diff.renames=${cfg}`).toEqual(baseline);
+    }
+
+    // Containment, stated exactly: the new enumeration CONTAINS the old one. It
+    // is EQUAL whenever git emitted no `R` and no `C`, and larger only when it
+    // did — a superset, not a strictly larger set.
+    const old = gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"])
+      .split("\n")
+      .filter((l) => l.length > 0)
+      .map((l) => l.split("\t")[1] ?? "");
+    for (const p of old) expect(baseline).toContain(p);
+    expect(baseline.length).toBeGreaterThan(old.length);
+  });
+
+  it("git's premise for the argv coupling: -M, -C and --find-copies-harder each re-empty it", () => {
+    // This case guards GIT'S behaviour, not the scanner's argv — it does not by
+    // itself fail if someone adds `-M` to the scanner. The suite as a whole does.
+    // It says NOTHING about `-B`, which empties this route by a different
+    // mechanism on a stage this fixture does not build — see the case below.
+    const root = makeRepo();
+    writeFileSync(join(root, "draft.txt"), filler("draft"));
+    git(root, ["add", "draft.txt"]);
+    commit(root, "base");
+    git(root, ["mv", "draft.txt", "src/moved.ts"]);
+
+    const withFlags = (...flags: string[]): string =>
+      gitOut(root, ["diff", "--cached", "--raw", "--no-renames", ...flags, "--diff-filter=AMTU"]);
+
+    expect(withFlags()).toContain("src/moved.ts");
+    for (const flag of ["-M", "-C", "--find-copies-harder"]) {
+      expect(withFlags(flag), flag).not.toContain("src/moved.ts");
+    }
+  });
+
+  it("`-B` is NOT safe to add: a COMPLETE REWRITE is a `B` record, and `B` is not in the filter", () => {
+    // Measured after a first draft of this change called `-B` inert, on the
+    // strength of a RENAME stage — the one stage where it does nothing. On a
+    // complete rewrite `-B` breaks the pairing, `--diff-filter=AMTU` drops the
+    // record outright, and the gate reports clean over a staged dashed SSN:
+    // exit 1 without the flag, exit 0 with it, same index.
+    //
+    // So `-B` empties this route by a DIFFERENT mechanism than `-M`/`-C`/
+    // `--find-copies-harder` — through the status FILTER rather than by turning
+    // detection back on — and the remedy is the same: do not add it.
+    const root = makeRepo();
+    const original =
+      Array.from({ length: 40 }, (_, n) => `original row ${String(n)} entirely unalike`).join(
+        "\n",
+      ) + "\n";
+    writeFileSync(join(root, "src", "rewrite.ts"), original);
+    git(root, ["add", "src/rewrite.ts", "src/ordinary.ts"]);
+    commit(root, "base");
+
+    const rewritten =
+      Array.from({ length: 40 }, (_, n) => `replacement text ${String(n)} nothing shared`).join(
+        "\n",
+      ) + "\nSSN: 123-45-6789\n";
+    writeFileSync(join(root, "src", "rewrite.ts"), rewritten);
+    git(root, ["add", "src/rewrite.ts"]);
+
+    const withFlags = (...flags: string[]): string =>
+      gitOut(root, ["diff", "--cached", "--raw", "--no-renames", ...flags, "--diff-filter=AMTU"]);
+
+    // The premise, in both directions: the record is there, and `-B` removes it.
+    expect(withFlags()).toContain("src/rewrite.ts");
+    expect(withFlags("-B")).not.toContain("src/rewrite.ts");
+
+    // And the payload really is one the scanner would otherwise report — so this
+    // case reds if `-B` is ever added to the scanner's own argument list.
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/rewrite.ts");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+});
+
+describe("phi-scan: --staged judges an entry standing where a scan ROOT used to", () => {
+  it("refuses a link staged at exactly `test/fixtures` and at exactly `src` (exit 2)", () => {
+    // A whole walk root replaced, so the entire corpus goes unscanned. The prefix
+    // test required a trailing slash and let both through.
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true });
+    mkdirSync(join(root, "test"), { recursive: true });
+    writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+    symlinkSync(join("..", TARGET_NAME), join(root, "test", "fixtures"));
+    symlinkSync(TARGET_NAME, join(root, "src"));
+    git(root, ["add", "test/fixtures", "src"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures");
+    expect(r.stderr).toContain("src");
+    expect(r.stderr).toContain("2 entries");
+    expectNoPhi(r.stderr);
+  });
+
+  it("scans a regular blob at exactly a scan root at the SAME tier as one under it", () => {
+    // Worth pinning because it is NOT true of every sibling: a scanner that
+    // dispatches a format-aware tier off the path prefix gives such a blob the
+    // shape pass only. Here `scanTarget` has ONE tier — the SSN/email floor —
+    // and it keys on nothing about the path, so the two are equal. Implementing
+    // the fenced TODO section with a path-keyed dispatch would break that, and
+    // this case is what says so.
+    const root = makeRepo();
+    mkdirSync(join(root, "test"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures"), SYNTHETIC_PHI);
+    git(root, ["add", "test/fixtures"]);
+    const atRoot = runIn(root, ["--staged"]);
+
+    const other = makeRepo();
+    mkdirSync(join(other, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(other, "test", "fixtures", "under.txt"), SYNTHETIC_PHI);
+    git(other, ["add", "test/fixtures/under.txt"]);
+    const underRoot = runIn(other, ["--staged"]);
+
+    expect(atRoot.code, `stderr: ${atRoot.stderr}`).toBe(1);
+    expect(underRoot.code, `stderr: ${underRoot.stderr}`).toBe(1);
+    const hitCount = (s: string): number => (s.match(/^ {2}segment=/gm) ?? []).length;
+    expect(hitCount(atRoot.stderr)).toBe(hitCount(underRoot.stderr));
+    expect(hitCount(atRoot.stderr)).toBeGreaterThan(0);
+  });
+});
+
+describe("phi-scan: --staged states its own enumeration rather than inheriting the caller's", () => {
+  it("still refuses a staged gitlink under `diff.ignoreSubmodules=all` (exit 2)", () => {
+    // That config ERASES the record from `git diff --cached --raw` entirely, so
+    // the refusal this route already had never fired. Same remedy family as
+    // `--no-renames`: ask for the enumeration on the command line.
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    const nested = join(root, "test", "fixtures", "nested");
+    mkdirSync(nested);
+    git(nested, ["init", "-q", "."]);
+    writeFileSync(join(nested, "payload.txt"), SYNTHETIC_PHI);
+    git(nested, ["add", "payload.txt"]);
+    commit(nested, "n");
+    git(root, ["add", "test/fixtures/nested"]);
+    git(root, ["config", "diff.ignoreSubmodules", "all"]);
+
+    // The premise: with that config the record is GONE, not merely reshaped.
+    expect(gitOut(root, ["diff", "--cached", "--raw"]).trim()).toBe("");
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--ignore-submodules=none"])).toContain(
+      "test/fixtures/nested",
+    );
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/nested");
+    expect(r.stderr).toContain("a gitlink");
+    expectNoPhi(r.stderr);
+  });
+
+  it("the gitlink refusal no longer claims `git show` hands back a target path", () => {
+    // Measured: on a staged gitlink `git show :<path>` fails outright rather than
+    // answering a path, so the old sentence was false for every mode but 120000.
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    const nested = join(root, "test", "fixtures", "nested");
+    mkdirSync(nested);
+    git(nested, ["init", "-q", "."]);
+    writeFileSync(join(nested, "payload.txt"), SYNTHETIC_PHI);
+    git(nested, ["add", "payload.txt"]);
+    commit(nested, "n");
+    git(root, ["add", "test/fixtures/nested"]);
+
+    const shown = spawnSync("git", ["show", ":test/fixtures/nested"], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+    });
+    expect(shown.status).not.toBe(0);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.stderr).not.toContain("hands back its target path");
+    expect(r.stderr).toContain("records such an entry by reference");
+  });
+});
+
+describe("phi-scan: --staged refuses an UNMERGED path instead of passing over it", () => {
+  it("refuses an in-scope unmerged path (exit 2), and reports no PHI", () => {
+    // `U` is returned by neither `AM` nor `AMT`, so this route reported clean over
+    // an index it structurally cannot read. It is closed by being IN the filter,
+    // NOT by `--no-renames` — the two must not be conflated.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "conflict.ts"), "export const a = 1;\n");
+    git(root, ["add", "src/conflict.ts", "src/ordinary.ts"]);
+    commit(root, "base");
+    makeUnmerged(root, "src/conflict.ts", "export const a = 1;\n// SSN: 123-45-6789\n");
+
+    // The premises: git agrees it is unmerged, and `AMT` never returned it.
+    expect(gitOut(root, ["status", "--short"])).toContain("UU src/conflict.ts");
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"])).not.toContain(
+      "src/conflict.ts",
+    );
+    // …and there is no stage-0 blob, so `git show` cannot answer for it.
+    const shown = spawnSync("git", ["show", ":src/conflict.ts"], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+    });
+    expect(shown.status).not.toBe(0);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/conflict.ts");
+    expect(r.stderr).toContain("unmerged");
+    expect(r.stderr).not.toContain("123-45-6789");
+  });
+
+  it("leaves an OUT-OF-SCOPE unmerged path alone (exit 0) — the scope still binds", () => {
+    // Both premises are asserted, because a scanner that refused EVERY unmerged
+    // path regardless of scope would pass a case that only checked the exit code.
+    const root = makeRepo();
+    writeFileSync(join(root, "notes.md"), "export const a = 1;\n");
+    git(root, ["add", "notes.md", "src/ordinary.ts"]);
+    commit(root, "base");
+    makeUnmerged(root, "notes.md", "export const a = 1;\n// SSN: 123-45-6789\n");
+
+    expect(gitOut(root, ["status", "--short"])).toContain("UU notes.md");
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--ignore-submodules=none"])).toContain(
+      "notes.md",
+    );
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+});
