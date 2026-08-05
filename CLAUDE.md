@@ -210,6 +210,17 @@ a summary.
   trap originated. **No test here may run `git merge`** — it resolves the committer
   identity up front and exits 128, so it passes locally and reds on CI on its own premise. Why:
   `documentation/agent-notes.md#the-phi-scan-staged-route-states-its-own-enumeration`
+- **▶ THE ALL-MODE OBSERVATION RULE IS PER-ROOT: every member of `SCAN_ROOTS` must yield a file that
+  was actually READ, or the sweep refuses at exit 2.** There was **no** observation rule here at all
+  and the starved state was **live** — `test/fixtures` was a declared root that has **never existed**
+  in this repository, so CI printed `OK — no hits` over an unopened root on every run. **Never
+  "resync" the `--staged` predicate to `SCAN_ROOTS`** — it still enumerates `test/fixtures/**` on
+  purpose, and narrowing the pre-commit route is the opposite of the work. **This reporter prints no
+  denominator; adding one is a DIFFERENT rule — do not smuggle it in.** **ANY directory the walk
+  cannot list exits 1, not 2, HERE — do not port a sibling's "closed" reading of that in, and do not
+  restate it as "a regular-file root", which is narrower than the mechanism.** **All-mode walks `src`
+  and NOTHING else — the rule is not coverage of `test/`.** Why:
+  `documentation/agent-notes.md#the-all-mode-observation-rule-is-per-root`
 - **Result echoes are deliberately NOT bounded — bounding them would fabricate.** `lookup`,
   `translate`, `applyGem`, `resolveNdc`, `resolveSystem` echo the caller's own query on their typed
   `unknown`/`unmapped` outcomes. **It is not one field per echo**: `translate` returns the coding's

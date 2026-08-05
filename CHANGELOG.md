@@ -11,6 +11,101 @@ this file is maintained by hand (Changesets handles the version bump and publish
 
 ### Fixed
 
+- **The PHI scan had NO observation rule at all, so the all-mode sweep reported clean over a scan
+  root it never opened (`PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL`).** Development tooling only:
+  `scripts/phi-scan.ts` ships in no tarball, and the public surface, build output and runtime
+  behaviour are unchanged. `pnpm phi-scan` with no arguments is what CI runs. It walked two roots,
+  `test/fixtures` and `src`, and refused nothing on the strength of what it had read — not the
+  global "observed zero files in total" rule the siblings carried, but no rule of any kind.
+
+  **The starved state was LIVE here, not hypothetical.** `test/fixtures` has never existed in this
+  repository (`git log -- test/fixtures` is empty; every test is inline TypeScript and
+  `find test -type f -not -name '*.ts'` returns nothing; the throwaway-repo helper in
+  `test/scripts/phi-scan.test.ts` has only ever created `scripts/` and `src/`), so one of the two
+  declared roots was unopened on every run this gate has ever made. **Reproduced on `0fe4b84` on a
+  clone, three ways**, each printing `[phi-scan] OK — no hits` and exiting **0**: `src` moved aside,
+  `src` replaced by a **dangling symlink** — each leaving all 39 source files unread — and the
+  fixture root, which needed no manipulation at all.
+
+  **The dangling case is the sharpest, and nothing else in the scanner can see it.** `existsSync`
+  **follows** the link and answers false, so `walk()` returns before `readdirSync` and the
+  not-a-regular-file refusal never fires: that rule only classifies entries found **inside** a root,
+  and this is the root itself. Absent, dangling and empty are one state to the walk. **This reporter
+  prints no denominator either** — `report` writes `OK — no hits` and no file count — so nothing on
+  stdout looked wrong. Adding a count would be a real improvement and is **not** part of this
+  change.
+
+  **The rule is now per-root.** All-mode refuses (exit **2**) unless **every** declared root yielded
+  at least one file that was actually read, and the refusal names the starved roots. It is written
+  per-root rather than in the global form the siblings started from, so that shape — one surviving
+  file vouching for every other root — cannot arrive along with the second root.
+
+  **`test/fixtures` is no longer declared as a walk root, and its removal is not a narrowing.** If
+  readable, non-ignored content arrives there, all-mode **refuses** (exit 2) and names the
+  declaration rather than reporting clean over content nothing walks. **That refusal fires only
+  where the remedy it prints would help.** It uses the two predicates the walk already has:
+  `rootOf`, so declaring the path silences it by construction, and a content test mirroring the
+  walk's own rules, so an **empty** `test/fixtures`, a **markdown-only** one (the walk skips
+  markdown) and a **gitignored** one are all left alone at exit 0, exactly as before this change. An
+  `existsSync`-only guard refused over all three and kept refusing after the printed remedy was
+  followed — a gate that cannot be satisfied — and it invented a second, stricter gitignore boundary
+  beside the single one this file keeps. **Two exceptions are recorded rather than papered over**,
+  both counting as content because a scan that cannot account for something must not report clean: a
+  path the walk cannot list, where declaring it exits 1; and a path holding only a non-regular
+  entry, where declaring it lands on the not-a-regular-entry refusal at exit 2. Both behave the same
+  before this change, so neither is a regression. The `--staged` predicate is deliberately
+  untouched and still enumerates `test/fixtures/**` and that path's own name, so the pre-commit
+  route is unchanged in both directions.
+
+  **The STARVATION refusal never swallows a finding.** Hits from the roots that DID yield are
+  printed before it, and the exit code is still 2. That is scoped to the starvation branch and no
+  wider: the reappearing-corpus refusal, like the not-a-regular-entry and unmerged refusals beside
+  it, throws out of `buildTargetsForAll` before anything is scanned and so reports nothing found on
+  the way — fail-closed, and unchanged in that respect. With one root declared, starved means an empty target list, so that
+  line is unreachable from this repository's own configuration — it is therefore exercised against a
+  copy of the scanner with a second root declared, rather than shipped as an untested promise, which
+  is exactly how the defect being fixed here survived.
+
+  **Deliberately unchanged:** `--staged` and named-path mode make no per-root promise, because
+  neither enumerates a root. Both boundaries are pinned, and widening the rule to them was run as a
+  mutation rather than argued — dropping the mode guard reds 10 cases; removing the per-root rule
+  reds 4; removing the reappearing-corpus refusal reds 3; removing the print-hits-first line reds 1;
+  emptying `SCAN_ROOTS` reds 14.
+
+  **The granularity is the declared root and nothing finer, which is a real bound, not a slogan.**
+  Four states are still not refused, each measured **with** the rule in place, each now in the
+  scanner's own limits list with the command that produced it and each pinned by a characterization
+  test: a directory missing from **inside** a root (`mv src/ucum ..` still prints `OK — no hits`
+  with 6 sources unread, while a planted violator in it exits 1 with it present); a root that is
+  **itself a symlink** to a directory, which is followed, so the rule is satisfied by whatever is on
+  the other side; the floor is **one** file, whatever the root used to hold; and **any directory the
+  walk cannot list** exits **1** — the code this gate reserves for hits — because `walk()` does not
+  wrap `readdirSync` and the error reaches node's default handler with a v8 stack trace in place of
+  the scanner's own diagnostic. That last one is **not only about roots**: measured as `ENOTDIR` on
+  a root that is a regular file and on a root linking to one, and as `EACCES` on a `chmod 000`
+  directory at depth with the per-root rule otherwise satisfied. **It is CLOSED in the sibling this
+  rule was ported from and OPEN here**, and it is recorded so it is not ported back out as though it
+  were fixed; it belongs to the separate exit-code work.
+
+  **Two more bounds are recorded so none of the above reads as completeness, and both are
+  `PRE-EXISTING`.** The reappearing-corpus refusal sees only what `existsSync` can resolve: silent
+  on a dangling link, which is deliberate because a dangling link holds no corpus, but also silent
+  when a real corpus sits behind a directory that cannot be traversed (`chmod 000 test` with
+  `test/fixtures/leak.txt` present — measured, and identical before this change). And **all-mode
+  walks `src` and nothing else**, so the observation rule can be fully satisfied while every tracked
+  file under `test/` goes unread: measured back to back, `pnpm phi-scan` clean at exit 0 while
+  naming a file under `test/` directly returns hits at exit 1 over the same bytes
+  (`PHI-SCAN-WALK-ROOT-SCOPE`). Widening the walk is separate work with its own two-sided trap,
+  because this floor is SSN/email only.
+
+  Tests were added on throwaway repositories only, so no starved root, no dangling link and no
+  violator is ever written into the committed corpus. **No count of them is recorded here**: one
+  was, it was correct when written, two more cases were added in the same slice, and it was then
+  wrong. Several are red against the superseded scanner — every case asserting one of the new
+  refusals — and one is an explicit **anti-vacuity** control asserting the starved corpus really did
+  hold a detectable hit, because a starvation test over an empty corpus proves exactly nothing,
+  which is the defect itself.
+
 - **The PHI commit-gate's `--staged` route was blind to a staged RENAME or COPY, so an ordinary
   `git mv` into a scan root printed its clean line and exited 0 at pre-commit**
   (`PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT`). Development tooling only: `scripts/phi-scan.ts` ships in

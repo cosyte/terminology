@@ -19,6 +19,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
 import {
+  readFileSync,
   writeFileSync,
   mkdtempSync,
   mkdirSync,
@@ -26,6 +27,7 @@ import {
   copyFileSync,
   symlinkSync,
   realpathSync,
+  renameSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -921,5 +923,344 @@ describe("phi-scan: --staged refuses an UNMERGED path instead of passing over it
     const r = runIn(root, ["--staged"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
     expect(r.stdout).toMatch(/OK — no hits/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The all-mode observation rule is PER-ROOT
+//
+// The defect these cases close: the sweep `pnpm phi-scan` runs in CI could print
+// its clean line and exit 0 over a scan root it never opened. There was NO
+// observation rule here at all, in any form, so this is not a global rule made
+// per-root — it is the rule arriving, written per-root from the start so the
+// global shape cannot reappear when a second root is added.
+//
+// Several of these are RED against the scanner as it stood at 0fe4b84 — every
+// case asserting one of the new refusals. NO TALLY IS WRITTEN DOWN: one was, it
+// was correct when written, two more cases were added in the same slice, and a
+// refuter measured it wrong. Re-derive it instead. `SCANNER_PATH` is a const, not
+// an env var, so the ONLY step that works is swapping the file itself — with a
+// clean tree, from the repo root:
+//
+//   git show 0fe4b84:scripts/phi-scan.ts > scripts/phi-scan.ts
+//   pnpm vitest run test/scripts/phi-scan.test.ts   # count the failures
+//   git checkout scripts/phi-scan.ts                # PUT IT BACK
+//
+// The rest assert the rule did NOT widen, characterize a limit it deliberately
+// leaves open, or pin behaviour this repository's own one-root configuration
+// cannot reach, so that a change closing one has to say so.
+//
+// ANTI-VACUITY IS THE POINT HERE, not a nicety: a starvation test whose corpus
+// held nothing worth finding would pass against the very bug it claims to close.
+// ONE case carries that weight explicitly — it scans the SAME tree twice, as a HIT
+// with the root present and as a refusal with it starved. The absent- and
+// dangling-root cases do not plant a payload and do not claim to: they assert an
+// exit 2, which cannot be satisfied by an empty corpus the way an exit 0 can.
+// ---------------------------------------------------------------------------
+
+describe("phi-scan: the all-mode observation rule is per-root", () => {
+  it("refuses (exit 2) when a scan root is ABSENT, naming the root", () => {
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true, force: true });
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("observed no files under");
+    expect(r.stderr).toContain("src");
+    expect(r.stderr).toContain("PER-ROOT");
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+
+  it("refuses (exit 2) when a scan root is a DANGLING symlink — existsSync follows it", () => {
+    // The sharpest state, and the one nothing else in the scanner can see:
+    // `existsSync` FOLLOWS the link and answers false, so `walk()` returns before
+    // `readdirSync` and the not-a-regular-file refusal never fires — that rule
+    // only classifies entries found INSIDE a root, and this is the root itself.
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true, force: true });
+    symlinkSync(join("..", "no-such-directory"), join(root, "src"));
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("observed no files under");
+    expect(r.stderr).toContain("src");
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+
+  it("ANTI-VACUITY: the starved corpus really did hold a hit, and the refusal is not it", () => {
+    // Without this pairing every case above could be green over a corpus that
+    // had nothing to find, which is the bug rather than the fix. Same tree, twice.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+
+    const present = runIn(root, []);
+    expect(present.code, `stderr: ${present.stderr}`).toBe(1);
+    expect(present.stderr).toContain("123-45-6789");
+
+    renameSync(join(root, "src"), join(root, "src-moved-aside"));
+
+    const starved = runIn(root, []);
+    expect(starved.code, `stderr: ${starved.stderr}`).toBe(2);
+    expect(starved.stderr).toContain("observed no files under");
+    // A refusal is not a hit report, and it never echoes what it could not read.
+    expect(starved.stderr).not.toContain("hit(s)");
+    expectNoPhi(starved.stderr);
+  });
+
+  it("does NOT widen to --staged, which enumerates no root and makes no per-root promise", () => {
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true, force: true });
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+
+  it("does NOT widen to paths mode, which is bounded by the caller's argv", () => {
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true, force: true });
+    writeFileSync(join(root, "clean.txt"), "no phi here\n");
+
+    const r = runIn(root, [join(root, "clean.txt")]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+});
+
+describe("phi-scan: a corpus the walk does not enumerate is refused, not silent", () => {
+  // `test/fixtures` was a declared walk root that has never existed in this
+  // repository, so all-mode reported clean over it on every run. Dropping it from
+  // SCAN_ROOTS is only honest if its reappearance is loud.
+  it("refuses (exit 2) if test/fixtures comes back, naming SCAN_ROOTS as the remedy", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures", "sample.txt"), SYNTHETIC_PHI);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures");
+    expect(r.stderr).toContain("SCAN_ROOTS");
+    expectNoPhi(r.stderr);
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+
+  it("and stays quiet when it is absent — this repository's own state (exit 0)", () => {
+    const root = makeRepo();
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+});
+
+describe("phi-scan: what the per-root observation rule deliberately does NOT cover", () => {
+  // Characterizations, not endorsements. Each is measured WITH the rule in place
+  // and is in the scanner's header limits list with the command that produced it.
+  // Two of them are CLOSED in the sibling this rule was ported from and OPEN here,
+  // which is why the list is re-derived per repository rather than inherited.
+
+  it("granularity is the declared ROOT: a directory missing INSIDE one is still unobserved", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "src", "deep"));
+    writeFileSync(join(root, "src", "deep", "violator.ts"), SYNTHETIC_PHI);
+
+    // Non-vacuous: the sub-tree holds something the floor catches while present.
+    expect(runIn(root, []).code).toBe(1);
+
+    rmSync(join(root, "src", "deep"), { recursive: true, force: true });
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+
+  it("a root that is ITSELF a symlink to a directory is followed, and that satisfies the rule", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    renameSync(join(root, "src"), join(root, "src-real"));
+    mkdirSync(join(root, "decoy"));
+    writeFileSync(join(root, "decoy", "clean.ts"), "export const a = 1;\n");
+    symlinkSync("decoy", join(root, "src"));
+
+    // `normalizePath` is purely lexical, so everything behind the link is
+    // attributed to `src` and the rule is satisfied — while the real corpus,
+    // violator and all, is not read at all.
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+
+  it("the rule is a floor of ONE file, and this reporter prints no denominator", () => {
+    const root = makeRepo(); // exactly one file under src/
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    // Nothing on stdout distinguishes one file from a whole corpus. Adding a
+    // count would be a real improvement and is a DIFFERENT rule.
+    expect(r.stdout).toBe("[phi-scan] OK — no hits\n");
+  });
+
+  it("a root that is a REGULAR FILE exits 1 — the code this contract reserves for HITS", () => {
+    // OPEN HERE, CLOSED IN THE SIBLING: `walk()` there wraps `readdirSync` and
+    // rethrows on the scanner's own channel at exit 2. Here the ENOTDIR escapes
+    // `buildTargetsForAll`, is not an InvocationError, and reaches node's default
+    // handler. Fail-closed rather than silent, and part of the separate
+    // exit-code work — but it must not be ported in from elsewhere as "exit 2".
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true, force: true });
+    writeFileSync(join(root, "src"), "not a directory\n");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("ENOTDIR");
+    expect(r.stderr).not.toContain("[phi-scan] refusing");
+  });
+
+  it("a root that is a symlink TO A FILE exits 1 the same way", () => {
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true, force: true });
+    writeFileSync(join(root, "plain.txt"), "not a directory\n");
+    symlinkSync("plain.txt", join(root, "src"));
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("ENOTDIR");
+    expect(r.stderr).not.toContain("[phi-scan] refusing");
+  });
+
+  it("the retired-root refusal does not see a DANGLING link, because existsSync follows it", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "test"));
+    symlinkSync(join("..", "no-such-directory"), join(root, "test", "fixtures"));
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Two claims this repository's OWN configuration cannot reach
+//
+// `SCAN_ROOTS` holds one root, so two things the scanner promises are, from here,
+// assertions about code no invocation runs: that the refusal's stated remedy
+// ("add the path back to SCAN_ROOTS") actually works, and that a starvation
+// refusal prints the hits the YIELDING roots found before refusing. An untested
+// promise in a PHI gate is how the defect this slice closes survived in the first
+// place, so both are exercised against a COPY of the real scanner with a second
+// root declared, spawned in a throwaway repository.
+//
+// The patch is asserted to have applied, so reshaping the declaration reds these
+// rather than silently testing an unmodified scanner — the "prove the mutation
+// happened" half that a copy-and-edit harness otherwise skips.
+// ---------------------------------------------------------------------------
+
+const ONE_ROOT_DECL = 'const SCAN_ROOTS: readonly string[] = ["src"];';
+const TWO_ROOT_DECL = 'const SCAN_ROOTS: readonly string[] = ["src", "test/fixtures"];';
+
+/** Copy the real scanner into `root`, declaring a second walk root. Returns its path. */
+function scannerWithTwoRoots(root: string): string {
+  const src = readFileSync(SCANNER_PATH, "utf8");
+  expect(src, "the SCAN_ROOTS declaration this harness patches has moved").toContain(ONE_ROOT_DECL);
+  const patched = src.replace(ONE_ROOT_DECL, TWO_ROOT_DECL);
+  expect(patched).toContain(TWO_ROOT_DECL);
+  const dest = join(root, "scripts", "phi-scan.copy.ts");
+  writeFileSync(dest, patched);
+  return dest;
+}
+
+function runCopyIn(cwd: string, scanner: string, args: string[]): RunResult {
+  const r = spawnSync(NODE_BIN, [scanner, ...args], { cwd, encoding: "utf8", shell: false });
+  return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+}
+
+describe("phi-scan: the reappearing-corpus refusal names a remedy that actually works", () => {
+  it("declaring the path in SCAN_ROOTS silences the refusal AND puts the content under the scan", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures", "leak.txt"), SYNTHETIC_PHI);
+
+    // The shipped one-root scanner refuses and tells you what to do.
+    const refused = runIn(root, []);
+    expect(refused.code, `stderr: ${refused.stderr}`).toBe(2);
+    expect(refused.stderr).toContain("Add the path back to SCAN_ROOTS");
+
+    // Doing exactly that must not reproduce the same refusal — a gate whose own
+    // remedy leaves it refusing is a gate that gets deleted — and the path must
+    // now really be READ, not merely tolerated.
+    const scanner = scannerWithTwoRoots(root);
+    const after = runCopyIn(root, scanner, []);
+    expect(after.stderr).not.toContain("does not enumerate");
+    expect(after.code, `stderr: ${after.stderr}`).toBe(1);
+    expect(after.stderr).toContain("test/fixtures/leak.txt");
+    expect(after.stderr).toContain("123-45-6789");
+  });
+});
+
+describe("phi-scan: a starvation refusal does not swallow a hit found under a yielding root", () => {
+  it("prints the hits from the roots that DID yield, and still exits 2", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true }); // declared, empty: starved
+
+    const scanner = scannerWithTwoRoots(root);
+    const r = runCopyIn(root, scanner, []);
+
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    // The finding survives the refusal…
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stderr).toContain("123-45-6789");
+    // …and the refusal still names the starved root and still refuses.
+    expect(r.stderr).toContain("test/fixtures");
+    expect(r.stderr).toContain("observed no files under");
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+});
+
+describe("phi-scan: the reappearing-corpus refusal fires only where its remedy would help", () => {
+  // An `existsSync`-only guard refused over all three of these AND went on
+  // refusing after a developer followed the printed remedy, because declaring an
+  // empty / markdown-only root starves it and a gitignored one is filtered out.
+  // All three exit 0 on the superseded scanner too, so none of this is a
+  // narrowing OR a new red.
+  it("an EMPTY test/fixtures is not content, and does not refuse", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+
+  it("a test/fixtures holding only markdown does not refuse — the walk skips markdown anyway", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures", "README.md"), `${SYNTHETIC_PHI}\n`);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+
+  it("a GITIGNORED test/fixtures does not refuse — one gitignore boundary, not two", () => {
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures", "leak.txt"), SYNTHETIC_PHI);
+    writeFileSync(join(root, ".gitignore"), "test/fixtures/\n");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK — no hits/);
+  });
+
+  it("but the same tree WITHOUT the ignore rule does refuse — the boundary is the only difference", () => {
+    // The control that stops the three cases above from proving merely that the
+    // guard never fires.
+    const root = makeRepo();
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures", "leak.txt"), SYNTHETIC_PHI);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures");
+    expectNoPhi(r.stderr);
   });
 });
