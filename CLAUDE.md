@@ -292,8 +292,8 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md` 
    docs are: this repo's docs content (`README.md`, `docs-content/`), the meta-repo
    `documentation/repos/terminology.md` (bump its "last verified" date), and the `ecosystem-map.md`
    status table.
-2. **Version + changelog** — a Changeset (`patch` on the `0.0.x` ladder) + a `CHANGELOG.md`
-   `[Unreleased]` entry per meaningful change. Renaming a stable warning code is a **breaking change**.
+2. **Version + changelog** — a Changeset (`patch`, `0.0.x`) per change; its summary IS the generated
+   `CHANGELOG.md` entry. **Never hand-write one.** Renaming a stable warning code is **breaking**.
 3. **Crew + knowledgebase loop** — if this parser's public API or warning codes change, flag/update the
    matching `crew` healthcare skill + the KB product doc.
 4. **No internal project bookkeeping on a public surface** (founder directive, 2026-07-27). What a
