@@ -148,6 +148,26 @@ describe("applyGem: combination clusters (scenario → choice-list)", () => {
   });
 });
 
+/**
+ * Assert a thrown `TerminologyError`'s message by WHOLE-MESSAGE EQUALITY, and
+ * assert that the message is the only place the value appears (`err.stack`
+ * carries it too, and a leak there is just as readable).
+ */
+function expectMessage(fn: () => unknown, message: string): void {
+  try {
+    fn();
+  } catch (err) {
+    const e = err as TerminologyError;
+    expect(e.code).toBe("TERM_MAP_NOT_INVERTIBLE");
+    expect(e.message).toBe(message);
+    // `err.stack` embeds the message, so a leak there is just as readable. The
+    // stack must carry the frozen message and nothing beyond it on that line.
+    expect((e.stack ?? "").split("\n")[0]).toContain(message);
+    return;
+  }
+  throw new Error("expected a fatal");
+}
+
 describe("invertGem: the never-invert refusal is a first-class thrown contract", () => {
   it("always throws TERM_MAP_NOT_INVERTIBLE", () => {
     const gems = loadGems({ direction: "9-to-10", content: "0010 A000 00000\n" });
@@ -160,10 +180,21 @@ describe("invertGem: the never-invert refusal is a first-class thrown contract",
   });
 
   it("names the direction from a closed table, never the caller's string", () => {
+    // WHOLE-MESSAGE EQUALITY, NOT `toThrow(string)`. That overload is a SUBSTRING
+    // match, so it stays green over a message that has GROWN an echo of something
+    // the caller supplied, which is precisely what this case exists to refuse.
+    // Both messages already contain both direction tokens (each names the file to
+    // load instead), so a substring pin was weak twice over.
     const forward = loadGems({ direction: "9-to-10", content: "0010 A000 00000\n" });
-    expect(() => invertGem(forward)).toThrow("direction 9-to-10");
+    expectMessage(
+      () => invertGem(forward),
+      "GEM map (direction 9-to-10) cannot be inverted: load the 10-to-9 GEM file instead",
+    );
     const backward = loadGems({ direction: "10-to-9", content: "A000 0010 00000\n" });
-    expect(() => invertGem(backward)).toThrow("direction 10-to-9");
+    expectMessage(
+      () => invertGem(backward),
+      "GEM map (direction 10-to-9) cannot be inverted: load the 9-to-10 GEM file instead",
+    );
 
     // A JS caller can put any string in `direction`; it must never reach the message or the stack.
     const bogus = loadGems({

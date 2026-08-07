@@ -46,21 +46,17 @@ Why: `documentation/agent-notes.md#north-star-and-the-engine-posture`
 
 Pre-alpha `0.0.x`, **published on npm** from a public repo. Zero runtime deps throughout.
 
-- **Phase 1** (`TERMINOLOGY-1`): identity/canonical-URI resolver + ConceptMap `$translate` engine,
-  `src/common/`, `src/systems/`, `src/conceptmap/`.
-- **Phase 2** (`TERMINOLOGY-2`): CodeSystem load layer + `$lookup` / `$validate-code`, `src/codesystem/`
-  (four hand-rolled readers: RRF, RFC-4180 CSV, fixed-width order files, FHIR JSON).
-- **Phase 3** (`TERMINOLOGY-3`): ValueSet binding layer, `src/valueset/` (`expand` over `compose`,
-  `validateCodeInValueSet`).
-- **Phase 4** (`TERMINOLOGY-4`): UCUM unit layer, `src/ucum/` (grammar parser + `ucumEqual`;
-  **recognition/validation/canonicalization only, no magnitude conversion**; the official
-  `UcumFunctionalTests.xml` is the gate, 530/530).
-- **Phase 5** (`TERMINOLOGY-5`): crosswalk resolvers, `src/crosswalk/` (CMS GEMs in their authored
-  `direction`; NLM SNOMED→ICD-10-CM complex map, BYO; `invertGem` throws `TERM_MAP_NOT_INVERTIBLE`).
-- **Phase 6** (`TERMINOLOGY-6`): RxNorm drug relationship graph, `src/rxnorm/` (caller-supplied RRF;
-  authored edges only, never a synthesized inverse).
-- **Deferred:** bundleable content packs, namely RxNorm Prescribable Content, ICD-10-CM, LOINC
-  (+ parts / hierarchy), and a GEM pack (P7).
+Six shipped layers, each extending never-fabricate with its own typed codes: identity + canonical-URI
+resolver and ConceptMap `$translate` (`src/common/`, `src/systems/`, `src/conceptmap/`); CodeSystem
+load + `$lookup` / `$validate-code` (`src/codesystem/`, four hand-rolled readers: RRF, RFC-4180 CSV,
+fixed-width order files, FHIR JSON); ValueSet binding (`src/valueset/`); UCUM units (`src/ucum/`,
+**recognition/validation/canonicalization only, no magnitude conversion**, the official
+`UcumFunctionalTests.xml` is the gate at 530/530); crosswalks (`src/crosswalk/`, CMS GEMs in their
+authored `direction`, NLM SNOMED to ICD-10-CM complex map BYO, `invertGem` throws
+`TERM_MAP_NOT_INVERTIBLE`); RxNorm drug relationship graph (`src/rxnorm/`, caller-supplied RRF,
+authored edges only, never a synthesized inverse).
+
+- **Deferred:** content packs (RxNorm Prescribable Content, ICD-10-CM, LOINC, a GEM pack).
 
 Every phase extends **never-fabricate** to its own layer, with the typed codes that carry it. **Read
 the full histories before changing any of them**: the invariants and diagnostic codes are stated
@@ -149,59 +145,52 @@ a summary.
   (`RXNCONSO`/`RXNREL`/`RXNSAT`): never a URI, a column name, or anything the file supplied. Name the
   **role** (`the configured 'code' column`); do not "improve" it back into an echo, and **do not settle
   for truncating one**. Four sites leaked and were fixed (`csv.ts`, `invertGem`,
-  `ExpansionDiagnostic.system`, and `reduce`, the last measured on published `0.0.5`).
+  `ExpansionDiagnostic.system`, `reduce`).
 - **A `v8 ignore` is an assertion about REACHABILITY: check it against the EXPORTED surface, and check
-  the WHOLE block**, because the other arms in one were reachable too. **`reduceAtomLinear` now carries
-  no `v8 ignore` at all, and that is the intended end state**; every `Error` it constructs carries a
-  literal message, so **do not put an atom back into one**. Why:
+  the WHOLE block.** **`reduceAtomLinear` now carries no `v8 ignore` at all, the intended end state**;
+  every `Error` it constructs carries a literal message, so **do not put an atom back into one**. Why:
   `documentation/agent-notes.md#the-leaking-sites-and-what-a-v8-ignore-asserts`
 - **`atomMemo` AND `inProgress` KEY ON THE ATOM OBJECT. NEVER RE-KEY THEM ON `atom.code`.** Keying on
-  the string made them a channel between atoms sharing a code: measured on published `0.0.5`, one
-  forged value-less `L` made `ucumEqual("L", "1")` answer `true` and dropped `mmol/L` by three orders
-  of magnitude: **a concentration reading equal to a mass**. `inProgress` is released in a `finally`.
-  The no-`value` branch **refuses** rather than memoizing dimensionless. `reduce` no longer hands back
-  the module-global dimensionless object. **Do not quote a benchmark pair for the identity-keying
+  the string makes them a channel between atoms sharing a code, measured on published `0.0.5` as **a
+  concentration reading equal to a mass**. `inProgress` is released in a `finally`; the no-`value`
+  branch **refuses** rather than memoizing dimensionless; `reduce` no longer hands back the
+  module-global dimensionless object. **Do not quote a benchmark pair for the identity-keying
   choice**: three drafts quoted three, none reproduced. Why:
   `documentation/agent-notes.md#atommemo-and-inprogress-key-on-the-atom-object`
 - **What keeps a parsed expression off those guards is `reduce`'s CONTROL FLOW, not a property of the
-  table: do not re-derive it from the shape of the code.** A refuter refused a fix for saying
-  otherwise. The atom counts (312 / 28 / 291 / **284 carries a `value`, which is NOT the non-special
-  count**) are asserted in `test/ucum/reduce-memo.test.ts`; do not restate them from memory, and do not
-  restore "an atom the bundled table never produced": a caller-assembled atom defined in terms of a
-  special unit walks straight past the short-circuit. Why:
+  table: do not re-derive it from the shape of the code.** The atom counts are asserted in
+  `test/ucum/reduce-memo.test.ts`; do not restate them from memory, and do not restore "an atom the
+  bundled table never produced": a caller-assembled atom defined in terms of a special unit walks
+  straight past the short-circuit. Why:
   `documentation/agent-notes.md#why-a-parsed-expression-never-reaches-those-guards`
-- **The UCUM table is FROZEN, and that is the other half of the memo answer: neither substitutes for
-  the other.** Identity keying closes the atom the caller _built_; the freeze closes the atom the
-  caller was _handed_. The freeze is **deep**, covers **both** arrays, and replaces the lookup maps'
+- **The UCUM table is FROZEN, the other half of the memo answer: neither substitutes for the other.**
+  Identity keying closes the atom the caller _built_; the freeze closes the atom the caller was
+  _handed_. The freeze is **deep**, covers **both** arrays, and replaces the lookup maps'
   `set`/`delete`/`clear`. **The guarantee is that the table does not change, NOT that a write throws**
-  (`Object.freeze` is a silent no-op in the sloppy-mode CJS a caller can require): assert the
-  readings. **Do not widen it to the `Map`.** Published `0.0.5` **and `0.0.6`** carry the defect. Why:
-  `documentation/agent-notes.md#the-ucum-table-is-frozen`
+  (`Object.freeze` is a silent no-op in sloppy-mode CJS): assert the readings. **Do not widen it to
+  the `Map`.** Why: `documentation/agent-notes.md#the-ucum-table-is-frozen`
 - **▶ THE CYCLIC GUARD IS REACHED BY AN ACCESSOR. THREE DESCRIPTIONS OF ITS REACHABILITY HAVE BEEN
   WRONG: DO NOT RE-DERIVE IT FROM THE SHAPE OF THE CODE.** `readonly` is TypeScript-only and a getter
-  satisfies it. A refuter found this after a draft called the guard unreachable, excluded it, deleted
-  the two tests reaching it, and shipped "no call can reach it" into `dist/index.d.ts`. **NEVER put a
-  `v8 ignore` on this guard.** Why:
+  satisfies it. **NEVER put a `v8 ignore` on this guard.** Why:
   `documentation/agent-notes.md#the-cyclic-guard-is-reached-by-an-accessor`
 - **The over-scoped `v8 ignore` on the `atom.base` line is gone: check the whole file, not the block
-  you came for.** It survived the audit that deleted the block beside it. Why:
-  `documentation/agent-notes.md#the-over-scoped-v8-ignore-on-the-atombase-line`
+  you came for.** Why: `documentation/agent-notes.md#the-over-scoped-v8-ignore-on-the-atombase-line`
 - **Pin diagnostic messages with `toBe`, never `toThrowError(string)`: that is a SUBSTRING match** and
-  left a suite green with the atom back in the message. Each of the three `reduce` messages is asserted
-  by whole-message equality + a length bound + `err.stack`, under a 100,000-byte caller-supplied atom
-  code. Why: `documentation/agent-notes.md#the-three-reduce-messages-are-pinned-by-whole-message-equality`
+  left a suite green with the atom back in the message. The three `reduce` messages and both
+  `invertGem` messages are pinned by whole-message equality. Why:
+  `documentation/agent-notes.md#the-three-reduce-messages-are-pinned-by-whole-message-equality`
 - **`test/phi/diagnostic-surface.test.ts` is a shrink tripwire, not a coverage claim.** `SLOT_COUNT` is
   asserted; **add a slot when you add a consumer-controlled position.** **`src/valueset/` has TWO
-  copies of the diagnostic factories (`expand.ts` and `validate.ts`): cover both, always**; a draft
-  covered only `expand` and let a planted echo in `validate.ts` pass green. **Never bound or truncate
+  copies of the diagnostic factories (`expand.ts` and `validate.ts`): cover both, always**. **Never
+  bound or truncate
   `Property.code` or `RxNormEdge.predicate`**: a FHIR `code` has no `maxLength` and `RELA` is an open
   vocabulary, and both are match keys, so truncating turns a hit into a miss. Why:
   `documentation/agent-notes.md#the-diagnostic-surface-slot-table`
 - **▶ THE `phi-scan --staged` ARGV IS THE GATE. EVERY FLAG IN IT IS LOAD-BEARING; DO NOT SHORTEN IT.**
-  `--no-renames` (a staged rename or copy into a scan root was dropped outright and the hook passed it
-  green at PRE-COMMIT), `--ignore-submodules=none` (`diff.ignoreSubmodules=all` erased a staged
-  gitlink), and `U` in `--diff-filter=AMTU`: **`U` is closed by being in the FILTER, not by
-  `--no-renames`; do not conflate them.** **Never add `-M`, `-C` or `--find-copies-harder`**: each
+  `--no-renames` (a staged rename or copy into a scan root was dropped and the hook passed it green
+  at PRE-COMMIT), `--ignore-submodules=none` (`diff.ignoreSubmodules=all` erased a staged gitlink),
+  and `U` in `--diff-filter=AMTU`: **`U` is closed by being in the FILTER, not by `--no-renames`; do
+  not conflate them.** **Never add `-M`, `-C` or `--find-copies-harder`**: each
   turns detection back on over the top of `--no-renames`, `--find-copies-harder` in EITHER order.
   **`-B` IS NOT INERT EITHER, never add it, and never restore the "inert" reading**: it breaks the
   pairing on a complete rewrite, whose filter letter is `B`, so `AMTU` drops the record and the gate
@@ -210,17 +199,18 @@ a summary.
   trap originated. **No test here may run `git merge`**: it resolves the committer
   identity up front and exits 128, so it passes locally and reds on CI on its own premise. Why:
   `documentation/agent-notes.md#the-phi-scan-staged-route-states-its-own-enumeration`
-- **▶ THE ALL-MODE OBSERVATION RULE IS PER-ROOT: every member of `SCAN_ROOTS` must yield a file that
-  was actually READ, or the sweep refuses at exit 2.** There was **no** observation rule here at all
-  and the starved state was **live**: `test/fixtures` was a declared root that has **never existed**
-  in this repository, so CI printed `OK: no hits` over an unopened root on every run. **Never
-  "resync" the `--staged` predicate to `SCAN_ROOTS`**: it still enumerates `test/fixtures/**` on
-  purpose, and narrowing the pre-commit route is the opposite of the work. **This reporter prints no
-  denominator; adding one is a DIFFERENT rule: do not smuggle it in.** **ANY directory the walk
-  cannot list exits 1, not 2, HERE: do not port a sibling's "closed" reading of that in, and do not
-  restate it as "a regular-file root", which is narrower than the mechanism.** **All-mode walks `src`
-  and NOTHING else, the rule is not coverage of `test/`.** Why:
-  `documentation/agent-notes.md#the-all-mode-observation-rule-is-per-root`
+- **▶ TWO COMPLETENESS RULES ON THE ALL-MODE SWEEP; NEITHER SUBSUMES THE OTHER, KEEP BOTH.**
+  Per-root: every `SCAN_ROOTS` member must yield a file actually READ. Plus reconciliation against
+  **`git ls-files`**: every tracked file under a root must have been read. Both exit 2. **Never
+  answer either with a denominator** (it derives from the walk, so it agrees with it).
+  **Never "resync" `--staged`'s predicate to `SCAN_ROOTS`.** **Exit 1 is for HITS**: an unlistable
+  directory and a missing allow-list exit **2**, derived here.
+- **▶ ROOTS ARE `src` AND `test`; WIDENING THE ENUMERATION IS TWO-SIDED.** Enumerating buys the
+  SSN/email floor and **nothing else**: recognisers assume **the file IS the document** and fixtures
+  here are inline `.ts` literals, so it also scans an escape-decoded view. **That view is NOT a
+  literal parser**: it misses concatenation and fires on `String.raw`/comments, so `allow.ids` must
+  stay wired in as the remedy. Exempt file: **sweep only**. Never port a residual list. Why:
+  `documentation/agent-notes.md#the-walk-root-scope-and-why-widening-it-is-two-sided`
 - **Result echoes are deliberately NOT bounded: bounding them would fabricate.** `lookup`,
   `translate`, `applyGem`, `resolveNdc`, `resolveSystem` echo the caller's own query on their typed
   `unknown`/`unmapped` outcomes. **It is not one field per echo**: `translate` returns the coding's
@@ -322,7 +312,7 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md`,
    - **▶ THE GATE CATCHES IDENTIFIERS, NOT ENGLISH ABOUT OUR PROCESS. A ZERO FROM A RULE SET IS NOT A
      ZERO.** Clause-terminal `phase` is deliberately uncaught: it collides with clinical vocabulary
      (`acute phase reactant`, `luteal phase`), and is cleared by hand. **Record the places, not a
-     tally**; three drafts quoted three different numbers and a refuter refuted two. Why:
+     tally**; three drafts quoted three different numbers. Why:
      `documentation/agent-notes.md#the-gate-catches-identifiers-not-english-about-our-process`
    - **▶ CUT THE CLAIM, NOT THE QUALIFIER THAT BOUNDS IT.** Almost every doc sentence here is a
      **scoped** claim one deleted qualifier away from a guarantee the code does not provide, and in this
@@ -367,8 +357,8 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md`,
      notes into the PR body. **Keep the exemption and its written reason**, and never answer it with
      an actor `if:` on a required context (that leaves the check **pending**, not red). The
      tracked-file job `no-emdash` **is** safe to require, once it has run on `main`.
-   - **▶ A PAIRED ASIDE IS ONE MARK, NOT TWO, AND THE PAIR OFTEN SPANS A LINE BREAK.** 93 sentences
-     here carried one; a per-line rewriter mangled every cross-line pair. **Edit them by hand.** And a
+   - **▶ A PAIRED ASIDE IS ONE MARK, NOT TWO, AND THE PAIR OFTEN SPANS A LINE BREAK.** A per-line
+     rewriter mangled every cross-line pair. **Edit them by hand.** And a
      dash inside a code span or a string literal is **data**: the `phi-scan` output string, the
      `invertGem` messages and a `ParseFailure.reason` are each quoted in prose and pinned by a test,
      so both sides move together, **by hand, before any bulk pass**.

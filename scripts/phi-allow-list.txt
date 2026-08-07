@@ -13,10 +13,16 @@
 #   ID <value>            synthetic id matching an SSN / MRN / member-id shape
 #   EMAILDOMAIN <domain>  reserved / test email domain that is allowed to appear
 #
-# NOTE: the STARTER scanner only actively consumes EMAILDOMAIN (its floor is
-# SSN + email shapes). NAME / DOB / ID entries are loaded and ready for the
-# structured, field-level detectors you MUST add to scripts/phi-scan.ts before
-# relying on this as a real PHI gate: see the STARTER banner in that file.
+# NOTE: the floor is SSN + email shapes, and it consumes EMAILDOMAIN and ID.
+#   EMAILDOMAIN is GLOBAL: it switches the email detector off for that domain
+#   across the whole corpus, so prefer a per-file bypass over widening it.
+#   ID is a WHOLE-VALUE match on the dashed-SSN check, never a pattern. It is
+#   also the remedy for a false positive from the escape-decoded source-literal
+#   view (see decodeSourceLiterals in scripts/phi-scan.ts), which is the reason
+#   it is wired up at all.
+# NAME / DOB are still loaded and unused: they are ready for the structured,
+# field-level detectors you MUST add to scripts/phi-scan.ts before relying on
+# this as a real PHI gate: see the STARTER banner in that file.
 #
 # To add a new synthetic fixture: reuse the tokens below, or append new ones here
 # and commit. Adding a token is a reviewed, intentional act: never silent.
