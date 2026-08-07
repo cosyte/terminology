@@ -1044,8 +1044,13 @@ included, and requiring it blocks a bump on prose nobody here wrote. **Honour th
 written reason.** A sibling shipped both halves as one job and had to exempt the lot, which
 un-required the tracked-file half as well, and names this split as its deferred fix. Do not "fix" the
 Dependabot case with an actor `if:` on a required context: that leaves the check permanently
-**pending**, which is worse than red because nothing says why. **Neither context is required yet**, on
-purpose, because a context may not be required before its workflow has completed on `main`.
+**pending**, which is worse than red because nothing says why. **Whether either context is required
+today is deliberately not written down**, here or in the workflow file: this paragraph used to say
+"neither context is required yet" and that sentence became false the day after it was written, when
+`no-emdash` was added to the ruleset. State the CONDITION, never the state. The condition:
+`no-emdash` **should** be required and becomes eligible only **once its workflow has completed on
+`main`**, because a context required before that leaves every PR pending and unmergeable with nothing
+saying why. Read the live answer with `gh api repos/cosyte/terminology/rulesets`.
 
 **THE MESSAGES HALF IS THE ONE NO LOCAL HOOK CAN SEE, AND TWO SLICES ELSEWHERE LOST A PASS TO IT.** A
 **new** file is untracked, so a scan of the index does not see it, and nothing local sees a PR body at
@@ -1260,3 +1265,106 @@ slice. **Never "resync" the two predicates in either direction.**
 
 **No structured detector was added.** The fenced TODO in `scanTarget` is still open: a green sweep
 still means "no SSN/email shapes found", never "no PHI".
+
+## The scanner scans itself, and a zero-target sweep refuses
+
+`PHI-SCAN-SELF-BLIND-AND-ZERO-TARGET`. Two false-green doors, both `PRE-EXISTING` on `7e68603`, both
+found by that slice's refuters, both the same defect wearing different clothes: **the gate reported
+clean over something it never looked at.** Every reading below was taken back to back on a clone of
+this repository at `7e68603`.
+
+### Door 1: `scripts/` was under no scan root, so the scanner never scanned itself
+
+The one directory guaranteed to hold PHI-shaped text is the recogniser's own. `scripts/` holds the
+patterns, the allow-list this scanner refuses to run without, and the override log it points a
+developer at, and all-mode walked `src` and `test` only. Measured: `scripts/planted.ts` carrying a
+dashed SSN and an off-domain address exited **0 `OK: no hits`** in all-mode, while
+`phi-scan scripts/planted.ts` reported **both, at exit 1**, over the same bytes. Same shape as the
+`test/` hole `PHI-SCAN-WALK-ROOT-SCOPE` closed, one directory over.
+
+**THE FIX IS THE DECLARATION AND NOTHING ELSE.** Both completeness rules already read `SCAN_ROOTS`:
+`#47`'s per-root observation rule and the `git ls-files` reconciliation. Adding `scripts` to that one
+list widens the walk, the per-root floor and the reconciliation together, with no new machinery, and
+each of those three is pinned separately in the suite rather than assumed to have followed.
+
+**THE SCOPE WAS RE-DERIVED AND THIS ROOT IS NOT SHAPED LIKE `test/`.** `git ls-files scripts` returns
+8 paths and they are **not** all `.ts`: two `.ts`, three `.mjs`, two `.sh`, one `.txt`. So it is the
+first root partly **outside** `isSourceLiteralContainer`, and the two halves of the `test/` widening
+land unevenly: `.ts` and `.mjs` get the raw floor **and** the escape-decoded view, `.sh` and `.txt`
+get the raw floor only. That is the right answer for a `.txt` (it is its own document) and a
+**residual** for a `.sh`, which can spell a value through `printf '\x2d'`. Recorded, not guarded:
+decoding shell quoting would be a second view with its own false positives, and the standing rule
+here is to correct the claim rather than grow the guard. The residual is pinned by an
+anti-fabrication case, so a future reader sees the boundary rather than inferring it.
+
+**NO EXEMPTION WAS NEEDED AND NONE WAS ADDED.** All 8 files were measured against both recognisers,
+raw and decoded, before the root was declared: **zero hits**, so the widening lands green on its own
+bytes rather than on a new carve-out. `DELIBERATE_VIOLATOR_SOURCES` is still one entry long.
+**Keep it that way:** `scripts/phi-scan.ts` is now under its own scan, so an example SSN or a
+real-looking address written into a comment **in the scanner** reds the gate. That is the intended
+pressure, and it is the reason this file spells the shapes it discusses in prose.
+
+**THIS ROOT CANNOT STARVE IN PRACTICE, and the reason is worth knowing rather than rediscovering:**
+`ALLOW_LIST_PATH` sits under it and `loadAllowList` runs **before** any target is built, so a
+`scripts/` empty enough to starve refuses earlier with `allow-list not found`. It is still reachable
+by **gitignoring** the allow-list, which leaves it readable for that check and out of scope for the
+walk, and that is the case the suite pins. The ordering is pinned too, so a future edit that moves
+`loadAllowList` below the walk reds rather than silently changing which message a developer sees.
+
+**`--staged` IS UNCHANGED AND `scripts/**` IS NOT IN IT.** This is the same residual as `test/**`
+widening a second time, not a new one, and it is deliberate: widening that predicate changes what a
+developer's commit is blocked on, which is a decision about the hook rather than the walk.
+
+### Door 2: `--allow-fixture X` with no positional path scanned zero files and passed
+
+`parseArgs` seeds the positional path set from the bypass list, so the flag means "scan X, but allow
+it" rather than a silent no-op. With **no** positional path the whole target list was that one path,
+the bypass then subtracted it, and the invocation reached `report([])` and printed
+**`[phi-scan] OK: no hits` at exit 0 over zero files**: byte-identical stdout and exit code to the
+genuine clean sweep on the same tree. Measured against `--allow-fixture src/index.ts` with the path
+logged in `phi-scan-overrides.md` **exactly as this scanner's own rejection message instructs**, so
+the false green is reached by **following the printed remedy**.
+
+**FIXED WITH `#47`'s RULE, AT THE SCOPE OF THE WHOLE INVOCATION, NOT WITH A NEW MECHANISM.** That
+rule refuses a sweep that observed nothing **under a root**; the refusal at the end of `main()`
+refuses a run that observed nothing **at all**. A zero-target sweep is a **refusal (exit 2), never a
+pass.** The per-root tier does not reach `paths` or `staged`, which enumerate no root; the
+whole-invocation tier is a floor of one for the entire run and says nothing about any individual
+root. **Neither subsumes the other. Keep both.**
+
+**A DENOMINATOR IS STILL NOT THE ANSWER, AND THE REMEDY WAS ALREADY REFUTED IN `ncpdp`.** Printing
+"0 files scanned" and exiting 0 is the same defect with better telemetry: a count counts the targets
+that **did** exist. The distinction that matters is **existence vs observation**. The `enumerated`
+term this rule reads is not a denominator and must not grow into one: it is never printed as a count
+of files scanned, nothing compares it to the number read, and it answers exactly one yes/no question,
+"did this run have anything to do".
+
+**THE PREDICATE IS BOTH TERMS TOGETHER, AND EACH ALONE IS WRONG IN A DIFFERENT DIRECTION.** Refusing
+on "read nothing" alone reds every markdown-only commit through the pre-commit hook; refusing on
+"enumerated nothing" alone is the denominator above. Requiring both is what makes this a statement
+about a run that **had work and did none of it**.
+
+**ONE LEGITIMATE ZERO, NAMED RATHER THAN INFERRED:** a `--staged` run whose commit touches nothing in
+scope. That is `enumerated === 0` in staged mode and **nothing else**, so it is written as that and
+not as a blanket "staged is exempt". A staged run whose in-scope files were **all** withdrawn by
+`--allow-fixture` did have work, did none of it, and refuses exactly like a `paths` run. Both halves
+are pinned.
+
+**IT CANNOT FIRE IN ALL-MODE, and that is stated so nothing reads as a claim the code cannot make:**
+`parseArgs` makes `--allow-fixture` imply `paths` mode, so `allowed` is always empty in a sweep and
+nothing can be subtracted from it; and a sweep that enumerated nothing has starved every root, so the
+per-root tier has already returned 2 with a better message. The tier is kept general anyway, because
+it is a floor on the **contract** ("a green line means bytes were read"), not on one caller's argv.
+**No `report(hits)` call guards it**, deliberately: observing nothing is exactly the state in which no
+target was scanned, so `hits` is empty by construction and such a line could never run. This file
+deletes machinery that looks like a decision and cannot run; it does not keep it.
+
+### What this slice deliberately did NOT do, again
+
+**The `--staged` predicate was not widened.** See above. **No structured detector was added**, so a
+green sweep still means "no SSN/email shapes found". **No denominator was added.** And a stale claim
+inside the per-root block was corrected rather than left: it read "with one root declared that line
+is unreachable from this repository's own configuration", which stopped being true the moment `test`
+was declared as a second root. The patched-copy case that pins it is **kept** rather than rewritten
+against the live roots, because what it pins is the behaviour **at the moment a root is added**, and
+that has to hold for the next root as well as the last one.

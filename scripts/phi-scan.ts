@@ -3,7 +3,8 @@
  * `@cosyte/terminology` PHI scanner: the CI / pre-commit half of the PHI commit-gate.
  *
  * Pure Node. Zero runtime deps. `git` is the only subprocess, always via
- * `execFileSync` with array args (never shell-form). Walks `src/` and `test/`,
+ * `execFileSync` with array args (never shell-form). Walks `src/`, `test/` and
+ * `scripts/` (ITSELF INCLUDED: see `SCAN_ROOTS`),
  * reads each `.ts` source as raw bytes AND through an escape-decoded view of it,
  * and REFUSES anything that looks like real PHI, so a developer cannot commit a
  * real-looking fixture by accident. That view is NOT a literal parser: see
@@ -51,7 +52,8 @@
  * Modes:
  *   --staged                 - scan only files staged in `git diff --cached`
  *   --allow-fixture <path>   - bypass one path; rejected unless logged in
- *                              phi-scan-overrides.md
+ *                              phi-scan-overrides.md, and rejected again (exit 2)
+ *                              if it leaves the run with nothing left to read
  *   <path> [<path>...]       - scan specific paths
  *   (no args)                - scan all in-scope working-tree files
  *
@@ -95,13 +97,16 @@
  * opposite of the work this file keeps being asked to do.
  *
  * ▶ THE TWO SETS NOW OVERLAP DIFFERENTLY, AND `--staged` IS THE NARROWER ONE.
- * `test` is a walk root as of `PHI-SCAN-WALK-ROOT-SCOPE`, so all-mode covers
- * every `test/**` path while this predicate still admits only `test/fixtures/**`
- * of them. A staged `test/foo.test.ts` is therefore scanned by CI and not by the
- * pre-commit hook. That is a residual, recorded rather than fixed: widening this
+ * `test` is a walk root as of `PHI-SCAN-WALK-ROOT-SCOPE` and `scripts` as of
+ * `PHI-SCAN-SELF-BLIND-AND-ZERO-TARGET`, so all-mode covers every `test/**` and
+ * every `scripts/**` path while this predicate still admits only
+ * `test/fixtures/**` of the first and NONE of the second. A staged
+ * `test/foo.test.ts` or `scripts/foo.mjs` is therefore scanned by CI and not by
+ * the pre-commit hook. That is a residual, recorded rather than fixed, and it is
+ * the SAME residual widening twice rather than a new one: widening this
  * predicate changes what a developer's commit is blocked on, which is a decision
  * about the hook and not about the walk, and it wants its own slice. Nothing
- * regressed here, since that path was in neither route before.
+ * regressed here, since neither path was in either route before.
  *
  * FOUR PLACES IT NOW ADMITS **MORE** THAN
  * IT ONCE DID, called out rather than folded into "narrowing", because all four
@@ -122,9 +127,15 @@
  * written out rather than an example, because a diagnostic ABOUT a PHI leak is
  * itself a PHI surface, and that applies to the prose explaining it too.
  * ---------------------------------------------------------------------------
- * THE OBSERVATION RULE IS PER-ROOT: `all` mode refuses (exit 2) unless EVERY
- * member of `SCAN_ROOTS` yielded at least one file that was actually READ, and
- * the refusal names the starved roots. THERE WAS NO SUCH RULE HERE AT ALL BEFORE,
+ * THE OBSERVATION RULE HAS TWO TIERS AND NEITHER SUBSUMES THE OTHER. PER-ROOT:
+ * `all` mode refuses (exit 2) unless EVERY member of `SCAN_ROOTS` yielded at
+ * least one file that was actually READ, and the refusal names the starved roots.
+ * WHOLE-INVOCATION: ANY mode refuses (exit 2) when the run as a whole observed
+ * nothing, with ONE named exception (a `--staged` run with nothing in scope
+ * staged, which is an ordinary markdown-only commit). The per-root tier does not
+ * reach `paths` or `staged`, which enumerate no root; the whole-invocation tier
+ * is a floor of one for the entire run and says nothing about any individual
+ * root. Both live at the end of `main()`. THERE WAS NO SUCH RULE HERE AT ALL BEFORE,
  * in any form, and the starved state was LIVE rather than hypothetical: the
  * scanner declared `test/fixtures` as a second root and that directory has never
  * existed in this repository. The rule, its cause and its measurements live at
@@ -200,6 +211,40 @@
  * Measured RED before and GREEN after, in `src/` as well as `test/`, so it is not
  * merely a consequence of the new root.
  * ---------------------------------------------------------------------------
+ * TWO FALSE-GREEN DOORS CLOSED BY `PHI-SCAN-SELF-BLIND-AND-ZERO-TARGET`. Both
+ * are the same defect wearing different clothes: THE GATE REPORTED CLEAN OVER
+ * SOMETHING IT NEVER LOOKED AT. Both were `PRE-EXISTING` on `7e68603`, both were
+ * found by that slice's refuters, and both are measured below on a clone of this
+ * repository at that sha.
+ *
+ *   (1) THE SCANNER NEVER SCANNED ITSELF. `scripts/` was under no scan root, so
+ *       the recogniser's own patterns, its allow-list and its override log were
+ *       enumerated by neither route. `scripts/planted.ts` carrying a dashed SSN
+ *       and an off-domain address exited 0 "OK: no hits" in all-mode and exited 1
+ *       when named directly. Closed by DECLARING THE ROOT, which is the whole
+ *       fix: the per-root observation rule and the `git ls-files` reconciliation
+ *       both read `SCAN_ROOTS`, so the new root inherits them without a line of
+ *       new machinery. See the note beside `SCAN_ROOTS` for the re-derivation.
+ *
+ *   (2) A SWEEP COULD OBSERVE NOTHING AND STILL PASS. `--allow-fixture <path>`
+ *       seeds the positional path set (see `parseArgs`), so with NO positional
+ *       path the whole target list was that one path, the bypass then subtracted
+ *       it, and the invocation scanned ZERO files and printed the same
+ *       `[phi-scan] OK: no hits` at exit 0 that a real clean sweep prints.
+ *       Measured on `7e68603` with the path logged in `phi-scan-overrides.md`
+ *       exactly as this scanner's own error message instructs: the false green is
+ *       reached BY FOLLOWING THE PRINTED REMEDY.
+ *
+ * ▶ (2) IS `#47`'s RULE ARRIVING THROUGH A NEW DOOR, SO IT IS FIXED WITH `#47`'s
+ * RULE AND NOT WITH A NEW MECHANISM. That rule refuses a sweep that observed
+ * nothing UNDER A ROOT; the refusal at the end of `main()` extends it to the
+ * WHOLE INVOCATION. A ZERO-TARGET SWEEP IS A REFUSAL (exit 2), NEVER A PASS.
+ *
+ * ▶ AND A DENOMINATOR IS STILL NOT THE ANSWER, IN EITHER HALF. Printing
+ * "0 files scanned" and exiting 0 is the same defect with better telemetry: a
+ * count counts the targets that DID exist, which is why `ncpdp` refuted it. The
+ * distinction that matters is EXISTENCE vs OBSERVATION. Do not add one here.
+ * ---------------------------------------------------------------------------
  */
 
 import { readFileSync, statSync, existsSync, readdirSync, type Dirent } from "node:fs";
@@ -241,7 +286,44 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 // Back to back on that sha: a plain dashed SSN written to `test/planted.ts`
 // exited 0 "OK: no hits" in all-mode while `phi-scan test/planted.ts` exited 1
 // over the same bytes.
-const SCAN_ROOTS: readonly string[] = ["src", "test"];
+//
+// ▶ `scripts` WAS NOT A ROOT UNTIL `PHI-SCAN-SELF-BLIND-AND-ZERO-TARGET`, AND
+// THE DIRECTORY IT LEFT UNREAD IS THIS ONE. The recogniser's own patterns, the
+// allow-list this scanner refuses to run without, and the override log it points
+// a developer at all live under `scripts/`, so the one directory guaranteed to
+// hold PHI-shaped text was the one nothing enumerated. Measured on `7e68603`,
+// back to back on a clone: a dashed SSN and an off-domain address written to
+// `scripts/planted.ts` exited 0 "OK: no hits" in all-mode, while
+// `phi-scan scripts/planted.ts` reported both at exit 1 over the same bytes.
+// Same shape as the `test/` hole above, one directory over.
+//
+// RE-DERIVED FOR THIS DIRECTORY, AND IT IS NOT SHAPED LIKE `test/`. `git ls-files
+// scripts` returns 8 paths and they are NOT all `.ts`: two `.ts`, three `.mjs`,
+// two `.sh` and one `.txt` (the allow-list). So this root is the first that is
+// partly OUTSIDE `isSourceLiteralContainer`, and the two halves of the `test/`
+// widening land unevenly here: the `.ts` and `.mjs` files get the raw floor AND
+// the escape-decoded view, the `.sh` and `.txt` files get the raw floor only.
+// That is the correct answer for a `.txt` (it is its own document) and it is a
+// RESIDUAL for a `.sh`: a shell script can spell a value through `printf '\x2d'`
+// or `$'\x2d'` and this scanner does not decode shell quoting. Recorded, not
+// guarded: decoding shell would be a second view with its own false positives,
+// and the standing rule here is to correct the claim rather than grow the guard.
+//
+// NO EXEMPTION WAS NEEDED AND NONE WAS ADDED. All 8 files were measured against
+// both recognisers, raw and decoded, before the root was declared: zero hits, so
+// the widening lands green on its own bytes rather than on a new carve-out. The
+// scanner's own SSN pattern is spelled `\b\d{3}-\d{2}-\d{4}\b`, which holds no
+// digits, and the decoded view of it holds none either. KEEP IT THAT WAY: this
+// file is now under its own scan, so an example SSN or a real-looking address
+// written into a comment HERE reds the gate. That is the intended pressure.
+//
+// THIS ROOT CANNOT STARVE THE PER-ROOT RULE IN PRACTICE, and the reason is worth
+// knowing rather than rediscovering: `ALLOW_LIST_PATH` sits under it, and
+// `loadAllowList` runs BEFORE any target is built, so a `scripts/` empty enough
+// to starve refuses earlier with "allow-list not found". It is still reachable
+// by gitignoring the allow-list, which leaves it readable but out of scope for
+// the walk, and that case is pinned in the suite rather than assumed away.
+const SCAN_ROOTS: readonly string[] = ["src", "test", "scripts"];
 
 // Sources whose bytes are a DELIBERATE VIOLATOR CORPUS: they carry PHI-shaped
 // literals on purpose, because they are the positive half of this scanner's own
@@ -1312,6 +1394,14 @@ function main(): number {
     throw err;
   }
 
+  // How many targets the ENUMERATION produced, recorded before `--allow-fixture`
+  // subtracts from it. This is NOT a denominator and must not grow into one: it
+  // is never printed as a count of files scanned, and nothing compares it to the
+  // number read. It answers exactly one yes/no question for the whole-invocation
+  // refusal below: DID THIS RUN HAVE ANYTHING TO DO? That is the existence side
+  // of the existence-vs-observation distinction, and it is the only side a
+  // walk-derived number can honestly speak to.
+  const enumerated = targets.length;
   targets = targets.filter((t) => !allowed.has(t.path));
 
   const hits: Hit[] = [];
@@ -1372,17 +1462,21 @@ function main(): number {
   //
   // THIS refusal must not swallow a real hit. Whatever the yielding roots turned up
   // is printed first; the exit code is still 2, because an incomplete sweep is not
-  // a verdict whatever it found on the way. WITH ONE ROOT DECLARED THAT LINE IS
-  // UNREACHABLE FROM THIS REPOSITORY'S OWN CONFIGURATION (starved means an empty
-  // target list means no hits), SO IT IS NOT LEFT AS AN UNTESTED CLAIM: a case in
-  // `test/scripts/phi-scan.test.ts` runs a copy of this scanner with a second root
-  // declared and asserts the hit is printed and the exit code is still 2. Without
-  // it, adding a root would silently start swallowing findings and nothing would
-  // red.
+  // a verdict whatever it found on the way. THAT LINE WAS UNREACHABLE FROM THIS
+  // REPOSITORY'S OWN CONFIGURATION WHILE ONE ROOT WAS DECLARED (starved meant an
+  // empty target list meant no hits) AND IT STOPPED BEING SO THE MOMENT A SECOND
+  // WAS, which is the reason it was never left as an untested claim: a case in
+  // `test/scripts/phi-scan.test.ts` runs a copy of this scanner with an extra root
+  // declared and asserts the hit is printed and the exit code is still 2. The
+  // patched copy is kept rather than rewritten against the live roots, because
+  // what it pins is the behaviour AT THE MOMENT A ROOT IS ADDED, and that has to
+  // hold for the next root as well as for the last one.
   //
   // (`staged` legitimately has nothing to scan when a commit touches only
   // markdown, and `paths` is bounded by the caller's argv. Neither enumerates a
-  // root, so neither can make a per-root promise, and neither is subject to this.)
+  // root, so neither can make a per-root promise, and neither is subject to this.
+  // They ARE subject to the whole-invocation tier below, which is where a
+  // zero-target `paths` or `staged` run is refused.)
   if (args.mode === "all") {
     const starved = SCAN_ROOTS.filter((root) => !observedRoots.has(root));
     if (starved.length > 0) {
@@ -1398,6 +1492,63 @@ function main(): number {
       );
       return 2;
     }
+  }
+
+  // Refuse a sweep that observed NOTHING AT ALL, in any mode.
+  //
+  // `#47` ESTABLISHED THIS RULE PER SCAN ROOT; THIS IS THE SAME RULE AT THE SCOPE
+  // OF THE WHOLE INVOCATION, and it is deliberately not a new mechanism. The
+  // defect it closes arrived through a door the per-root tier cannot see, because
+  // that tier only speaks about `all` mode: `--allow-fixture <path>` with NO
+  // positional path. `parseArgs` seeds the positional set from the bypass list so
+  // the flag means "scan X, but allow it" rather than a silent no-op, which puts
+  // the run in `paths` mode with exactly one target; the filter above then
+  // subtracts that target; and the run reached `report([])` and printed
+  // `[phi-scan] OK: no hits` at exit 0. Measured on `7e68603` against
+  // `--allow-fixture src/index.ts` with that path logged in
+  // `phi-scan-overrides.md`: byte-identical stdout and exit code to the genuine
+  // clean sweep on the same tree, over zero files.
+  //
+  // THE PREDICATE IS OBSERVATION, NOT EXISTENCE, AND THE TWO TERMS DO DIFFERENT
+  // WORK. `observedPaths` is only added to after `scanTarget` RETURNS, so it
+  // counts bytes actually read; `enumerated` is the walk's own answer about what
+  // there was to read. Refusing on "read nothing" alone would red every
+  // markdown-only commit through the pre-commit hook, and refusing on "enumerated
+  // nothing" alone is the denominator that `ncpdp` refuted. Requiring both is
+  // what makes this a statement about a sweep that HAD work and did none of it.
+  //
+  // ONE LEGITIMATE ZERO, NAMED RATHER THAN INFERRED: a `--staged` run whose
+  // commit touches nothing in scope. Git hands back an empty in-scope list, there
+  // is no work, and there is nothing to be false about. That is `enumerated === 0`
+  // in `staged` mode and nothing else, so it is written as that and not as a
+  // blanket "staged is exempt": a staged run whose in-scope files were ALL
+  // withdrawn by `--allow-fixture` did have work, did none of it, and refuses
+  // here exactly like a `paths` run does.
+  //
+  // WHY THIS DOES NOT FIRE IN `all` MODE, stated so nothing reads as a claim the
+  // code cannot make: `parseArgs` makes `--allow-fixture` imply `paths` mode, so
+  // `allowed` is always empty in a sweep and nothing can be subtracted from it;
+  // and a sweep that enumerated nothing has starved every root, so the per-root
+  // tier above has already returned 2 with a better message. The tier is kept
+  // general anyway, because it is a floor on the CONTRACT ("a green line means
+  // bytes were read"), not on one caller's argv.
+  //
+  // NOTHING IS SWALLOWED HERE AND NO `report` CALL GUARDS IT. The two refusals
+  // below print any hits first because a starved or unreconciled sweep can still
+  // have found something under a healthy root. This one cannot: observing nothing
+  // is exactly the state in which no target was scanned, so `hits` is empty by
+  // construction. A `if (hits.length > 0) report(hits)` line here would be
+  // machinery that looks like a decision and can never run, which this file
+  // deletes elsewhere rather than keeps.
+  if (observedPaths.size === 0 && enumerated > 0) {
+    process.stderr.write(
+      `[phi-scan] refusing: this run had ${String(enumerated)} target(s) and read none of ` +
+        `them, so it observed nothing and proves nothing. Every target was withdrawn by ` +
+        `--allow-fixture. A bypass is a SUBTRACTION from a broader scan, never a scan on its ` +
+        `own: name the paths to scan as well, or drop the flag. A sweep that observed nothing ` +
+        `must not report clean.\n`,
+    );
+    return 2;
   }
 
   // Reconcile what was READ against what git TRACKS under the same roots.
