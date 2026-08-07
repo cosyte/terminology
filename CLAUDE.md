@@ -93,9 +93,9 @@ a summary.
 
 - **`main` is protected by a repository ruleset, `ci-required-checks`**: required contexts each
   pinned to the GitHub Actions app; no branch deletion, no force-push. **THIS FILE NAMES NO COUNT AND
-  NO LIST, DELIBERATELY. THE SET GROWS, AND THE COUNT THAT USED TO SIT HERE WENT STALE THE DAY
-  `no-internal-refs` AND `no-emdash` WERE REQUIRED. NOTHING IN THIS REPOSITORY CAN OBSERVE ITS OWN
-  RULESET**, so derive it and never recall it: `gh api repos/cosyte/terminology/rulesets`. **A
+  NO LIST, DELIBERATELY. THE SET GROWS**: the count here named four, and `no-internal-refs`
+  (2026-07-28) then `no-emdash` (2026-08-07) made it wrong twice. **NOTHING IN THIS REPOSITORY CAN
+  OBSERVE ITS OWN RULESET**, so derive it, never recall it: `gh api repos/cosyte/terminology/rulesets`. **A
   context is requireable only once its workflow has completed on `main`**, never before: require it
   earlier and every PR sits pending and unmergeable with nothing saying why. **`scorecard` and the
   Advanced-Security `CodeQL` check are deliberately NOT required.** **Read

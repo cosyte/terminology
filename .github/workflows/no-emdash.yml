@@ -50,10 +50,14 @@ name: Em-dash gate
 #   permanently PENDING on exactly those PRs, which is worse than red: nothing says why.
 #
 # ▶ WHETHER EITHER CONTEXT IS REQUIRED TODAY IS NOT WRITTEN DOWN HERE, DELIBERATELY. THIS
-#   COMMENT USED TO SAY "NEITHER CONTEXT IS REQUIRED YET" AND THAT SENTENCE BECAME FALSE THE
-#   DAY AFTER IT WAS WRITTEN, when `no-emdash` was added to the ruleset. A workflow file
-#   cannot observe the ruleset that consumes it, so it must state the CONDITION and never
-#   the state. Read the live answer, never this file:
+#   COMMENT USED TO SAY "NEITHER CONTEXT IS REQUIRED YET" AND THAT SENTENCE WAS FALSE
+#   WITHIN SIX MINUTES OF BEING WRITTEN. Measured, not recalled: it landed at
+#   2026-08-07T05:07:07Z, and ruleset version 45753942 added `no-emdash` at
+#   2026-08-07T05:12:55Z (`gh api repos/cosyte/terminology/rulesets/19860511/history`). Five
+#   minutes and forty-eight seconds is the useful number here, because it shows the problem
+#   is not that the state changed slowly enough to be worth writing down: a workflow file
+#   cannot observe the ruleset that consumes it AT ALL, so it must state the CONDITION and
+#   never the state. Read the live answer, never this file:
 #
 #     gh api repos/cosyte/terminology/rulesets
 #
