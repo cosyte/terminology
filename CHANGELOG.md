@@ -1,5 +1,183 @@
 # Changelog
 
+## 0.0.12
+
+### Patch Changes
+
+- db98da6: Repository PHI commit-gate only, with no runtime impact: the sweep now walks `scripts/`, so the scanner is under its own scan, and any run that had targets and read none of them refuses instead of printing its clean line.
+
+  Two false-green doors, both the same shape. The gate reported clean over something it never looked
+  at. Both were pre-existing, both were found by the refuters on the previous change to this scanner,
+  and every reading below was taken back to back on a clone of this repository at `7e68603`.
+
+  DOOR 1: THE SCANNER NEVER SCANNED ITSELF
+
+  `scripts/` was under no scan root. The recogniser's own patterns, the allow-list this scanner refuses
+  to run without, and the override log it points a developer at all live there, so the one directory
+  guaranteed to hold PHI-shaped text was the one nothing enumerated. Measured: `scripts/planted.ts`
+  carrying a dashed SSN and an off-domain address exited **0** `OK: no hits` in all-mode, while naming
+  the same file directly reported both at exit **1** over the same bytes.
+
+  The fix is the declaration and nothing else. Both completeness rules already read `SCAN_ROOTS`: the
+  per-root observation rule and the reconciliation against `git ls-files`. Adding `scripts` to that one
+  list widens the walk, the per-root floor and the reconciliation together, with no new machinery, and
+  each of the three is pinned separately rather than assumed to have followed.
+
+  The scope was re-derived and this root is not shaped like `test/`. `git ls-files scripts` returns 8
+  paths and they are not all TypeScript: two `.ts`, three `.mjs`, two `.sh`, one `.txt`. So it is the
+  first root partly outside the source-literal view, and the two halves of the previous widening land
+  unevenly: `.ts` and `.mjs` get the raw floor and the escape-decoded view, `.sh` and `.txt` get the
+  raw floor only. That is the right answer for a `.txt`, which is its own document, and a residual for
+  a `.sh`, which can spell a value through a shell escape. Recorded rather than guarded, and pinned by
+  an anti-fabrication case so the boundary is visible instead of inferred.
+
+  No exemption was needed and none was added. All 8 files were measured against both recognisers, raw
+  and decoded, before the root was declared: zero hits, so the widening lands green on its own bytes
+  rather than on a new carve-out. The scanner is now under its own scan, so a real-looking value
+  written into a comment in it reds the gate. That is the intended pressure.
+
+  DOOR 2: A BYPASS WITH NO PATH SCANNED ZERO FILES AND PASSED
+
+  `--allow-fixture <path>` seeds the positional path set, so the flag means "scan this, but allow it"
+  rather than a silent no-op. With no positional path the whole target list was that one path, the
+  bypass subtracted it, and the run printed `[phi-scan] OK: no hits` at exit **0** over zero files:
+  byte-identical stdout and exit code to the genuine clean sweep on the same tree. Measured with the
+  path logged in the override file exactly as this scanner's own rejection message instructs, so the
+  false green is reached by following the printed remedy.
+
+  It is fixed with the rule this repository already had, at the scope of the whole invocation, and not
+  with a new mechanism. That rule refuses a sweep that observed nothing under a root; the refusal now
+  also covers a run that observed nothing at all. A zero-target sweep is a refusal at exit 2, never a
+  pass. The per-root tier does not reach the path or staged modes, which enumerate no root, and the
+  whole-invocation tier says nothing about any individual root, so neither subsumes the other and both
+  are kept.
+
+  A denominator is still not the answer. Printing "0 files scanned" and exiting 0 is the same defect
+  with better telemetry, because a count counts the targets that did exist. The distinction that
+  matters is existence against observation, and the term this rule reads is never printed as a count
+  and is never compared to the number read.
+
+  One legitimate zero is named rather than inferred: a staged run whose commit touches nothing in
+  scope, which is the pre-commit hook's ordinary markdown-only case. A staged run whose in-scope files
+  were all withdrawn by a bypass had work and did none of it, and refuses exactly like a path run does.
+
+  Deliberately unchanged: the pre-commit route's scope predicate, which admits neither `test/**` nor
+  `scripts/**` and whose widening changes what a developer's commit is blocked on. No structured
+  detector was added, so a green sweep still means "no SSN or email shapes found", never "no PHI".
+
+- 7e68603: Repository PHI commit-gate only, with no runtime impact: the all-mode sweep now walks `test/` as well as `src/`, reads each TypeScript source as the document its string literals spell rather than only as raw bytes, and reconciles what it read against `git ls-files` instead of vouching for itself.
+
+  `pnpm phi-scan` with no arguments is what CI runs. It walked `src` and nothing else, and the
+  pre-commit route's scope predicate admits `src/**.ts` plus `test/fixtures/**`, a directory that has
+  never existed in this repository. **So every tracked file under `test/` was enumerated by neither
+  route.** Measured on `d97a3de`: `git ls-files test/ | wc -l` is **50**, and all 50 are `.ts`. Back to
+  back on that sha, a dashed SSN written to `test/planted.ts` exited **0** `OK: no hits` in all-mode
+  while naming the same file directly exited **1** over the same bytes.
+
+  **The scope was re-derived here rather than ported, and it came out different from every sibling's.**
+  There is no `PID|` literal anywhere in this tree, so the residual lists that drove the sibling repos
+  describe those repos and not this one. Here the whole corpus is inline TypeScript, and exactly one
+  file carries violator shapes.
+
+  **Enumerating the files buys the SSN/email floor and nothing else, which is why the widening is
+  two-sided.** Both recognisers match raw file text, which assumes the file IS the document. That holds
+  for a fixture that is its own file and breaks for one that is a string literal, because a literal can
+  spell any character as an escape. Every fixture here is a `.ts` literal, so admitting 50 more files
+  without the other half would have carried the blind spot into all of them instead of closing it.
+  `decodeSourceLiterals` therefore scans the decoded document **in addition to** the raw text, never
+  instead, for source containers only. Proved red before and green after in `src/` as well as `test/`,
+  so it is not merely a consequence of the new root. Only values the raw pass did not itself report are
+  added, deduped against **that pass's own hits** rather than against the raw text: both recognisers
+  are word-boundary anchored, so a value can sit in the file as a substring the raw pass correctly
+  declines to report, and comparing against the text discarded a real escape-spelled SSN.
+
+  **An escaped backslash is consumed first.** A doubled backslash in source is one literal backslash,
+  so a doubled backslash followed by `u002D` decodes to a backslash and that text, not to a dash; a
+  naive global regex replace of the four-hex-digit escape gets that backwards. That ordering rule is
+  exact, but it is a statement about the decoder and **not** a guarantee about hits, and it is written
+  that way deliberately.
+
+  **The view is not a literal parser, and both directions of that are recorded rather than glossed.**
+  It reports on text that is not an escape at all, in a `String.raw` template and in any comment
+  quoting an escape sequence, so the value named can be one the document does not contain. It also
+  misses two ordinary spellings that do evaluate to a dashed SSN: string concatenation, and a line
+  continuation. Recording a false-positive class is only honest if the printed remedy works, and it did
+  not: the allow-list's `ids` set was declared and consulted nowhere, so the only way to clear an SSN
+  hit was to edit the source, which is the "gate whose own remedy leaves it refusing" shape this file
+  refuses in four other places. The floor's dashed-SSN check now consults it, as a whole-value match
+  against a reviewed committed declaration, never a pattern. All of it is pinned by tests.
+
+  **The sweep is now reconciled against an independent enumeration.** The per-root observation rule
+  from the previous change is a floor of ONE file, so declaring `test` a root would otherwise be
+  satisfied by any single file under it while the other 49 went unread: the same defect one level down.
+  A printed denominator is not the remedy and was refuted as one, because a count is derived from the
+  walk and therefore agrees with the walk by construction. Reconciling against `git ls-files` is the
+  only version that can disagree. **Three limits previously recorded as open are closed by it, for
+  tracked files:** a directory missing from inside a root, a root that is itself a symlink to a
+  directory (which the lexical path attribution used to satisfy), and the floor of one. All three
+  printed `OK: no hits` at exit 0 before and refuse at exit 2 now, naming the unread paths.
+
+  **Both rules are kept and neither subsumes the other:** a root with zero tracked files reconciles
+  vacuously and still has to starve. **What it deliberately does not claim** is recorded rather than
+  glossed: an untracked file under a root is walked, read and scanned, so it cannot hide PHI, but its
+  absence is invisible to both rules. The markdown skip and the gitignore filter are shared with the
+  walk, so the rule can never demand a file the walk would refuse to read. A tracked gitlink under a
+  root is demanded like any other tracked path and the printed remedy does not really fit it, which is
+  recorded as an edge rather than guessed at. And `git check-ignore` reports nothing for a path in the index
+  (measured), so a gitignore pattern does not excuse a tracked file, which is pinned because the
+  opposite is the intuitive guess and would open a hole a one-line `.gitignore` could drive through.
+
+  **One file is exempt from the shape passes, by path.** This scanner's own suite carries a dashed SSN
+  and two non-test-domain addresses on purpose, as the positive half of its tests, and sweeping it
+  would red the gate forever. The exemption is a path list and must stay one, because an extension rule
+  cannot tell a file that carries violator literals on purpose from one that carries them by accident.
+  Allow-listing the values instead is refused: the allow-list's email entry is global, so declaring
+  that domain would switch the detector off for the whole corpus while the suite's own positive case
+  asserts that address is reported. **The exemption is applied at the scan, not at the enumeration**, so
+  the file is still walked, still read, and still counts as observed and reconciled. **And it is scoped
+  to the sweep**: naming that file directly still reports its hits, because an unscoped exemption
+  deleted a detection the base had, which is "instead of" where this work may only be "in addition to".
+  The anti-vacuity control scans its exact bytes under another name and gets a hit.
+
+  **The retired-root refusal is now inert for its only entry and is kept anyway.** `test/fixtures` sits
+  under the new `test` root, so the refusal cannot fire from this repository's configuration. That is
+  the silencing its own remedy promises, and the outcome is strictly stronger: a corpus arriving there
+  is walked and scanned rather than refused as unaccountable, and a dangling link there is now refused
+  by name where the previous guard could not see it at all. The machinery is general, so it is
+  exercised against a copy of the scanner with a root retired outside every scan root, rather than left
+  as an untested claim.
+
+  **Two pre-existing minors are folded in.** Exit 1 is reserved for hits, and a directory the walk
+  cannot list (a non-directory root, or an unreadable directory at any depth) and an absent or
+  unreadable allow-list all used to reach node's default handler and exit **1**, printing a stack trace
+  under the code a caller reads as a verdict about PHI. All are exit **2** now, derived from this
+  scanner's own stated contract rather than ported, because siblings disagree with each other on this
+  exact case. Separately, the two direction-specific `invertGem` messages were pinned with a substring
+  match against this repository's own rule; both messages contain both direction tokens, so the pin was
+  weak twice over, and they are now pinned by whole-message equality. A third minor carried by siblings
+  was measured **not open here**: the staged route already runs `--diff-filter=AMTU`, so an unmerged
+  path is already enumerated and refused.
+
+  **Deliberately unchanged:** the `--staged` scope predicate. A staged file under `test/` outside
+  `test/fixtures/` is therefore scanned by CI and not by the pre-commit hook. Nothing regressed, since
+  that path was in neither route before, but the two sets now overlap differently and the pre-commit
+  one is narrower. Widening it changes what a developer's commit is blocked on, which is a decision
+  about the hook rather than the walk. **And no structured detector was added:** a green sweep still
+  means "no SSN/email shapes found", never "no PHI".
+
+  Tests run on throwaway repositories, so no violator is written into the committed corpus, except the
+  one exempt file that already carried them. Several are red against the superseded scanner, and the
+  anti-fabrication and anti-vacuity controls exist so that no case proves merely that a rule never
+  fires.
+
+- d97a3de: Rewrote every em dash out of the package's prose and added a CI gate that keeps them out.
+
+  The em dash is banned across every Cosyte surface, and until now this package carried 1,327 of them: in the README, in the documentation pages, and in the `src/` JSDoc that compiles into the published type declarations and renders on hover in a consumer's editor. All of those are rewritten with a period, a colon, a comma or parentheses. No documented behaviour, code, warning code or type changes.
+
+  Three strings a consumer can observe do change wording, in punctuation only: the two `invertGem` refusal messages, the general `invertGem` fallback message, and the `reason` on a `parseUcum` failure for an unbalanced parenthesis. Each now uses a colon where it used a dash. Diagnostic codes are untouched, and no code was renamed.
+
+  A new check, `pnpm check:no-emdash`, scans every tracked file and every tracked filename, and on a pull request the title, body and commit messages as well. It is zero-dependency Node so that no shell tooling can silently narrow what it reads, it assembles every banned spelling from the character's own codepoint so that it holds its own source to the same rule, and it refuses to report a clean result whenever it cannot prove it read its subject. The dated history at the foot of `CHANGELOG.md` is out of scope on purpose: those entries are byte identical to the tarballs they shipped in.
+
 ## 0.0.11
 
 ### Patch Changes
