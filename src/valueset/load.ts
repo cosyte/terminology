@@ -1,12 +1,12 @@
 /**
- * {@link loadValueSet} — validate and normalize an untrusted FHIR R4 `ValueSet` JSON resource into
+ * {@link loadValueSet}: validate and normalize an untrusted FHIR R4 `ValueSet` JSON resource into
  * the immutable {@link ValueSet} model the `$expand` / `$validate-code` binding operations run over.
  *
  * **Conservative on load** (like {@link ../conceptmap/load.loadConceptMap}, unlike a lenient wire
  * parser): a value set *binds* whether a code is allowed in a clinical slot, so a structurally
  * unusable resource is a typed **fatal** ({@link FATAL_CODES.TERM_VALUESET_MALFORMED}) rather than a
  * silently partial value set that would admit *some* codes and quietly drop others. A `filter`
- * operator the engine does not implement is **not** fatal — the value set loads, and the gap surfaces
+ * operator the engine does not implement is **not** fatal: the value set loads, and the gap surfaces
  * at expansion time as a {@link DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND} diagnostic. Fault
  * messages are **value-free**: they name the resource *path* and the fault, never echo a code value.
  *
@@ -27,7 +27,7 @@ import type {
   ValueSetExpansion,
 } from "./types.js";
 
-/** The FHIR `valueset-toocostly` extension URL — flags a pre-computed expansion as incomplete. */
+/** The FHIR `valueset-toocostly` extension URL: flags a pre-computed expansion as incomplete. */
 const TOO_COSTLY_EXTENSION = "http://hl7.org/fhir/StructureDefinition/valueset-toocostly";
 
 /** Throw a value-free {@link TerminologyError} for a malformed ValueSet at `path`. */
@@ -49,7 +49,7 @@ function loadFilter(raw: unknown, path: string): ConceptSetFilter {
   if (property === undefined || op === undefined || value === undefined) {
     malformed(path, "filter is missing a required 'property', 'op', or 'value'");
   }
-  // `op` is carried verbatim — an operator the engine does not implement is surfaced at expansion
+  // `op` is carried verbatim: an operator the engine does not implement is surfaced at expansion
   // time as TERM_VALUESET_CANNOT_EXPAND, not rejected here (a value set may still be usable via its
   // other components). The cast is safe: unknown strings widen to the not-implemented arm.
   return Object.freeze({ property, op: op as FilterOperator, value });
@@ -97,7 +97,7 @@ function loadComponent(raw: unknown, path: string): ConceptSetComponent {
   }
   // FHIR R4 ValueSet.compose invariants: a `concept`/`filter` selection SHALL name a `system`, and a
   // component SHALL have a `system` or a `valueSet`. A constraint-less component (`{}`) is refused
-  // here — never loaded as a silently "matches everything" set that binding would then admit blindly.
+  // here: never loaded as a silently "matches everything" set that binding would then admit blindly.
   const hasSystem = out.system !== undefined;
   const hasValueSet = out.valueSet !== undefined;
   if ((out.concept !== undefined || out.filter !== undefined) && !hasSystem) {
@@ -173,7 +173,7 @@ function loadExpansion(raw: unknown, path: string): ValueSetExpansion {
  * `truncated` flag). The result is deep-frozen. Anything structurally unusable throws a
  * {@link TerminologyError} carrying {@link FATAL_CODES.TERM_VALUESET_MALFORMED}.
  *
- * @param json - The untrusted resource (typically `JSON.parse` output — hence `unknown`).
+ * @param json - The untrusted resource (typically `JSON.parse` output, hence `unknown`).
  * @returns The immutable, validated {@link ValueSet}.
  * @throws {TerminologyError} `TERM_VALUESET_MALFORMED` when the resource is not a usable ValueSet.
  * @example

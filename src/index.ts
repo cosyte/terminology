@@ -1,5 +1,5 @@
 /**
- * Public entry point for **`@cosyte/terminology`** — a zero-dependency, developer-focused
+ * Public entry point for **`@cosyte/terminology`**: a zero-dependency, developer-focused
  * **terminology engine** for US healthcare code systems.
  *
  * Unlike its sibling `@cosyte/*` packages, this is **not a wire-format parser**: it mirrors the
@@ -12,78 +12,78 @@
  *
  * **Code-system identity and ConceptMap translation:**
  *
- * - {@link resolveSystem} — the code-system identity / canonical-URI resolver (mnemonic | OID → URI).
- * - {@link loadConceptMap} + {@link translate} — the ConceptMap `$translate` engine, with the
+ * - {@link resolveSystem}: the code-system identity / canonical-URI resolver (mnemonic | OID → URI).
+ * - {@link loadConceptMap} + {@link translate}: the ConceptMap `$translate` engine, with the
  *   **never-fabricate / never-invert** invariants: an unmapped source is a typed
  *   {@link TranslateUnmapped}, never a guessed target; a directional map is never run backwards.
  *
  * **The CodeSystem load layer**, with the FHIR `$lookup` / `$validate-code` operations:
  *
- * - {@link loadCodeSystem} — load a **consumer-supplied** release (RRF / CSV / fixed-width / FHIR
+ * - {@link loadCodeSystem}: load a **consumer-supplied** release (RRF / CSV / fixed-width / FHIR
  *   `CodeSystem` JSON) into an immutable model. Ships the loader; **no code-system release**.
- * - {@link lookup} — code → display + properties, carrying status (deprecated / header-not-billable).
- * - {@link validateCode} — is a code a valid member of the system, with its status flags.
+ * - {@link lookup}: code → display + properties, carrying status (deprecated / header-not-billable).
+ * - {@link validateCode}: is a code a valid member of the system, with its status flags.
  *
  * The never-fabricate invariant holds here too: an unknown code is a typed `unknown` / `valid: false`,
  * never a fabricated display or a guessed `valid: true`.
  *
- * **The ValueSet binding layer** — FHIR `$expand` / `$validate-code` over a `compose`:
+ * **The ValueSet binding layer**, FHIR `$expand` / `$validate-code` over a `compose`:
  *
- * - {@link loadValueSet} — load a **consumer-supplied** FHIR `ValueSet` (intensional `compose` and/or
+ * - {@link loadValueSet}: load a **consumer-supplied** FHIR `ValueSet` (intensional `compose` and/or
  *   a pre-computed `expansion`) into an immutable model.
- * - {@link expand} — flatten membership over the supplied {@link CodeSystem}s (`include`/`exclude`,
+ * - {@link expand}: flatten membership over the supplied {@link CodeSystem}s (`include`/`exclude`,
  *   explicit `concept` lists, `is-a`/property `filter`s, referenced value sets), with an honest
  *   `complete` flag: an unresolvable part is a typed `TERM_VALUESET_CANNOT_EXPAND`, never a guess.
- * - {@link validateCodeInValueSet} — binding membership, returning a **decided** `result` only when
+ * - {@link validateCodeInValueSet}: binding membership, returning a **decided** `result` only when
  *   proven and a typed `undetermined` otherwise (a truncated expansion never reads as complete).
  *
- * **The UCUM unit layer** — a hand-rolled UCUM grammar parser + validation + representation
+ * **The UCUM unit layer**: a hand-rolled UCUM grammar parser + validation + representation
  * canonicalization (recognition only, **no** magnitude conversion):
  *
- * - {@link validateUcum} — is a string a valid UCUM unit; if so, its canonical descriptor. An
+ * - {@link validateUcum}: is a string a valid UCUM unit; if so, its canonical descriptor. An
  *   invalid unit is a typed `TERM_UCUM_INVALID`, never a guessed "nearest" unit.
- * - {@link ucumEqual} — do two expressions denote the *same unit* (`N` ≡ `kg.m/s2`), by reducing
+ * - {@link ucumEqual}: do two expressions denote the *same unit* (`N` ≡ `kg.m/s2`), by reducing
  *   both to base dimensions. Not magnitude conversion (`mg/dL` → `mmol/L` is refused).
- * - {@link parseUcum} / {@link reduce} / {@link loadUcumEssence} — the underlying grammar parser,
+ * - {@link parseUcum} / {@link reduce} / {@link loadUcumEssence}: the underlying grammar parser,
  *   dimensional reducer, and the in-memory model of the vendored, verbatim UCUM table.
  *
- * **The crosswalk resolvers** — the never-fabricate/never-invert invariant applied to the
+ * **The crosswalk resolvers**: the never-fabricate/never-invert invariant applied to the
  * published, directional reference maps:
  *
- * - {@link loadGems} + {@link applyGem} — the CMS **ICD-9↔ICD-10 GEMs** (public-domain reference
+ * - {@link loadGems} + {@link applyGem}: the CMS **ICD-9↔ICD-10 GEMs** (public-domain reference
  *   mappings), honoring the steward's Approximate / No-Map / Combination (scenario→choice-list) flags.
  *   A No-Map source is a typed {@link CrosswalkNoMap}; a 1:many source returns the full candidate set.
- * - {@link loadComplexMap} + {@link applyComplexMap} — the NLM **SNOMED CT → ICD-10-CM complex map**
- *   (BYO — **no SNOMED CT refset bundled**), evaluating Map Group / Priority / `IFA` Rule /
+ * - {@link loadComplexMap} + {@link applyComplexMap}: the NLM **SNOMED CT → ICD-10-CM complex map**
+ *   (BYO, **no SNOMED CT refset bundled**), evaluating Map Group / Priority / `IFA` Rule /
  *   Advice / Category against caller-supplied {@link PatientContext}; a rule needing context the
  *   caller lacks is a typed {@link ComplexMapContextRequired}, never a guessed branch.
- * - {@link invertGem} — the never-invert refusal made a first-class, thrown contract
+ * - {@link invertGem}: the never-invert refusal made a first-class, thrown contract
  *   ({@link FATAL_CODES.TERM_MAP_NOT_INVERTIBLE}).
  *
- * **The RxNorm drug relationship graph** — ingredient / brand / clinical-drug / dose-form
+ * **The RxNorm drug relationship graph**: ingredient / brand / clinical-drug / dose-form
  * navigation over a **caller-supplied** RxNorm RRF release:
  *
- * - {@link loadRxNormGraph} — load `RXNCONSO` (concepts, typed by `TTY`), `RXNREL` (directed `RELA`
+ * - {@link loadRxNormGraph}: load `RXNCONSO` (concepts, typed by `TTY`), `RXNREL` (directed `RELA`
  *   edges, normalized to the documented `RXCUI2 ⟶RELA⟶ RXCUI1` direction), and optionally `RXNSAT`
- *   (NDC attributes) into an immutable graph. Ships **no** RxNorm release — BYO.
+ *   (NDC attributes) into an immutable graph. Ships **no** RxNorm release: BYO.
  * - {@link ingredientsOf} / {@link genericFor} / {@link brandsFor} / {@link doseFormsOf} /
- *   {@link consistsOf} / {@link relatedByRela} — graph navigation following **authored** edges only
+ *   {@link consistsOf} / {@link relatedByRela}: graph navigation following **authored** edges only
  *   (the engine never synthesizes an inverse). An absent `RXCUI` is a typed {@link RxNormUnknown}.
- * - {@link resolveNdc} — NDC → `RXCUI` carrying the temporal status and the as-of release; an absent
+ * - {@link resolveNdc}: NDC → `RXCUI` carrying the temporal status and the as-of release; an absent
  *   NDC is a typed {@link NdcUnmapped}, never a guess.
- * - {@link approximateMatch} — the **opt-in, explicitly labeled** similarity path (never the default,
+ * - {@link approximateMatch}: the **opt-in, explicitly labeled** similarity path (never the default,
  *   never an exact code assertion).
  *
  * **What is bundled.** No code-system release is. What is bundled includes the following, named with
  * its copyright:
  *
- * - the **UCUM unit table** (`ucum-essence.xml`, version 2.2, revision-date 2024-06-17) — copyright
+ * - the **UCUM unit table** (`ucum-essence.xml`, version 2.2, revision-date 2024-06-17): copyright
  *   ©1999–2024 Regenstrief Institute, Inc., all rights reserved, reproduced **verbatim** under the
  *   UCUM Copyright Notice and License (https://ucum.org/license), embedded byte-for-byte in the
  *   published build and parsed at runtime; no modified or derivative copy is distributed. The UCUM
- *   Specification is provided "as is" **without warranty of any kind** — see the License for the
+ *   Specification is provided "as is" **without warranty of any kind**: see the License for the
  *   full disclaimer. The complete notice ships with this package at `vendor/ucum/NOTICE.md`.
- * - the **code-system identity facts** ({@link SYSTEM_IDENTITIES}) — OID ↔ canonical-URI pairings,
+ * - the **code-system identity facts** ({@link SYSTEM_IDENTITIES}): OID ↔ canonical-URI pairings,
  *   which identify the systems rather than listing any system's codes.
  * - the **SNOMED CT concepts the crosswalk resolver names**, each with its description: the four
  *   map-category concepts ({@link MAP_CATEGORIES}) a complex-map row's `mapCategoryId` refers to, and

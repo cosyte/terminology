@@ -1,12 +1,12 @@
 /**
  * Property-based + fuzz conformance for the Phase-2 load layer:
  *
- *   1. **Fuzz (roadmap §6, fuzz #1)** — the RRF, CSV, and fixed-width readers never crash, hang, or
+ *   1. **Fuzz (roadmap §6, fuzz #1)**, the RRF, CSV, and fixed-width readers never crash, hang, or
  *      OOM on hostile input: they return a frozen `CodeSystem` (degrading bad rows to typed
- *      warnings) or throw a typed `TerminologyError` — never any other error.
- *   2. **Never fabricate** — `lookup` returns a display drawn verbatim from a loaded concept, or a
+ *      warnings) or throw a typed `TerminologyError`, never any other error.
+ *   2. **Never fabricate**: `lookup` returns a display drawn verbatim from a loaded concept, or a
  *      typed `unknown`; it never invents a display. `validateCode` is `valid: true` **iff** the code
- *      is present — never a guessed `true`.
+ *      is present: never a guessed `true`.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -15,7 +15,7 @@ import fc from "fast-check";
 /**
  * This file declares its own test budget. A property test draws fresh random input every run (this
  * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again — making the property suite the one
+ * box, and the gating coverage run roughly doubles it again: making the property suite the one
  * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
  * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
  * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
@@ -37,7 +37,7 @@ const hostile = fc.string({ maxLength: 400 });
 function isFrozenCs(cs: CodeSystem): void {
   expect(Object.isFrozen(cs)).toBe(true);
   expect(cs.count).toBe(cs.concepts.size);
-  // The concepts map is sealed — a caller cannot inject a fabricated concept past never-fabricate.
+  // The concepts map is sealed: a caller cannot inject a fabricated concept past never-fabricate.
   expect(() => (cs.concepts as Map<string, never>).set("x", undefined as never)).toThrow();
 }
 

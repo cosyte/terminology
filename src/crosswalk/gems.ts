@@ -2,9 +2,9 @@
  * The CMS **ICD-9 ↔ ICD-10 GEMs** (General Equivalence Mappings) loader + applier.
  *
  * The GEMs are **CMS/NCHS public-domain** (US-government work) reference mappings between the ICD-9-CM
- * and ICD-10-CM diagnosis classifications. CMS is emphatic about what they are — *"GEMs are not
+ * and ICD-10-CM diagnosis classifications. CMS is emphatic about what they are: *"GEMs are not
  * crosswalks. They are reference mappings… the raw material from which providers… derive specific
- * applied mappings"* — so this resolver treats a GEM hit as a **candidate**, never an equivalence:
+ * applied mappings"*, so this resolver treats a GEM hit as a **candidate**, never an equivalence:
  *
  * - **Approximate by default.** Position-1 flag: most entries are approximate (source and target are
  *   not identical in meaning). The flag rides through; the engine asserts nothing beyond it.
@@ -39,7 +39,7 @@ import type {
   GemScenario,
 } from "./types.js";
 
-/** The diagnosis GEM No-Map target sentinel — the source has no valid ICD equivalent. */
+/** The diagnosis GEM No-Map target sentinel: the source has no valid ICD equivalent. */
 const NO_DX = "NoDx";
 /** The procedure GEM No-Map target sentinel (accepted so the reader also serves the PCS GEMs). */
 const NO_PCS = "NoPCS";
@@ -50,7 +50,7 @@ function isNoMapSentinel(target: string): boolean {
 }
 
 /**
- * A raw GEM source file, plus the direction it maps and its release version. BYO — the caller
+ * A raw GEM source file, plus the direction it maps and its release version. BYO: the caller
  * supplies the public-domain CMS GEM file content.
  */
 export interface GemSource {
@@ -58,7 +58,7 @@ export interface GemSource {
   readonly content: string;
   /** Which direction this file maps (`"9-to-10"` for `…_I9gem.txt`, `"10-to-9"` for `…_I10gem.txt`). */
   readonly direction: GemDirection;
-  /** The GEM release/version (e.g. `"2018"`), when known — mappings are release-scoped. */
+  /** The GEM release/version (e.g. `"2018"`), when known: mappings are release-scoped. */
   readonly version?: string;
 }
 
@@ -84,7 +84,7 @@ function decodeFlags(raw: string): GemFlags | undefined {
  * Liberal on load: a structurally unusable *line* (not three whitespace-delimited fields, or a
  * malformed 5-digit flag) is **skipped and surfaced** as a {@link GemLoadWarning}, never a
  * partially-parsed entry. An unusable *source* is not possible here (an all-malformed file loads to an
- * empty map with warnings) — there is no fatal for GEM load. Ships **no** GEM content: the entries are
+ * empty map with warnings): there is no fatal for GEM load. Ships **no** GEM content: the entries are
  * the caller's public-domain file.
  *
  * @param source - The {@link GemSource} (raw content + direction + version).
@@ -136,7 +136,7 @@ export function loadGems(source: GemSource): GemMap {
       continue;
     }
     const entry: Writable<GemEntry> = { source: src, flags };
-    // A No-Map row carries the sentinel target and no real code — never surface it as a target.
+    // A No-Map row carries the sentinel target and no real code: never surface it as a target.
     if (!isNoMapSentinel(tgt)) entry.target = tgt;
     const frozen = Object.freeze(entry);
     const list = entries.get(src);
@@ -199,7 +199,7 @@ function buildCombinations(entries: readonly GemEntry[]): readonly GemScenario[]
  * Returns the **full** candidate set (never collapsed to one), with each entry's steward flags; a
  * combination source additionally surfaces its scenario/choice-list structure. A source the steward
  * marked No-Map (`NoDx` sentinel) is a typed {@link CrosswalkNoMap}; a source **absent** from the map
- * is a typed {@link CrosswalkUnmapped} — the two are distinct, and neither is ever a fabricated code.
+ * is a typed {@link CrosswalkUnmapped}: the two are distinct, and neither is ever a fabricated code.
  *
  * @param map - A {@link GemMap} from {@link loadGems}.
  * @param source - The source code (in the map's source classification).
@@ -225,12 +225,12 @@ export function applyGem(map: GemMap, source: string): GemApplyResult {
     return unmapped;
   }
 
-  // Target presence (the `NoDx`/`NoPCS` sentinel is dropped at load) is authoritative for No-Map —
+  // Target presence (the `NoDx`/`NoPCS` sentinel is dropped at load) is authoritative for No-Map:
   // the ground truth for "is there a code to return", decoupled from the flag digit (which is
   // carried on `flags.noMap` for fidelity but, in real CMS data, always agrees with the sentinel).
   const realTargets = all.filter((e) => e.target !== undefined);
   if (realTargets.length === 0) {
-    // Every entry for this source is a No-Map — the steward says it cannot be classified.
+    // Every entry for this source is a No-Map: the steward says it cannot be classified.
     const noMap: CrosswalkNoMap = Object.freeze({
       mapped: false,
       noMap: true,
@@ -257,27 +257,27 @@ export function applyGem(map: GemMap, source: string): GemApplyResult {
  * lookup, not an interpolation**: `GemSource.direction` is typed `GemDirection`, but a JavaScript
  * caller can put any string there, and interpolating it would put an unbounded caller-supplied value
  * into `TerminologyError.message` and `err.stack`. Naming the direction is worth keeping because it
- * tells the caller which file to load instead — so it is kept, from a table the engine owns.
+ * tells the caller which file to load instead, so it is kept, from a table the engine owns.
  */
 const NOT_INVERTIBLE_MESSAGE: ReadonlyMap<string, string> = new Map([
-  ["9-to-10", "GEM map (direction 9-to-10) cannot be inverted — load the 10-to-9 GEM file instead"],
-  ["10-to-9", "GEM map (direction 10-to-9) cannot be inverted — load the 9-to-10 GEM file instead"],
+  ["9-to-10", "GEM map (direction 9-to-10) cannot be inverted: load the 10-to-9 GEM file instead"],
+  ["10-to-9", "GEM map (direction 10-to-9) cannot be inverted: load the 9-to-10 GEM file instead"],
 ]);
 
 /** The message for a map whose `direction` is not one of the two authored GEM directions. */
 const NOT_INVERTIBLE_UNKNOWN_DIRECTION =
-  "GEM map cannot be inverted — load the reverse GEM file instead";
+  "GEM map cannot be inverted: load the reverse GEM file instead";
 
 /**
  * Refuse to invert a directional GEM map. **Always throws** {@link FATAL_CODES.TERM_MAP_NOT_INVERTIBLE}.
  *
  * The never-invert invariant made explicit and discoverable: a forward GEM (9→10) is **not** the
- * inverse of the backward GEM (10→9) — CMS ships them as separate artifacts and *"forward and
+ * inverse of the backward GEM (10→9): CMS ships them as separate artifacts and *"forward and
  * backward mappings are not simply the reverse"*. To resolve the other direction, load
  * the other file with {@link loadGems}; the engine never synthesizes an inverse.
  *
  * @param map - The map an inversion was (incorrectly) requested for.
- * @returns Never — always throws.
+ * @returns Never: always throws.
  * @throws {TerminologyError} `TERM_MAP_NOT_INVERTIBLE`, always.
  * @example
  * ```ts runnable throws

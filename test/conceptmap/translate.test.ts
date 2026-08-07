@@ -38,7 +38,7 @@ function asUnmapped(r: ReturnType<typeof translate>): TranslateUnmapped {
   return r;
 }
 
-describe("translate() — matches", () => {
+describe("translate(): matches", () => {
   it("translates a mapped source to its target with relationship + provenance", () => {
     const r = asMatched(
       translate({ system: "http://hl7.org/fhir/administrative-gender", code: "male" }, GENDER_MAP),
@@ -160,7 +160,7 @@ describe("translate() — matches", () => {
   });
 });
 
-describe("translate() — never fabricate (unmapped)", () => {
+describe("translate(): never fabricate (unmapped)", () => {
   it("surfaces a source with no matching element as unmapped, mode from group.unmapped", () => {
     const r = asUnmapped(
       translate({ system: "http://hl7.org/fhir/administrative-gender", code: "zzz" }, GENDER_MAP),
@@ -231,7 +231,7 @@ describe("translate() — never fabricate (unmapped)", () => {
   });
 });
 
-describe("translate() — never invert", () => {
+describe("translate(): never invert", () => {
   it("does not translate a target-system code back through a forward map", () => {
     // "M" is a TARGET code, not a source code. A forward map must not resolve it.
     const r = translate(
@@ -251,7 +251,7 @@ describe("translate() — never invert", () => {
   });
 });
 
-describe("translate() — a coding with no system", () => {
+describe("translate(): a coding with no system", () => {
   it("best-effort matches across groups but still only reads the source side", () => {
     const r = translate({ code: "male" }, GENDER_MAP);
     expect(nth(asMatched(r).matches, 0).target.code).toBe("M");

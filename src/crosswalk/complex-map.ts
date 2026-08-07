@@ -1,13 +1,13 @@
 /**
- * The **SNOMED CT → ICD-10-CM complex-map** resolver — a rule-based, **BYO**
+ * The **SNOMED CT → ICD-10-CM complex-map** resolver: a rule-based, **BYO**
  * resolver over the caller-supplied complex/extended-map refset. **No SNOMED CT refset or release is
  * bundled**: the engine ships the rule machinery; the caller supplies the map rows from their own
  * SNOMED CT release. (Individual SNOMED CT concepts this resolver *names* are bundled: the
- * map-category concepts a row's `mapCategoryId` refers to — see
- * {@link ../crosswalk/categories.MAP_CATEGORIES} — and the two gender findings a gender `IFA` rule
+ * map-category concepts a row's `mapCategoryId` refers to (see
+ * {@link ../crosswalk/categories.MAP_CATEGORIES}), and the two gender findings a gender `IFA` rule
  * is written against.)
  *
- * The map is *"semi-automated"* by the steward's own statement — 1:many, context-dependent, with
+ * The map is *"semi-automated"* by the steward's own statement, 1:many, context-dependent, with
  * first-class No-Map states. The resolver honours that:
  *
  * - **Map groups are an AND.** A source needing a manifestation *and* an etiology code has two groups;
@@ -16,12 +16,12 @@
  *   whose `IFA` predicate the caller's context satisfies wins.
  * - **Context it wasn't given, it never guesses.** If deciding a group requires an `IFA` predicate
  *   (an age band, a gender) the caller left unspecified, the group is a typed
- *   {@link ComplexMapContextRequired} carrying the candidate rules + advice — never a silently-picked
+ *   {@link ComplexMapContextRequired} carrying the candidate rules + advice: never a silently-picked
  *   branch.
  * - **No-Map is typed.** A `447638001` "cannot be classified" row (or an empty target) is a typed
  *   No-Map, never a fabricated code.
  * - **Advice rides through verbatim.** `CONSIDER LATERALITY`, `EPISODE OF CARE INFORMATION NEEDED`,
- *   manifestation-code advice — carried untouched to the caller.
+ *   manifestation-code advice: carried untouched to the caller.
  * - **Never inverted.** The map is applied SNOMED→ICD-10-CM only; the reverse is a separate artifact.
  *
  * @packageDocumentation
@@ -49,7 +49,7 @@ const SNOMED_FEMALE = "248152002";
 const SNOMED_MALE = "248153007";
 
 /**
- * The discriminated input {@link loadComplexMap} accepts — already-structured refset rows, or a raw
+ * The discriminated input {@link loadComplexMap} accepts: already-structured refset rows, or a raw
  * RF2 tab-delimited extended-map refset the caller exported from their SNOMED release.
  */
 export type ComplexMapInput =
@@ -147,7 +147,7 @@ function parseRf2(content: string): {
  *
  * Liberal on load: a structurally unusable RF2 *row* is skipped and surfaced as a warning; only an
  * unusable *source* (empty content, header missing required columns) is a fatal
- * {@link FATAL_CODES.TERM_CROSSWALK_MALFORMED}. Ships **no** SNOMED CT release or refset — the rows
+ * {@link FATAL_CODES.TERM_CROSSWALK_MALFORMED}. Ships **no** SNOMED CT release or refset: the rows
  * are the caller's, under their own licence.
  *
  * @param input - Structured `rows`, or a raw RF2 extended-map refset `content`.
@@ -250,14 +250,14 @@ function evaluateConjunct(clause: string, context: PatientContext): RuleMatch {
     if (ok === undefined) return "unknown";
     return ok ? "match" : "no-match";
   }
-  // An `IFA` predicate we cannot interpret — never assume it true or false.
+  // An `IFA` predicate we cannot interpret: never assume it true or false.
   return "unknown";
 }
 
 /**
  * Evaluate a `mapRule` against the caller's {@link PatientContext}.
  *
- * A SNOMED→ICD-10-CM map rule can be a **conjunction** of `IFA` predicates joined by `AND` — the map
+ * A SNOMED→ICD-10-CM map rule can be a **conjunction** of `IFA` predicates joined by `AND`: the map
  * uses this for bounded age intervals (`… >= 15 years AND … < 55 years`) and gender+age combinations
  * (`IFA … | Female (finding) | AND IFA … age … < 55 years`). Each conjunct is evaluated and the
  * results combined **fail-safe**: `no-match` if *any* conjunct is a no-match; `unknown` (→
@@ -270,7 +270,7 @@ function evaluateConjunct(clause: string, context: PatientContext): RuleMatch {
  */
 function evaluateRule(rule: string, context: PatientContext): RuleMatch {
   const trimmed = rule.trim();
-  // Unconditional fall-through — always the default branch.
+  // Unconditional fall-through: always the default branch.
   if (/^(OTHERWISE\s+)?TRUE$/.test(trimmed)) return "match";
 
   const conjuncts = trimmed.split(/\s+AND\s+(?=IFA\b)/);
@@ -298,7 +298,7 @@ function resolveGroup(
     const m = evaluateRule(entry.rule, context);
     if (m === "no-match") continue;
     if (m === "unknown") {
-      // We cannot decide this branch without context the caller did not supply — surface, never pick.
+      // We cannot decide this branch without context the caller did not supply: surface, never pick.
       return Object.freeze({
         outcome: "context-required",
         code: "TERM_CROSSWALK_CONTEXT_REQUIRED",
@@ -328,7 +328,7 @@ function resolveGroup(
     if (entry.category !== undefined) resolved.category = entry.category;
     return Object.freeze(resolved);
   }
-  // No rule matched and none was unknown (a map with no TRUE fallback) — refuse to guess.
+  // No rule matched and none was unknown (a map with no TRUE fallback): refuse to guess.
   return Object.freeze({
     outcome: "context-required",
     code: "TERM_CROSSWALK_CONTEXT_REQUIRED",
@@ -340,7 +340,7 @@ function resolveGroup(
 /**
  * Apply a loaded SNOMED→ICD-10-CM complex map to a source concept and patient context.
  *
- * Resolves **each map group** independently (groups are an AND — a source needing multiple ICD-10-CM
+ * Resolves **each map group** independently (groups are an AND, a source needing multiple ICD-10-CM
  * codes has multiple groups) by running its rules in priority order against `context`. A group whose
  * decision needs `IFA` context the caller did not supply is a typed
  * {@link ComplexMapContextRequired}; a `447638001` row is a typed No-Map; every result carries the
@@ -350,7 +350,7 @@ function resolveGroup(
  * @param source - The SNOMED CT source concept id.
  * @param context - The caller-supplied {@link PatientContext} (age / gender). Optional; a missing
  *   field that a rule needs yields a `context-required` group, never a guessed branch.
- * @returns A {@link ComplexMapApplyResult} — per-group resolutions, or a typed absence.
+ * @returns A {@link ComplexMapApplyResult}: per-group resolutions, or a typed absence.
  * @example
  * ```ts
  * import { loadComplexMap, applyComplexMap } from "@cosyte/terminology";

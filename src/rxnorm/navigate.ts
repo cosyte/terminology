@@ -4,7 +4,7 @@
  * a loaded {@link RxNormGraph}. Every query is **fail-safe and never-fabricate**:
  *
  * - a queried `RXCUI` absent from the graph is a typed {@link RxNormUnknown}, never a guessed concept;
- * - a present concept with no such relationship is a {@link RxNormRelated} with **empty** `targets` —
+ * - a present concept with no such relationship is a {@link RxNormRelated} with **empty** `targets`:
  *   an honest, data-grounded "no such edge", distinct from "unknown concept";
  * - navigation follows only **authored** edges by their predicate; the engine **never synthesizes an
  *   inverse** (RxNorm ships both directions as separate rows, so brand→generic follows the authored
@@ -59,7 +59,7 @@ function follow(
     if (!predicates.has(edge.predicate)) continue;
     if (seen.has(edge.object)) continue;
     const target = graph.concepts.get(edge.object);
-    // Only surface a target we actually loaded — an edge to an unloaded concept is a load-completeness
+    // Only surface a target we actually loaded: an edge to an unloaded concept is a load-completeness
     // gap (the caller's release omitted that atom), never fabricated into a placeholder concept.
     if (target !== undefined) {
       out.push(target);
@@ -105,7 +105,7 @@ export function relatedByRela(
 }
 
 /**
- * The **ingredients** of a concept — the concepts it links to by a **direct** `has_ingredient` /
+ * The **ingredients** of a concept: the concepts it links to by a **direct** `has_ingredient` /
  * `has_precise_ingredient` edge in the loaded release.
  *
  * This follows the *authored, direct* edge only (never-fabricate, never a synthesized path), and
@@ -158,7 +158,7 @@ export function ingredientsOf(graph: RxNormGraph, rxcui: string): RxNormNavResul
 }
 
 /**
- * The **generic** form(s) of a branded concept — an `SBD`/`BN`/`BPCK` `tradename_of` its generic. The
+ * The **generic** form(s) of a branded concept: an `SBD`/`BN`/`BPCK` `tradename_of` its generic. The
  * authored forward edge; the engine never inverts a `has_tradename` edge to synthesize this.
  *
  * @param graph - A loaded {@link RxNormGraph}.
@@ -181,7 +181,7 @@ export function genericFor(graph: RxNormGraph, rxcui: string): RxNormNavResult {
 }
 
 /**
- * The **branded** form(s) of a generic concept — an `SCD`/`IN`/`GPCK` that `has_tradename` a brand.
+ * The **branded** form(s) of a generic concept: an `SCD`/`IN`/`GPCK` that `has_tradename` a brand.
  * The authored forward edge; not a synthesized inverse of `tradename_of`.
  *
  * @param graph - A loaded {@link RxNormGraph}.
@@ -203,7 +203,7 @@ export function brandsFor(graph: RxNormGraph, rxcui: string): RxNormNavResult {
 }
 
 /**
- * The **dose form(s)** of a drug — the `DF`/`DFG` concepts it `has_dose_form` / `has_doseformgroup`.
+ * The **dose form(s)** of a drug: the `DF`/`DFG` concepts it `has_dose_form` / `has_doseformgroup`.
  *
  * @param graph - A loaded {@link RxNormGraph}.
  * @param rxcui - The drug concept.
@@ -224,7 +224,7 @@ export function doseFormsOf(graph: RxNormGraph, rxcui: string): RxNormNavResult 
 }
 
 /**
- * The **components** a drug `consists_of` — an `SCD`/`SBD` → its `SCDC`/`SBDC` dose-form components.
+ * The **components** a drug `consists_of`: an `SCD`/`SBD` → its `SCDC`/`SBDC` dose-form components.
  *
  * @param graph - A loaded {@link RxNormGraph}.
  * @param rxcui - The drug concept.
@@ -252,7 +252,7 @@ export function consistsOf(graph: RxNormGraph, rxcui: string): RxNormNavResult {
  *
  * @param graph - A loaded {@link RxNormGraph} (load with `sat` supplied to populate NDC attributes).
  * @param ndc - The NDC (as it appears in the release, e.g. 11-digit).
- * @returns An {@link NdcResult} — a resolution with status + `asOf`, or a typed absence.
+ * @returns An {@link NdcResult}: a resolution with status + `asOf`, or a typed absence.
  * @example
  * ```ts
  * import { loadRxNormGraph, resolveNdc } from "@cosyte/terminology";
@@ -292,7 +292,7 @@ function tokenize(name: string): Set<string> {
   );
 }
 
-/** Jaccard similarity of two token sets in `[0, 1]` — a derived, labeled score, not a clinical claim. */
+/** Jaccard similarity of two token sets in `[0, 1]`: a derived, labeled score, not a clinical claim. */
 function jaccard(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
   if (a.size === 0 || b.size === 0) return 0;
   let inter = 0;
@@ -310,7 +310,7 @@ export interface ApproximateMatchOptions {
 }
 
 /**
- * **Opt-in, explicitly labeled** approximate name matching — find loaded concepts whose
+ * **Opt-in, explicitly labeled** approximate name matching: find loaded concepts whose
  * names are token-similar to `query`. This is **never** the default resolution path and its results
  * are **never** an exact code assertion: every candidate is marked `approximate: true` with a derived
  * {@link RxNormApproximateMatch.score}. A caller opts in by calling this function explicitly.

@@ -1,9 +1,9 @@
 /**
- * Synthetic RxNorm RRF fixture builders — construct rows in the **real** `RXNCONSO` / `RXNREL` /
+ * Synthetic RxNorm RRF fixture builders: construct rows in the **real** `RXNCONSO` / `RXNREL` /
  * `RXNSAT` wire format (pipe-delimited, reserved trailing pipe) by column index, so a fixture can
  * never silently drift from the grounded column layout. The **rows are synthetic assemblies** the
  * test builds; some tests use **real public-domain RxNorm RXCUIs** (e.g. `29046`, `314076`) purely
- * **illustratively** — RxNorm's normalized identifiers/names are public-domain and freely usable
+ * **illustratively**: RxNorm's normalized identifiers/names are public-domain and freely usable
  * (roadmap §5), and the *shipped* package bundles none of this: its `src/` examples are hand-built
  * rows, mostly over synthetic `"1"`/`"2"` identifiers. NDCs here are synthetic placeholders. No
  * patient data appears anywhere (not PHI).
@@ -39,7 +39,7 @@ export function consoRow(o: {
 
 /**
  * Build one `RXNREL.RRF` row (16 columns + reserved trailing pipe). Given the **semantic** reading
- * `subject ⟶rela⟶ object`, the row places `object` in `RXCUI1` and `subject` in `RXCUI2` — the
+ * `subject ⟶rela⟶ object`, the row places `object` in `RXCUI1` and `subject` in `RXCUI2`: the
  * documented direction convention (RELA is the relationship RXCUI2 has to RXCUI1).
  */
 export function relRow(o: { subject: string; rela: string; object: string }): string {

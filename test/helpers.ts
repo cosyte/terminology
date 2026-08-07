@@ -3,7 +3,7 @@
  * read a known element without a non-null assertion (banned by the lint config).
  */
 
-/** Return the element at `i`, throwing if it is absent — narrows away the `| undefined`. */
+/** Return the element at `i`, throwing if it is absent: narrows away the `| undefined`. */
 export function nth<T>(arr: readonly T[], i: number): T {
   const v = arr[i];
   if (v === undefined) throw new Error(`test: no element at index ${String(i)}`);

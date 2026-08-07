@@ -1,15 +1,15 @@
 /**
- * The **RFC-4180 CSV** reader — the one release format that needs real quote handling (LOINC's
+ * The **RFC-4180 CSV** reader: the one release format that needs real quote handling (LOINC's
  * `Loinc.csv`). Fields may be quoted with `"`; inside a quoted field a literal quote is escaped as
  * `""`, and commas and newlines are data. Hand-rolled, zero-dep (the CSV surface is small and
  * well-specified enough to hand-roll rather than pull a dependency).
  *
  * **Liberal on load:** a data row with too few fields to reach a configured column is **skipped and
- * surfaced** as a `TERM_CSV_MALFORMED` warning; an unterminated final quote is surfaced too — never a
+ * surfaced** as a `TERM_CSV_MALFORMED` warning; an unterminated final quote is surfaced too: never a
  * crash. A configured code/display header that is **absent from the header row** is a *fatal*
  * (`TERM_CODESYSTEM_MALFORMED`): the source config does not match the file, so nothing loads cleanly.
  * That fatal names the missing column's **role** (`code`, `display`, `status`, a property column)
- * from a frozen table, never the column name you configured — the message reaches `err.stack`, and a
+ * from a frozen table, never the column name you configured: the message reaches `err.stack`, and a
  * column name is consumer-supplied text of unbounded length.
  *
  * @packageDocumentation
@@ -22,7 +22,7 @@ import type { Concept, CsvSource, LoadWarning, Property } from "./types.js";
 
 /** The lenient RFC-4180 parse result: the rows, plus whether a quoted field was left unterminated. */
 interface CsvParse {
-  /** The parsed rows, each an array of field strings (untrimmed — CSV whitespace can be significant). */
+  /** The parsed rows, each an array of field strings (untrimmed, CSV whitespace can be significant). */
   readonly rows: string[][];
   /** True when a quoted field opened but never closed before end-of-input (a malformed final field). */
   readonly unterminatedQuote: boolean;
@@ -32,7 +32,7 @@ interface CsvParse {
  * Parse RFC-4180 CSV content into rows and fields, **lenient** in the one place a strict RFC-4180
  * parser is dangerous: a `"` is a field-quote **only at the start of a field**. A stray/unescaped
  * quote in the *middle* of an otherwise-unquoted field (e.g. an inch mark, `12" fitting`) is a
- * **literal character**, not a quote-open — so it can never flip quote-mode and silently swallow the
+ * **literal character**, not a quote-open, so it can never flip quote-mode and silently swallow the
  * rest of the file into one garbled field. Inside a quoted field, `""` is an escaped quote and commas
  * and newlines are literal data. An opened quote that never closes before EOF is reported via
  * {@link CsvParse.unterminatedQuote} (surfaced by {@link parseCsvSource}), never swallowed.
@@ -121,7 +121,7 @@ export function parseCsv(content: string): string[][] {
 type CsvColumnRole = "code" | "display" | "status" | "property";
 
 /**
- * The frozen fatal message per {@link CsvColumnRole}. A **table lookup, not an interpolation** — the
+ * The frozen fatal message per {@link CsvColumnRole}. A **table lookup, not an interpolation**: the
  * factory below takes no value parameter, so no caller-supplied or document-derived string can reach
  * `TerminologyError.message` (and from there `err.stack`, and from there an error reporter) however
  * long or however hostile it is.
@@ -182,7 +182,7 @@ export function parseCsvSource(source: CsvSource): {
   }
   const warnings: LoadWarning[] = [];
   if (unterminatedQuote) {
-    // A quoted field opened but never closed before EOF — the final logical row is malformed. Surface
+    // A quoted field opened but never closed before EOF: the final logical row is malformed. Surface
     // it (never silently keep a garbled field), pointing at the last parsed row.
     warnings.push(
       Object.freeze({

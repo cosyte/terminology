@@ -10,7 +10,7 @@ import { UCUM_ESSENCE_XML } from "../../src/ucum/essence-data.generated.js";
  * Drift guard: the embedded {@link UCUM_ESSENCE_XML} must be **byte-for-byte identical** to the
  * vendored `vendor/ucum/ucum-essence.xml`. The UCUM License forbids modifying the Work's content
  * (`vendor/ucum/NOTICE.md`); this test proves the generated module ships the table **verbatim**. If
- * it fails, re-run `pnpm gen:ucum` (after intentionally updating the vendored file) — never hand-edit
+ * it fails, re-run `pnpm gen:ucum` (after intentionally updating the vendored file): never hand-edit
  * the generated module.
  */
 describe("UCUM essence-data (generated, verbatim)", () => {

@@ -13,7 +13,7 @@ function expectResolved(result: ReturnType<typeof resolveSystem>): SystemIdentit
   return result;
 }
 
-describe("resolveSystem() — grounded identities", () => {
+describe("resolveSystem(): grounded identities", () => {
   it("resolves a canonical URI to itself (case-insensitive)", () => {
     expect(expectResolved(resolveSystem("http://loinc.org")).url).toBe("http://loinc.org");
     expect(expectResolved(resolveSystem("HTTP://LOINC.ORG")).url).toBe("http://loinc.org");
@@ -64,7 +64,7 @@ describe("resolveSystem() — grounded identities", () => {
   });
 });
 
-describe("resolveSystem() — HL7 v2 table family (structural)", () => {
+describe("resolveSystem(): HL7 v2 table family (structural)", () => {
   it("resolves a v2 table URI to its identity with the grounded OID pattern", () => {
     const r = expectResolved(resolveSystem("http://terminology.hl7.org/CodeSystem/v2-0203"));
     expect(r.url).toBe("http://terminology.hl7.org/CodeSystem/v2-0203");
@@ -98,7 +98,7 @@ describe("resolveSystem() — HL7 v2 table family (structural)", () => {
   });
 });
 
-describe("resolveSystem() — never guesses", () => {
+describe("resolveSystem(): never guesses", () => {
   it("returns a typed unknown for an unrecognized URI", () => {
     const r = resolveSystem("http://example.com/nope");
     expect(isUnknownSystem(r)).toBe(true);

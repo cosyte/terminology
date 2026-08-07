@@ -1,12 +1,12 @@
 /**
- * The **RRF** (Rich Release Format) reader — the pipe-delimited layer shared by RxNorm (`RXNCONSO`/
+ * The **RRF** (Rich Release Format) reader: the pipe-delimited layer shared by RxNorm (`RXNCONSO`/
  * `RXNSAT`) and UMLS (`MRCONSO`/`MRSAT`). One parameterized reader serves both: they share the RRF
- * shape — fields separated by `|`, with **one trailing pipe per line** (grounded firsthand on the
+ * shape: fields separated by `|`, with **one trailing pipe per line** (grounded firsthand on the
  * UMLS Reference Manual, `https://www.ncbi.nlm.nih.gov/books/NBK9685/`: *"values … are separated by
  * vertical bars (|)"* and each row ends with *"a vertical bar and line termination"*).
  *
  * **Liberal on load**: a row too short to reach a configured column, or with an empty
- * code, is **skipped and surfaced** as a `TERM_RRF_MALFORMED_ROW` warning — never kept as a partial
+ * code, is **skipped and surfaced** as a `TERM_RRF_MALFORMED_ROW` warning: never kept as a partial
  * concept, never a crash. RRF reserves `|` as the delimiter (fields never contain a literal pipe), so
  * a plain split is exact.
  *
@@ -32,12 +32,12 @@ import type { Concept, LoadWarning, Property, RrfSource } from "./types.js";
  */
 export function parseRrfLine(line: string): readonly string[] {
   const cells = line.split("|");
-  // RRF terminates each row with a reserved trailing '|', yielding one trailing empty cell — drop it.
+  // RRF terminates each row with a reserved trailing '|', yielding one trailing empty cell: drop it.
   if (cells.length > 0 && cells[cells.length - 1] === "") cells.pop();
   return cells;
 }
 
-/** The highest column index the mapping references — a row must have at least this many cells. */
+/** The highest column index the mapping references: a row must have at least this many cells. */
 function maxColumn(source: RrfSource): number {
   const { code, display, status, properties } = source.columns;
   let max = Math.max(code, display, status ?? 0);
@@ -55,7 +55,7 @@ function cell(cells: readonly string[], index: number): string | undefined {
  * Parse an {@link RrfSource} into concepts (first row per code wins) and skipped-row warnings.
  *
  * A code that recurs across rows (RRF repeats a code once per atom/attribute) keeps its **first**
- * occurrence — a documented v1 limitation: preferred-atom selection (`TS`/`STT`/`ISPREF`) and
+ * occurrence, a documented v1 limitation: preferred-atom selection (`TS`/`STT`/`ISPREF`) and
  * attribute merging are later work. The result is data only; {@link loadCodeSystem} freezes it.
  *
  * @param source - The RRF source.
@@ -84,7 +84,7 @@ export function parseRrf(source: RrfSource): {
   const lines = source.content.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i] ?? "";
-    if (raw === "") continue; // blank line (e.g. trailing newline) — not a row
+    if (raw === "") continue; // blank line (e.g. trailing newline): not a row
     const lineNo = i + 1;
     const cells = parseRrfLine(raw);
     if (cells.length < needCols) {

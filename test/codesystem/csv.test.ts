@@ -59,7 +59,7 @@ describe("parseCsv (RFC-4180)", () => {
 });
 
 // Synthetic LOINC-shaped CSV (columns LOINC_NUM, LONG_COMMON_NAME, STATUS, CLASS). Synthetic
-// reference data — no real LOINC content bundled.
+// reference data: no real LOINC content bundled.
 const LOINC_CSV: CsvSource = {
   format: "csv",
   content: [
@@ -191,7 +191,7 @@ describe("parseCsvSource via loadCodeSystem", () => {
       content: 'CODE,DISP\nA,Alpha\nB,12" fitting\nC,Gamma\nD,Delta',
       columns: { code: "CODE", display: "DISP" },
     });
-    // All four data rows survive — none swallowed by the stray quote.
+    // All four data rows survive: none swallowed by the stray quote.
     expect(cs.count).toBe(4);
     const b = lookup(cs, "B");
     if (!b.found) throw new Error("expected found");

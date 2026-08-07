@@ -9,10 +9,10 @@ sidebar_position: 1
 Common symptoms when integrating `@cosyte/terminology`, and how to read what the engine is telling
 you.
 
-## `translate` returned `unmapped` — where's my code?
+## `translate` returned `unmapped`: where's my code?
 
 That is the engine working as designed. When a source concept has no target in the supplied map, the
-result is a **typed `unmapped`** — never a guessed code:
+result is a **typed `unmapped`**, never a guessed code:
 
 ```ts
 const result = translate(coding, map);
@@ -24,7 +24,7 @@ if (result.unmapped) {
 ```
 
 If the map declares a `group.unmapped` fallback, its `mode` (and, for `fixed`, `fixedTarget`, or for
-`other-map`, `otherMapUrl`) is **reported** on the result — but never silently applied. You decide
+`other-map`, `otherMapUrl`) is **reported** on the result, but never silently applied. You decide
 whether to trust a fallback.
 
 ## `resolveSystem` returned `{ unknown: true }`
@@ -45,7 +45,7 @@ loaded partially and translating some codes while silently dropping others.
 Not through a forward map. Steward maps are directional and **non-invertible**, so `translate` only
 matches the map's source side. Reverse translation needs an explicit inverse `ConceptMap`.
 
-## `validateCodeInValueSet` returned `undetermined` — is my code a member or not?
+## `validateCodeInValueSet` returned `undetermined`: is my code a member or not?
 
 The engine could not **prove** membership either way, so it refuses to guess. This happens when a part
 of the value set cannot be evaluated: an intensional `filter`/`system` include whose code system you
@@ -61,13 +61,13 @@ if (r.undetermined) {
 ```
 
 Supply the missing `CodeSystem` (or referenced `ValueSet`) in the context and re-check. A truncated
-server expansion must be re-fetched in full — the engine never treats a truncated snapshot as complete
+server expansion must be re-fetched in full: the engine never treats a truncated snapshot as complete
 membership (a false "not a member" is a clinical error).
 
 ## `expand` returned `complete: false`
 
-The `contains` set is a **lower bound**, not exhaustive membership — some intensional part could not be
-computed (see above). Read each diagnostic's `path` — `"compose.include[2]"`, `"expansion"` — to
+The `contains` set is a **lower bound**, not exhaustive membership: some intensional part could not be
+computed (see above). Read each diagnostic's `path` (`"compose.include[2]"`, `"expansion"`) to
 find the part that did not resolve in your own resource; do **not** treat the partial `contains` as
 the whole value set.
 
@@ -75,13 +75,13 @@ the whole value set.
 
 The `message`, `detail` and `reason` **fields** are **value-free**: nothing you configured and nothing
 your release or resource contained reaches one, or an `err.stack`, at any length. The locus beside
-them is a line number, an index path into your own resource, or a fixed token — never a URI or a
+them is a line number, an index path into your own resource, or a fixed token: never a URI or a
 column name. `String(err)` is safe.
 
 **The objects those codes ride on are not the same thing, and this is the part to get right.** A
 `TERM_CODE_UNKNOWN`, `TERM_TRANSLATE_UNMAPPED`, `TERM_CROSSWALK_UNMAPPED`, `TERM_RXNORM_UNKNOWN_RXCUI`
-or `TERM_RXNORM_NDC_UNMAPPED` outcome names **what you asked about** — `input`, `source`, `rxcui`,
-`ndc`, `coding` — because that is how a never-fabricate answer says which thing it refused to guess.
+or `TERM_RXNORM_NDC_UNMAPPED` outcome names **what you asked about** (`input`, `source`, `rxcui`,
+`ndc`, `coding`) because that is how a never-fabricate answer says which thing it refused to guess.
 A loaded model likewise carries the displays and canonical URIs from your release. So
 `JSON.stringify(result)` into a log is a decision about PHI, and a **code in patient context** can be
 PHI: log the `code` and the locus, log a value only if you would log the code you passed in, and
@@ -94,27 +94,27 @@ never the surrounding record.
 > `compose` / `$expand` / binding operations, UCUM validation, the crosswalk resolvers, and the
 > RxNorm drug graph.
 
-- **BYO data** — `$expand` and binding operate over the `CodeSystem` releases and referenced
+- **BYO data**: `$expand` and binding operate over the `CodeSystem` releases and referenced
   `ValueSet`s you supply in the `ExpansionContext`; an intensional part with no supplied code system is
   a typed `TERM_VALUESET_CANNOT_EXPAND`, never a fabricated member.
-- **Subsumption is the release's own hierarchy** — `is-a` / `descendent-of` read the loaded code
+- **Subsumption is the release's own hierarchy**: `is-a` / `descendent-of` read the loaded code
   system's `parent` edges (nested `concept`s or an explicit `parent` property). Subsumption across
   two separate releases is not computed.
-- **Intensional filters are best-effort** — `is-a` / `descendent-of` / `is-not-a` / `=` / `in` /
+- **Intensional filters are best-effort**: `is-a` / `descendent-of` / `is-not-a` / `=` / `in` /
   `not-in` / `exists` are implemented; `regex` / `generalizes` surface as `TERM_VALUESET_CANNOT_EXPAND`.
-- **RxNorm graph is BYO** — `loadRxNormGraph` operates over the RxNorm RRF release you supply; the
+- **RxNorm graph is BYO**: `loadRxNormGraph` operates over the RxNorm RRF release you supply; the
   engine bundles **no** RxNorm release. NDC↔RXCUI resolution is release-scoped and carries the as-of
   release; obsolete/alien NDC statuses come from RxNav NDC-history data (a differential source), not the
   base RRF concept files, and are never fabricated. Approximate matching is opt-in and always labeled.
   An `RXCUI` whose supplied atoms could not establish a term type is left out of the graph and
   reported as `TERM_RXNORM_UNTYPED_CONCEPT` on `graph.warnings`, never loaded under a synonym's
   `TTY`; check that list if a concept you expected reads as `TERM_RXNORM_UNKNOWN_RXCUI`.
-- **No bundled code-system release** — every code-system release is bring-your-own, including the
+- **No bundled code-system release**: every code-system release is bring-your-own, including the
   content packs (RxNorm Prescribable, ICD-10-CM) and SNOMED CT / CPT / LOINC / UMLS / VSAC.
 - **What *is* bundled** includes the UCUM unit table (`ucum-essence.xml` v2.2, copyright © Regenstrief
   Institute, Inc., reproduced verbatim under [https://ucum.org/license](https://ucum.org/license); notice at
   `vendor/ucum/NOTICE.md`, which ships with the package), the code-system identity pairings, the
-  SNOMED CT concepts the crosswalk resolver names — the map-category concepts and the two gender
+  SNOMED CT concepts the crosswalk resolver names: the map-category concepts and the two gender
   findings (SNOMED CT is copyright © International Health Terminology Standards Development
   Organisation), and RxNorm's relationship and term-type names (`RELA`, `RELA_INVERSE`,
   `TERM_TYPES`), published by the U.S. National Library of Medicine. Individual SNOMED CT, ICD-10-CM
@@ -124,5 +124,5 @@ never the surrounding record.
   `$validate-code`, `$expand`, `$translate` and the crosswalk and RxNorm resolvers need one you
   supply.
 
-The **API Reference** always reflects exactly what this release ships — treat it as the source of
+The **API Reference** always reflects exactly what this release ships: treat it as the source of
 truth over any prose above.

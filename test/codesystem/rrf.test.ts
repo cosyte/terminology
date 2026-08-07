@@ -29,7 +29,7 @@ describe("parseRrfLine", () => {
 // A tiny synthetic RxNorm-RXNCONSO-shaped fixture. RXNCONSO's 18 columns are RXCUI(0), LAT(1),
 // TS(2), LUI(3), STT(4), SUI(5), ISPREF(6), RXAUI(7), SAUI(8), SCUI(9), SDUI(10), SAB(11), TTY(12),
 // CODE(13), STR(14), SRL(15), SUPPRESS(16), CVF(17). Built column-by-column so indices are exact.
-// Synthetic reference data — no real RxNorm content bundled.
+// Synthetic reference data: no real RxNorm content bundled.
 function rxnconso(over: Partial<Record<number, string>>): string {
   const cells = Array.from({ length: 18 }, (_, i) => over[i] ?? "");
   return `${cells.join("|")}|`; // reserved trailing pipe
@@ -49,7 +49,7 @@ const RXNCONSO: RrfSource = {
       14: "Ibuprofen",
       16: "O",
     }),
-    // duplicate RXCUI 1 (a synonym atom) — first row wins
+    // duplicate RXCUI 1 (a synonym atom): first row wins
     rxnconso({ 0: "1", 1: "ENG", 12: "SY", 13: "1", 14: "ASA", 16: "N" }),
     // missing code (RXCUI blank) ⇒ skipped
     rxnconso({ 1: "ENG", 11: "RXNORM", 12: "IN", 14: "NoCode", 16: "N" }),

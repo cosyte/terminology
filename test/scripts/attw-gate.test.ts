@@ -1,5 +1,5 @@
 /**
- * Tests for scripts/attw.mjs — the wrapper that makes the `attw` publish gate
+ * Tests for scripts/attw.mjs: the wrapper that makes the `attw` publish gate
  * report its own failure. That script's docblock is the authoritative description
  * of the gate; this file pins it against the real binary rather than restating it.
  *
@@ -7,13 +7,13 @@
  *
  *  1. THE UPSTREAM BEHAVIOUR THE WRAPPER EXISTS FOR. `attw` prints "This package
  *     does not contain types." and exits **0**. If a future `attw` upgrade fixes
- *     that exit code or rewords the sentence, this test reds — which is the point.
+ *     that exit code or rewords the sentence, this test reds, which is the point.
  *     A guard that silently stops matching is worse than no guard, and this is the
  *     one net in `attw.mjs` that depends on a string.
  *  2. That the wrapper turns that exit 0 into a failure.
  *  3. That the preflight catches a declared-but-missing artifact, which is the
  *     shape the 2026-08-01 false green actually took (a `dist/` removed or not yet
- *     written underneath the gate) — and that it catches the two promises it used
+ *     written underneath the gate), and that it catches the two promises it used
  *     to walk past: a `bin`, and a path written without a leading `./`. Both of
  *     those fixtures are measured to leave BARE `attw` at exit 0, so each one is a
  *     route the gate was green on, not a redundant assertion.
@@ -21,12 +21,12 @@
  *     wrapper is transparent: same exit status as `attw` itself, and green. A gate
  *     that only ever fails is not a gate, and a false red here would cost every
  *     later run an hour.
- *  5. THE GATE'S MOST BASIC OBLIGATION — that a real `attw` failure still fails.
+ *  5. THE GATE'S MOST BASIC OBLIGATION: that a real `attw` failure still fails.
  *     Without this, every other test here would pass on a wrapper that swallowed
  *     attw's own exit status, because net 2 reds the untyped fixture regardless.
  *  6. THE ARGUMENT ALLOW-LIST. The wrapper forwards `--profile` and
  *     `--no-definitely-typed` and refuses everything else, so the refusal cases
- *     below are not an enumeration of blinding spellings — they are samples of a
+ *     below are not an enumeration of blinding spellings: they are samples of a
  *     total rule. Three kinds are represented: grammars a deny-list of option
  *     names cannot see (`-fjson`, `-Pf json`); options that DO blind the gate,
  *     `--help` and `--version` among them, which are invisible to both nets
@@ -50,13 +50,13 @@
  *     shim, is a SHARPENING rather than a catch of its own: a gate forwarding its
  *     whole argv is already refused, many ways over, by point 6.
  *
- * The fixtures are minimal throwaway packages in a temp dir — nothing about this
+ * The fixtures are minimal throwaway packages in a temp dir: nothing about this
  * repo's own build, so the test does not need one and cannot race one. `attw` is
  * invoked with `--no-definitely-typed`, which the wrapper forwards. Stated exactly
  * as `scripts/attw.mjs` states it, because two copies of one sentence is how this
  * guard drifted in the first place: that argument suppresses the DefinitelyTyped
- * lookup, which only exists on the `--from-npm` path; on `--pack` — the path used
- * throughout this file — it is inert. It is allowed because this suite passes it,
+ * lookup, which only exists on the `--from-npm` path; on `--pack` (the path used
+ * throughout this file) it is inert. It is allowed because this suite passes it,
  * and nothing else does.
  *
  * SECURITY: every subprocess call uses spawnSync with array args. No exec, no
@@ -76,7 +76,7 @@ const UNTYPED = "This package does not contain types.";
 const OFFLINE = ["--no-definitely-typed"];
 // Each case below that reaches `attw` shells out to `attw --pack`, which runs a real
 // `npm pack`; two of those in one test comfortably exceeds the suite default, which is
-// Vitest's own 5 s (`vitest.config.ts` deliberately sets no global timeout — read the
+// Vitest's own 5 s (`vitest.config.ts` deliberately sets no global timeout, read the
 // docblock there before adding one). That is genuinely slow work rather than a fixed
 // start-up tax, so it is bounded here, per-test, instead of being traded for a raised
 // global that every fast test would inherit.
@@ -107,17 +107,17 @@ let root: string;
 let typesNotPacked: string;
 /** A package whose `package.json` points at a `dist/` that was never built. */
 let noBuild: string;
-/** A well-formed dual ESM/CJS package — the negative control. */
+/** A well-formed dual ESM/CJS package: the negative control. */
 let wellFormed: string;
 /** A package with a real attw problem: `require` resolves to ESM. */
 let attwFails: string;
-/** Declarations present, JS entry point missing — attw itself is green on this. */
+/** Declarations present, JS entry point missing: attw itself is green on this. */
 let jsMissing: string;
-/** Well-formed types, plus a `bin` the build never produced — attw is green on this. */
+/** Well-formed types, plus a `bin` the build never produced: attw is green on this. */
 let binMissing: string;
 /** Same, with `bin` written as a bare string rather than a command map. */
 let binStringMissing: string;
-/** A missing `main`, declared without the optional leading `./` — attw is green. */
+/** A missing `main`, declared without the optional leading `./`: attw is green. */
 let barePathMissing: string;
 /** A package whose `attw` binary is a shim that prints the argv it was handed. */
 let argvProbe: string;
@@ -212,7 +212,7 @@ beforeAll(() => {
     { "index.d.ts": "export declare const a: number;\n" },
   );
 
-  // Types intact and packed, so attw has nothing to say — the only broken promise
+  // Types intact and packed, so attw has nothing to say: the only broken promise
   // is the command, which attw does not look at.
   binMissing = join(root, "bin-missing");
   writePkg(
@@ -344,7 +344,7 @@ describe("scripts/attw.mjs", () => {
     expect(r.out).toContain("./dist/index.d.ts");
     expect(r.out).toContain("missing");
     // The preflight reads the manifest and never the tarball, so it states no
-    // counterfactual about attw's exit code — see the docblock in scripts/attw.mjs.
+    // counterfactual about attw's exit code: see the docblock in scripts/attw.mjs.
     // A sentence claiming one was measured false in two different directions before
     // it was deleted, so this asserts its absence rather than its wording.
     expect(r.out).not.toMatch(/EXITED \d/);
@@ -422,8 +422,8 @@ describe("the preflight walks every promise in the manifest", () => {
     "reds on a path declared without a leading ./, where attw is green",
     () => {
       // `"main": "dist/index.js"` is legal. It used to be skipped by the preflight
-      // silently, and attw does not gate JavaScript — measured, bare attw exits 0
-      // here — so the gate was green over a manifest promising a file that does not
+      // silently, and attw does not gate JavaScript (measured, bare attw exits 0
+      // here), so the gate was green over a manifest promising a file that does not
       // exist. The declared `"types": "index.d.ts"` resolves, which is what keeps
       // net 2 out of this case.
       const bare = runAttw(barePathMissing);
@@ -498,7 +498,7 @@ describe("the argument allow-list", () => {
     "--config-path is refused, and a real config file is what makes that load-bearing",
     () => {
       // The path this repo used to pass in a test named a file that did not exist,
-      // which blinds NOTHING — readConfig() swallows the ENOENT and the sentence is
+      // which blinds NOTHING: readConfig() swallows the ENOENT and the sentence is
       // still printed. Both halves are pinned here: the real file blinds, the
       // missing one does not, and the wrapper refuses the option either way.
       const dir = join(root, "config-path-real");
@@ -548,9 +548,9 @@ describe("the argument allow-list", () => {
       // pinned against the argv probe, in the block below.
       //
       // Asserting an exit code alone would not show that. The ESM-only fixture is
-      // the one that answers differently per profile — measured on this binary,
+      // the one that answers differently per profile (measured on this binary,
       // bare attw exits 1 on it under the default `strict` and 0 under
-      // `esm-only` — so a dropped value (attw errors on a `--profile` with no
+      // `esm-only`), so a dropped value (attw errors on a `--profile` with no
       // argument) and a refused option (the gate dies) both red here.
       expect(runWrapper(attwFails).code).not.toBe(0);
       for (const extra of [["--profile", "esm-only"], ["--profile=esm-only"]]) {
@@ -587,7 +587,7 @@ describe("the argument allow-list", () => {
           ".attw.json": JSON.stringify({ quiet: true }),
         },
       );
-      // Bare attw takes the config and goes silent — exit 0 over an untyped pack.
+      // Bare attw takes the config and goes silent: exit 0 over an untyped pack.
       const bare = runAttw(dir);
       expect(bare.code).toBe(0);
       expect(bare.out).not.toContain(UNTYPED);

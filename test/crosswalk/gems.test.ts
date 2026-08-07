@@ -1,6 +1,6 @@
 /**
  * Tests for the CMS ICD-9↔ICD-10 GEMs loader + applier. All fixtures are **synthetic rows in the
- * CMS GEM wire format** (`source target flags`) — the format, not real clinical mappings; no GEM
+ * CMS GEM wire format** (`source target flags`): the format, not real clinical mappings; no GEM
  * content is bundled or reproduced.
  */
 
@@ -32,7 +32,7 @@ describe("loadGems", () => {
     expect(approx.flags.raw).toBe("10000");
   });
 
-  it("is liberal on load — skips and surfaces malformed rows, never partial", () => {
+  it("is liberal on load: skips and surfaces malformed rows, never partial", () => {
     const gems = loadGems({
       direction: "9-to-10",
       content: "0010 A000 00000\nbadrow\n25000 E119 ABCDE\n7 X 999\n",
@@ -52,7 +52,7 @@ describe("loadGems", () => {
   });
 });
 
-describe("applyGem — matched, 1:many never collapsed", () => {
+describe("applyGem: matched, 1:many never collapsed", () => {
   it("returns the full candidate set for a 1:many source, in file order", () => {
     const gems = loadGems({
       direction: "9-to-10",
@@ -73,7 +73,7 @@ describe("applyGem — matched, 1:many never collapsed", () => {
   });
 });
 
-describe("applyGem — No-Map is first-class, never a fabricated target", () => {
+describe("applyGem: No-Map is first-class, never a fabricated target", () => {
   it("returns a typed No-Map for a NoDx sentinel source", () => {
     const gems = loadGems({ direction: "9-to-10", content: "V290 NoDx 11000\n" });
     const r = applyGem(gems, "V290");
@@ -96,7 +96,7 @@ describe("applyGem — No-Map is first-class, never a fabricated target", () => 
   });
 });
 
-describe("applyGem — combination clusters (scenario → choice-list)", () => {
+describe("applyGem: combination clusters (scenario → choice-list)", () => {
   it("surfaces scenario/choice-list structure so a caller can build valid clusters", () => {
     // One ICD-9 source needing a combination: scenario 1 has two choice lists; pick one target
     // from each choice list to form a valid cluster. Combination flag (position 3) == 1.
@@ -148,7 +148,7 @@ describe("applyGem — combination clusters (scenario → choice-list)", () => {
   });
 });
 
-describe("invertGem — the never-invert refusal is a first-class thrown contract", () => {
+describe("invertGem: the never-invert refusal is a first-class thrown contract", () => {
   it("always throws TERM_MAP_NOT_INVERTIBLE", () => {
     const gems = loadGems({ direction: "9-to-10", content: "0010 A000 00000\n" });
     expect(() => invertGem(gems)).toThrow(TerminologyError);
@@ -176,7 +176,7 @@ describe("invertGem — the never-invert refusal is a first-class thrown contrac
     } catch (err) {
       const e = err as TerminologyError;
       expect(e.code).toBe("TERM_MAP_NOT_INVERTIBLE");
-      expect(e.message).toBe("GEM map cannot be inverted — load the reverse GEM file instead");
+      expect(e.message).toBe("GEM map cannot be inverted: load the reverse GEM file instead");
       expect(e.stack ?? "").not.toContain("NOPE-");
     }
   });

@@ -12,7 +12,7 @@ import { nth } from "../helpers.js";
 
 /**
  * Build one synthetic ICD-10-CM-order-file-shaped line at the documented offsets (0-based):
- * order [0,5), code [6,13), flag @14, short desc [16,76), long desc [77,]. Synthetic — no real
+ * order [0,5), code [6,13), flag @14, short desc [16,76), long desc [77,]. Synthetic: no real
  * ICD-10-CM content bundled.
  */
 function icd(order: string, code: string, flag: string, short: string, long: string): string {

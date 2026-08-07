@@ -7,15 +7,15 @@ sidebar_position: 1
 # Quickstart
 
 `@cosyte/terminology` is a **terminology engine**, not a wire parser: it answers FHIR terminology
-questions over **consumer-supplied** resources — the code-system identity resolver, the ConceptMap
+questions over **consumer-supplied** resources (the code-system identity resolver, the ConceptMap
 `$translate` engine, the CodeSystem `$lookup` / `$validate-code` operations, and the ValueSet
-`$expand` / binding operations — with one non-negotiable rule: **it never fabricates a code, and never
+`$expand` / binding operations) with one non-negotiable rule: **it never fabricates a code, and never
 treats an answer it could not compute as if it had**.
 
 ## Resolve a code system to its canonical URI
 
 A `Coding` off any parser (HL7 v2, C-CDA, FHIR) might name its system by OID, mnemonic, or URI.
-`resolveSystem` canonicalizes it — and returns a **typed unknown** rather than guessing when it does
+`resolveSystem` canonicalizes it, and returns a **typed unknown** rather than guessing when it does
 not recognize the identifier.
 
 ```ts runnable
@@ -28,7 +28,7 @@ isUnknownSystem(loinc) ? "?" : loinc.url; // => "http://loinc.org"
 ## Translate a code through a ConceptMap
 
 Feed the engine a standard FHIR `ConceptMap` resource, then translate a `Coding` through it. The
-data is **bring-your-own** — the engine ships no map content.
+data is **bring-your-own**: the engine ships no map content.
 
 ```ts runnable
 import { loadConceptMap, translate } from "@cosyte/terminology";
@@ -55,7 +55,7 @@ result.unmapped; // => false
 ## An unmapped source is surfaced, never guessed
 
 When a source does not map, the result is a **typed `unmapped`** carrying the source and any
-declared fallback mode — never a fabricated target.
+declared fallback mode: never a fabricated target.
 
 ```ts runnable
 import { loadConceptMap, translate } from "@cosyte/terminology";
@@ -68,7 +68,7 @@ result.unmapped; // => true
 
 ## Look up a code in a code system
 
-Load a **consumer-supplied** release (RRF, CSV, fixed-width, or a FHIR `CodeSystem` JSON — the engine
+Load a **consumer-supplied** release (RRF, CSV, fixed-width, or a FHIR `CodeSystem` JSON, the engine
 ships no code-system release) and resolve a code to its display and status. An unknown code is a
 typed `{ found: false }`, never a fabricated display.
 
@@ -145,8 +145,8 @@ member.undetermined === false && member.result; // => true
 
 ## A value set it cannot expand is surfaced, never guessed
 
-When a part of the value set cannot be computed — a code system you did not supply, a truncated
-server expansion, an unimplemented filter — the answer is a typed **`undetermined`**, never a
+When a part of the value set cannot be computed (a code system you did not supply, a truncated
+server expansion, an unimplemented filter), the answer is a typed **`undetermined`**, never a
 fabricated "not a member" (a false negative on a binding is a clinical error).
 
 ```ts runnable
@@ -169,7 +169,7 @@ check.undetermined; // => true
 ## Crosswalk between classifications (ICD-9↔ICD-10 GEMs)
 
 The CMS **GEMs** are *public-domain* reference mappings between ICD-9-CM and ICD-10-CM. Load the file
-(bring-your-own — it is a free CMS download) in its authored direction and apply it. A 1:many source
+(bring-your-own, it is a free CMS download) in its authored direction and apply it. A 1:many source
 returns the **full** candidate set; a No-Map source is a typed outcome, never a fabricated code.
 
 ```ts runnable
@@ -186,7 +186,7 @@ const hit = applyGem(gems, "25000");
 hit.mapped; // => true
 ```
 
-A source the steward marked **No-Map** is surfaced as a typed result — never a guessed target:
+A source the steward marked **No-Map** is surfaced as a typed result, never a guessed target:
 
 ```ts runnable
 import { loadGems, applyGem } from "@cosyte/terminology";
@@ -196,7 +196,7 @@ const r = applyGem(gems, "V290");
 !r.mapped && r.noMap && r.code; // => "TERM_CROSSWALK_NO_MAP"
 ```
 
-The forward (9→10) and backward (10→9) GEM files are **separate, non-inverse** artifacts — asking the
+The forward (9→10) and backward (10→9) GEM files are **separate, non-inverse** artifacts: asking the
 engine to invert one throws, by design:
 
 ```ts runnable throws
@@ -209,7 +209,7 @@ invertGem(gems); // throws TERM_MAP_NOT_INVERTIBLE
 ## Resolve a SNOMED CT → ICD-10-CM complex map (BYO)
 
 The NLM SNOMED→ICD-10-CM map is *rule-based* and **context-dependent**. The engine ships the rule
-machinery; the map rows are **yours** (SNOMED CT is licensed — the engine bundles no SNOMED CT refset
+machinery; the map rows are **yours** (SNOMED CT is licensed, the engine bundles no SNOMED CT refset
 or release, only the individual concepts the resolver names: the map categories and the two gender
 findings).
 Each map group resolves against the patient context you supply; a rule needing context you did **not**
@@ -233,11 +233,11 @@ stalled.mapped && stalled.groups[0]?.outcome; // => "context-required"
 
 ## Navigate the RxNorm drug graph (BYO release)
 
-RxNorm's drug graph — ingredient → clinical drug → branded drug, with brand and dose-form cross-links
-— is loaded from a **bring-your-own** RxNorm RRF release (`RXNCONSO` + `RXNREL`, and `RXNSAT` for
+RxNorm's drug graph (ingredient → clinical drug → branded drug, with brand and dose-form cross-links)
+is loaded from a **bring-your-own** RxNorm RRF release (`RXNCONSO` + `RXNREL`, and `RXNSAT` for
 NDCs; the engine bundles **no** RxNorm release). Relationships are read in RxNorm's documented
 direction (`RELA` is the relationship the **second** `RXCUI` has to the **first**), and navigation
-follows only **authored** edges — the engine never synthesizes an inverse.
+follows only **authored** edges: the engine never synthesizes an inverse.
 
 ```ts runnable
 import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
@@ -328,7 +328,7 @@ const active = ingredientsOf(graph, clinical ?? "");
 active.found && active.targets[0]?.name; // => "lisinopril"
 ```
 
-An `RXCUI` absent from the loaded release is a typed unknown — never a guessed concept:
+An `RXCUI` absent from the loaded release is a typed unknown, never a guessed concept:
 
 ```ts runnable
 import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
@@ -338,7 +338,7 @@ const r = ingredientsOf(graph, "99999999");
 !r.found && r.code; // => "TERM_RXNORM_UNKNOWN_RXCUI"
 ```
 
-Approximate name matching is an **opt-in, explicitly labeled** path — never the default, and never an
+Approximate name matching is an **opt-in, explicitly labeled** path: never the default, and never an
 exact code assertion (every candidate is marked `approximate: true`):
 
 ```ts runnable
@@ -353,10 +353,10 @@ approximateMatch(graph, "lisinopril")[0]?.approximate; // => true
 ```
 
 > **About runnable examples.** Blocks tagged ```` ```ts runnable ```` are extracted, run against the
-> package, and their `// =>` results asserted — so a documented example can never silently drift from
+> package, and their `// =>` results asserted, so a documented example can never silently drift from
 > the code. A ```` ```ts runnable throws ```` block must throw.
 
 ## Next
 
-- [Core Concepts](./concepts-archetype) — the engine model and the never-fabricate invariant.
-- **API Reference** — every export, generated from source.
+- [Core Concepts](./concepts-archetype): the engine model and the never-fabricate invariant.
+- **API Reference**: every export, generated from source.

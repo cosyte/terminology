@@ -1,12 +1,12 @@
 /**
- * Unit tests for scripts/phi-scan.ts — the STARTER PHI commit-gate.
+ * Unit tests for scripts/phi-scan.ts: the STARTER PHI commit-gate.
  *
  * These exercise the SHARED MACHINERY and the cross-cutting SSN/email FLOOR that
  * ships with the template. They deliberately do NOT test structured, field-level
- * PHI detection — that is format-specific and is the author's obligation to add
+ * PHI detection: that is format-specific and is the author's obligation to add
  * (see the STARTER banner in scripts/phi-scan.ts). When you add structured
  * detectors, add positive tests here proving they CATCH real-looking names /
- * DOBs / ids for this standard — a weak scanner is worse than none.
+ * DOBs / ids for this standard: a weak scanner is worse than none.
  *
  * The scanner is invoked via spawnSync (array args, no shell) so the full CLI
  * path (argv parse, exit code, stderr) is exercised. Violator/clean files are
@@ -40,7 +40,7 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  * WHY THE SWEEP SPAWNS `node` AND NOT `tsx`, THOUGH `pnpm phi-scan` USES `tsx`.
  *
  * This file spawns the scanner once per case, and the cost of every one of those
- * spawns is start-up, not scanning — the fixtures are a few hundred bytes each.
+ * spawns is start-up, not scanning: the fixtures are a few hundred bytes each.
  * Measured on this box (2026-08-03, 12-CPU cgroup quota, 10 warmed runs each,
  * same scanner, same argv): a `tsx` start had a **median of 500 ms** against
  * **141 ms** for `node` running the same TypeScript through its native type
@@ -49,7 +49,7 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  *
  * Nothing under test changes: `node` and `tsx` hand the scanner the same argv, the
  * same cwd and the same stdio, and node's stripping emits no warning to pollute
- * stderr — which matters here, because several cases assert on stderr exactly.
+ * stderr, which matters here, because several cases assert on stderr exactly.
  * Both were checked to produce byte-identical stdout/stderr and the same exit code
  * on a clean file (0) and on a violator (1) before this was changed.
  *
@@ -86,7 +86,7 @@ function runScanner(args: string[]): RunResult {
   return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
-/** The `tsx` invocation `pnpm phi-scan` actually uses — kept for the one test that pins it. */
+/** The `tsx` invocation `pnpm phi-scan` actually uses: kept for the one test that pins it. */
 function runScannerViaTsx(args: string[]): RunResult {
   const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], {
     cwd: REPO_ROOT,
@@ -96,7 +96,7 @@ function runScannerViaTsx(args: string[]): RunResult {
   return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
-/** Write a file to the temp dir and scan it by path (paths mode — no git needed). */
+/** Write a file to the temp dir and scan it by path (paths mode, no git needed). */
 function scan(name: string, content: string): RunResult {
   const path = join(dir, name);
   writeFileSync(path, content);
@@ -130,20 +130,20 @@ describe("phi-scan starter: the cross-cutting floor catches SSN + email", () => 
 describe("phi-scan: the `tsx` entry point `pnpm phi-scan` uses is the same scanner", () => {
   // THE ONE TEST THAT STILL PAYS THE tsx COLD START, and it is the backstop for every
   // other case in this file. The rest spawn `node` (see NODE_BIN above) because a tsx
-  // start measured ~360 ms dearer per case, but `pnpm phi-scan` — the script the commit
-  // gate and CI actually invoke — runs `tsx scripts/phi-scan.ts`. Without this case,
+  // start measured ~360 ms dearer per case, but `pnpm phi-scan` (the script the commit
+  // gate and CI actually invoke) runs `tsx scripts/phi-scan.ts`. Without this case,
   // a breakage on the real entry point (a tsx upgrade, a TypeScript construct node's
   // erasure-only stripping rejects but tsx compiles, a loader difference) would ship
   // green.
   //
   // It asserts EQUIVALENCE rather than merely "tsx works": both runners must agree on
   // exit code, stdout and stderr byte-for-byte. That is what makes the cheaper runner
-  // below trustworthy — if the two ever diverge, this reds instead of the sweep silently
+  // below trustworthy, if the two ever diverge, this reds instead of the sweep silently
   // testing something the gate does not run.
   //
   // BOTH OUTCOMES ARE RUN, BECAUSE THE SCANNER USES A DIFFERENT CHANNEL FOR EACH, and
   // comparing an empty channel to an empty channel proves nothing. A violator writes its
-  // hits to **stderr** and nothing at all to stdout; a clean file writes `OK — no hits`
+  // hits to **stderr** and nothing at all to stdout; a clean file writes `OK: no hits`
   // to **stdout** and nothing to stderr. A violator-only parity check therefore asserts
   // `"" === ""` on stdout, which is exactly the vacuous half this case existed to avoid.
   // Each channel is asserted non-empty on the run that populates it, so neither
@@ -165,7 +165,7 @@ describe("phi-scan: the `tsx` entry point `pnpm phi-scan` uses is the same scann
       expect(hitTsx.stderr).toBe(hitNode.stderr);
       expect(hitTsx.stdout).toBe(hitNode.stdout);
 
-      // A miss: exit 0, and the report rides on stdout — the channel the hit case
+      // A miss: exit 0, and the report rides on stdout, the channel the hit case
       // cannot exercise, and the one `tsx` would have to break silently.
       const missNode = runScanner([clean]);
       const missTsx = runScannerViaTsx([clean]);
@@ -179,7 +179,7 @@ describe("phi-scan: the `tsx` entry point `pnpm phi-scan` uses is the same scann
     // hit and a miss, so it is the slowest case in this file by construction and it
     // declares its own budget rather than leaning on the suite-wide default.
     // THIS IS THE MOST LOAD-SENSITIVE CASE IN THE SUITE, AND ITS RECORDED PEAK HAS
-    // ALREADY BEEN WRONG TWICE — treat any figure here as a floor, not a bound.
+    // ALREADY BEEN WRONG TWICE: treat any figure here as a floor, not a bound.
     // Measured 2026-08-03 on a 12-CPU quota: **3.9 s** worst across sequential runs
     // (plain and `vitest run --coverage` alike) with a fourteen-worker fleet
     // resident, and **7.4 s** with four full suites running concurrently. So 30 s is
@@ -195,7 +195,7 @@ describe("phi-scan starter: clean + allow-listed content passes", () => {
   it("a clean file with no PHI shapes exits 0", () => {
     const r = scan("clean.txt", "just some ordinary text, no identifiers here\n");
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
   it("honors the allow-list: an email at a reserved test domain passes (exit 0)", () => {
@@ -316,7 +316,7 @@ describe("phi-scan: the synthetic payload is genuinely detectable", () => {
     const root = makeRepo();
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 });
 
@@ -418,7 +418,7 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     expectNoPhi(r.stderr);
   });
 
-  it("refuses a TYPECHANGE — a tracked regular file replaced by a link (exit 2)", () => {
+  it("refuses a TYPECHANGE: a tracked regular file replaced by a link (exit 2)", () => {
     // The shape `--diff-filter=AM` used to delete before any mode could be read.
     // Replacing a TRACKED file with a link is neither an add nor a modify: git
     // raises `:100644 120000 <sha> <sha> T`, and without `T` in the filter the
@@ -443,7 +443,7 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     expectNoPhi(r.stderr);
   });
 
-  it("scans the other direction of a typechange — a link replaced by a real file (exit 1)", () => {
+  it("scans the other direction of a typechange: a link replaced by a real file (exit 1)", () => {
     const root = makeRepo();
     symlinkSync("ordinary.ts", join(root, "src", "link.ts"));
     git(root, ["add", "src/link.ts"]);
@@ -495,7 +495,7 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     git(root, ["add", "src/ordinary.ts"]);
     const r = runIn(root, ["--staged"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
   it("a staged link OUTSIDE the route's scope is left alone (the scope is unchanged)", () => {
@@ -528,11 +528,11 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
 // auto-detects one) and fails on CI on its own premise. What this route reads is
 // an INDEX STATE, so the unmerged fixtures below are built with
 // `git update-index --index-info`: smaller, no branches, no merge strategy, no
-// identity — and `git status` still reports `UU`, which is git confirming the
+// identity, and `git status` still reports `UU`, which is git confirming the
 // construction.
 // ---------------------------------------------------------------------------
 
-/** Commit with an explicit identity — a CI runner has none to discover. */
+/** Commit with an explicit identity: a CI runner has none to discover. */
 function commit(cwd: string, message: string): void {
   git(cwd, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", message]);
 }
@@ -552,7 +552,7 @@ function filler(tag: string): string {
   );
 }
 
-/** Build a genuinely unmerged index entry at `path` — stages 1/2/3, no stage 0. */
+/** Build a genuinely unmerged index entry at `path`: stages 1/2/3, no stage 0. */
 function makeUnmerged(root: string, path: string, stage2: string): void {
   const hash = (content: string): string => {
     const r = spawnSync("git", ["hash-object", "-w", "--stdin"], {
@@ -583,7 +583,7 @@ function makeUnmerged(root: string, path: string, stage2: string): void {
 describe("phi-scan: --staged sees a staged RENAME (rename detection is on by default)", () => {
   it("git really does stage `git mv` of a tracked link as a two-path R100 that AMT deletes", () => {
     // The premise the whole remedy rests on. `R` is returned by neither `AM` nor
-    // `AMT`, so the record does not merely arrive in an awkward shape — it is
+    // `AMT`, so the record does not merely arrive in an awkward shape: it is
     // gone.
     const root = makeRepo();
     mkdirSync(join(root, "test", "fixtures"), { recursive: true });
@@ -702,7 +702,7 @@ describe("phi-scan: --staged sees a staged RENAME (rename detection is on by def
 
     // Containment, stated exactly: the new enumeration CONTAINS the old one. It
     // is EQUAL whenever git emitted no `R` and no `C`, and larger only when it
-    // did — a superset, not a strictly larger set.
+    // did: a superset, not a strictly larger set.
     const old = gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"])
       .split("\n")
       .filter((l) => l.length > 0)
@@ -712,10 +712,10 @@ describe("phi-scan: --staged sees a staged RENAME (rename detection is on by def
   });
 
   it("git's premise for the argv coupling: -M, -C and --find-copies-harder each re-empty it", () => {
-    // This case guards GIT'S behaviour, not the scanner's argv — it does not by
+    // This case guards GIT'S behaviour, not the scanner's argv: it does not by
     // itself fail if someone adds `-M` to the scanner. The suite as a whole does.
     // It says NOTHING about `-B`, which empties this route by a different
-    // mechanism on a stage this fixture does not build — see the case below.
+    // mechanism on a stage this fixture does not build: see the case below.
     const root = makeRepo();
     writeFileSync(join(root, "draft.txt"), filler("draft"));
     git(root, ["add", "draft.txt"]);
@@ -733,14 +733,14 @@ describe("phi-scan: --staged sees a staged RENAME (rename detection is on by def
 
   it("`-B` is NOT safe to add: a COMPLETE REWRITE is a `B` record, and `B` is not in the filter", () => {
     // Measured after a first draft of this change called `-B` inert, on the
-    // strength of a RENAME stage — the one stage where it does nothing. On a
+    // strength of a RENAME stage: the one stage where it does nothing. On a
     // complete rewrite `-B` breaks the pairing, `--diff-filter=AMTU` drops the
     // record outright, and the gate reports clean over a staged dashed SSN:
     // exit 1 without the flag, exit 0 with it, same index.
     //
     // So `-B` empties this route by a DIFFERENT mechanism than `-M`/`-C`/
-    // `--find-copies-harder` — through the status FILTER rather than by turning
-    // detection back on — and the remedy is the same: do not add it.
+    // `--find-copies-harder` (through the status FILTER rather than by turning
+    // detection back on), and the remedy is the same: do not add it.
     const root = makeRepo();
     const original =
       Array.from({ length: 40 }, (_, n) => `original row ${String(n)} entirely unalike`).join(
@@ -764,7 +764,7 @@ describe("phi-scan: --staged sees a staged RENAME (rename detection is on by def
     expect(withFlags()).toContain("src/rewrite.ts");
     expect(withFlags("-B")).not.toContain("src/rewrite.ts");
 
-    // And the payload really is one the scanner would otherwise report — so this
+    // And the payload really is one the scanner would otherwise report, so this
     // case reds if `-B` is ever added to the scanner's own argument list.
     const r = runIn(root, ["--staged"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(1);
@@ -796,7 +796,7 @@ describe("phi-scan: --staged judges an entry standing where a scan ROOT used to"
   it("scans a regular blob at exactly a scan root at the SAME tier as one under it", () => {
     // Worth pinning because it is NOT true of every sibling: a scanner that
     // dispatches a format-aware tier off the path prefix gives such a blob the
-    // shape pass only. Here `scanTarget` has ONE tier — the SSN/email floor —
+    // shape pass only. Here `scanTarget` has ONE tier, the SSN/email floor,
     // and it keys on nothing about the path, so the two are equal. Implementing
     // the fenced TODO section with a path-keyed dispatch would break that, and
     // this case is what says so.
@@ -879,7 +879,7 @@ describe("phi-scan: --staged refuses an UNMERGED path instead of passing over it
   it("refuses an in-scope unmerged path (exit 2), and reports no PHI", () => {
     // `U` is returned by neither `AM` nor `AMT`, so this route reported clean over
     // an index it structurally cannot read. It is closed by being IN the filter,
-    // NOT by `--no-renames` — the two must not be conflated.
+    // NOT by `--no-renames`: the two must not be conflated.
     const root = makeRepo();
     writeFileSync(join(root, "src", "conflict.ts"), "export const a = 1;\n");
     git(root, ["add", "src/conflict.ts", "src/ordinary.ts"]);
@@ -906,7 +906,7 @@ describe("phi-scan: --staged refuses an UNMERGED path instead of passing over it
     expect(r.stderr).not.toContain("123-45-6789");
   });
 
-  it("leaves an OUT-OF-SCOPE unmerged path alone (exit 0) — the scope still binds", () => {
+  it("leaves an OUT-OF-SCOPE unmerged path alone (exit 0): the scope still binds", () => {
     // Both premises are asserted, because a scanner that refused EVERY unmerged
     // path regardless of scope would pass a case that only checked the exit code.
     const root = makeRepo();
@@ -922,7 +922,7 @@ describe("phi-scan: --staged refuses an UNMERGED path instead of passing over it
 
     const r = runIn(root, ["--staged"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 });
 
@@ -932,14 +932,14 @@ describe("phi-scan: --staged refuses an UNMERGED path instead of passing over it
 // The defect these cases close: the sweep `pnpm phi-scan` runs in CI could print
 // its clean line and exit 0 over a scan root it never opened. There was NO
 // observation rule here at all, in any form, so this is not a global rule made
-// per-root — it is the rule arriving, written per-root from the start so the
+// per-root: it is the rule arriving, written per-root from the start so the
 // global shape cannot reappear when a second root is added.
 //
-// Several of these are RED against the scanner as it stood at 0fe4b84 — every
+// Several of these are RED against the scanner as it stood at 0fe4b84: every
 // case asserting one of the new refusals. NO TALLY IS WRITTEN DOWN: one was, it
 // was correct when written, two more cases were added in the same slice, and a
 // refuter measured it wrong. Re-derive it instead. `SCANNER_PATH` is a const, not
-// an env var, so the ONLY step that works is swapping the file itself — with a
+// an env var, so the ONLY step that works is swapping the file itself: with a
 // clean tree, from the repo root:
 //
 //   git show 0fe4b84:scripts/phi-scan.ts > scripts/phi-scan.ts
@@ -952,7 +952,7 @@ describe("phi-scan: --staged refuses an UNMERGED path instead of passing over it
 //
 // ANTI-VACUITY IS THE POINT HERE, not a nicety: a starvation test whose corpus
 // held nothing worth finding would pass against the very bug it claims to close.
-// ONE case carries that weight explicitly — it scans the SAME tree twice, as a HIT
+// ONE case carries that weight explicitly: it scans the SAME tree twice, as a HIT
 // with the root present and as a refusal with it starved. The absent- and
 // dangling-root cases do not plant a payload and do not claim to: they assert an
 // exit 2, which cannot be satisfied by an empty corpus the way an exit 0 can.
@@ -971,10 +971,10 @@ describe("phi-scan: the all-mode observation rule is per-root", () => {
     expect(r.stdout).not.toMatch(/OK/);
   });
 
-  it("refuses (exit 2) when a scan root is a DANGLING symlink — existsSync follows it", () => {
+  it("refuses (exit 2) when a scan root is a DANGLING symlink: existsSync follows it", () => {
     // The sharpest state, and the one nothing else in the scanner can see:
     // `existsSync` FOLLOWS the link and answers false, so `walk()` returns before
-    // `readdirSync` and the not-a-regular-file refusal never fires — that rule
+    // `readdirSync` and the not-a-regular-file refusal never fires: that rule
     // only classifies entries found INSIDE a root, and this is the root itself.
     const root = makeRepo();
     rmSync(join(root, "src"), { recursive: true, force: true });
@@ -1013,7 +1013,7 @@ describe("phi-scan: the all-mode observation rule is per-root", () => {
 
     const r = runIn(root, ["--staged"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
   it("does NOT widen to paths mode, which is bounded by the caller's argv", () => {
@@ -1023,7 +1023,7 @@ describe("phi-scan: the all-mode observation rule is per-root", () => {
 
     const r = runIn(root, [join(root, "clean.txt")]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 });
 
@@ -1044,11 +1044,11 @@ describe("phi-scan: a corpus the walk does not enumerate is refused, not silent"
     expect(r.stdout).not.toMatch(/OK/);
   });
 
-  it("and stays quiet when it is absent — this repository's own state (exit 0)", () => {
+  it("and stays quiet when it is absent: this repository's own state (exit 0)", () => {
     const root = makeRepo();
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 });
 
@@ -1070,7 +1070,7 @@ describe("phi-scan: what the per-root observation rule deliberately does NOT cov
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
   it("a root that is ITSELF a symlink to a directory is followed, and that satisfies the rule", () => {
@@ -1082,11 +1082,11 @@ describe("phi-scan: what the per-root observation rule deliberately does NOT cov
     symlinkSync("decoy", join(root, "src"));
 
     // `normalizePath` is purely lexical, so everything behind the link is
-    // attributed to `src` and the rule is satisfied — while the real corpus,
+    // attributed to `src` and the rule is satisfied, while the real corpus,
     // violator and all, is not read at all.
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
   it("the rule is a floor of ONE file, and this reporter prints no denominator", () => {
@@ -1095,15 +1095,15 @@ describe("phi-scan: what the per-root observation rule deliberately does NOT cov
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
     // Nothing on stdout distinguishes one file from a whole corpus. Adding a
     // count would be a real improvement and is a DIFFERENT rule.
-    expect(r.stdout).toBe("[phi-scan] OK — no hits\n");
+    expect(r.stdout).toBe("[phi-scan] OK: no hits\n");
   });
 
-  it("a root that is a REGULAR FILE exits 1 — the code this contract reserves for HITS", () => {
+  it("a root that is a REGULAR FILE exits 1: the code this contract reserves for HITS", () => {
     // OPEN HERE, CLOSED IN THE SIBLING: `walk()` there wraps `readdirSync` and
     // rethrows on the scanner's own channel at exit 2. Here the ENOTDIR escapes
     // `buildTargetsForAll`, is not an InvocationError, and reaches node's default
     // handler. Fail-closed rather than silent, and part of the separate
-    // exit-code work — but it must not be ported in from elsewhere as "exit 2".
+    // exit-code work, but it must not be ported in from elsewhere as "exit 2".
     const root = makeRepo();
     rmSync(join(root, "src"), { recursive: true, force: true });
     writeFileSync(join(root, "src"), "not a directory\n");
@@ -1133,7 +1133,7 @@ describe("phi-scan: what the per-root observation rule deliberately does NOT cov
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 });
 
@@ -1149,7 +1149,7 @@ describe("phi-scan: what the per-root observation rule deliberately does NOT cov
 // root declared, spawned in a throwaway repository.
 //
 // The patch is asserted to have applied, so reshaping the declaration reds these
-// rather than silently testing an unmodified scanner — the "prove the mutation
+// rather than silently testing an unmodified scanner: the "prove the mutation
 // happened" half that a copy-and-edit harness otherwise skips.
 // ---------------------------------------------------------------------------
 
@@ -1183,8 +1183,8 @@ describe("phi-scan: the reappearing-corpus refusal names a remedy that actually 
     expect(refused.code, `stderr: ${refused.stderr}`).toBe(2);
     expect(refused.stderr).toContain("Add the path back to SCAN_ROOTS");
 
-    // Doing exactly that must not reproduce the same refusal — a gate whose own
-    // remedy leaves it refusing is a gate that gets deleted — and the path must
+    // Doing exactly that must not reproduce the same refusal (a gate whose own
+    // remedy leaves it refusing is a gate that gets deleted), and the path must
     // now really be READ, not merely tolerated.
     const scanner = scannerWithTwoRoots(root);
     const after = runCopyIn(root, scanner, []);
@@ -1227,20 +1227,20 @@ describe("phi-scan: the reappearing-corpus refusal fires only where its remedy w
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
-  it("a test/fixtures holding only markdown does not refuse — the walk skips markdown anyway", () => {
+  it("a test/fixtures holding only markdown does not refuse: the walk skips markdown anyway", () => {
     const root = makeRepo();
     mkdirSync(join(root, "test", "fixtures"), { recursive: true });
     writeFileSync(join(root, "test", "fixtures", "README.md"), `${SYNTHETIC_PHI}\n`);
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
-  it("a GITIGNORED test/fixtures does not refuse — one gitignore boundary, not two", () => {
+  it("a GITIGNORED test/fixtures does not refuse: one gitignore boundary, not two", () => {
     const root = makeRepo();
     mkdirSync(join(root, "test", "fixtures"), { recursive: true });
     writeFileSync(join(root, "test", "fixtures", "leak.txt"), SYNTHETIC_PHI);
@@ -1248,10 +1248,10 @@ describe("phi-scan: the reappearing-corpus refusal fires only where its remedy w
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
-  it("but the same tree WITHOUT the ignore rule does refuse — the boundary is the only difference", () => {
+  it("but the same tree WITHOUT the ignore rule does refuse: the boundary is the only difference", () => {
     // The control that stops the three cases above from proving merely that the
     // guard never fires.
     const root = makeRepo();

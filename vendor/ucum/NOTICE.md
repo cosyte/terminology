@@ -1,4 +1,4 @@
-# Vendored UCUM artifacts — attribution & license notices
+# Vendored UCUM artifacts: attribution & license notices
 
 This directory contains **verbatim, unmodified** third-party artifacts vendored into
 `@cosyte/terminology`. They are reproduced here under their own licenses; the notices below are
@@ -7,7 +7,7 @@ required by those licenses. `@cosyte/terminology`'s own code is MIT (see the rep
 **This file ships inside the npm tarball** (`package.json`'s `files` names it), so the notices below
 travel with the package that carries the UCUM table.
 
-## `ucum-essence.xml` — the UCUM unit table
+## `ucum-essence.xml`: the UCUM unit table
 
 > The Unified Code for Units of Measure (UCUM), also known as the "UCUM Specification," is
 > copyright ©1999–2024, Regenstrief Institute, Inc. All rights reserved.
@@ -36,13 +36,13 @@ Works from the UCUM tables or specification. Accordingly:
 Disclaimer of warranties: the UCUM Specification is provided "as is" without warranty of any kind;
 see the License for the full disclaimer.
 
-## `UcumFunctionalTests.xml` — the UCUM conformance suite
+## `UcumFunctionalTests.xml`: the UCUM conformance suite
 
 > This file is copyright © 2008–2009 Grahame Grieve and other contributors (Gunther Schadow,
 > Lloyd Mackenzie, Vladimir Alexiev).
 
 Reproduced verbatim under the Eclipse Public License v1.0
-(<https://www.eclipse.org/legal/epl-v10.html>). Used **only** as a test fixture — it is **not** part
+(<https://www.eclipse.org/legal/epl-v10.html>). Used **only** as a test fixture, and it is **not** part
 of the published npm package: `package.json`'s `files` does not name it, and unlike the unit table it
 is not embedded in the build. Conformance is declared against the most recent history entry in the
 file (3-Feb 2021).

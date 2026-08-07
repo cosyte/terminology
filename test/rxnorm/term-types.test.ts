@@ -58,9 +58,9 @@ import { consoRow, relRow } from "./fixtures.js";
  *
  * They carry an explicit budget rather than leaning on the suite-wide default,
  * because a global raise sized to the slowest test in a repo is a ceiling every
- * other test inherits — it makes a genuinely hung fast test look merely slow.
+ * other test inherits: it makes a genuinely hung fast test look merely slow.
  * Measured 2026-08-03 on a 12-CPU cgroup quota with a fourteen-worker fleet
- * running, across ten full runs — **six of them `vitest run --coverage`, which
+ * running, across ten full runs: **six of them `vitest run --coverage`, which
  * is the slower execution CI also gates on**. They peaked at **4.2 s**, so 30 s
  * is ~7x that. An earlier draft recorded 2.0 s from plain runs only and was
  * refuted for it; include the coverage run if you re-derive this.

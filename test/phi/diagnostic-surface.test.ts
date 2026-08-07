@@ -3,8 +3,8 @@
  *
  * This file is the deliverable, not the fix. It binds the shared runner
  * `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils` to a slot table that enumerates the
- * consumer-controlled positions across the engine's readers and loaders — every one this repo has
- * identified, which is not a proof that none was missed (see "Reach" below) — and asserts that none
+ * consumer-controlled positions across the engine's readers and loaders (every one this repo has
+ * identified, which is not a proof that none was missed; see "Reach" below), and asserts that none
  * of them echoes into a diagnostic surface: a `TerminologyError.message`, an `err.stack`, a thrown
  * value, a `LoadWarning.detail`, an `ExpansionDiagnostic`, or a structural identifier on the model.
  *
@@ -13,12 +13,12 @@
  * The engine's exported types carry two very different kinds of string, and the distinction is the
  * whole design:
  *
- * 1. **Registry-built structural descriptions** — `TerminologyError.message`, `LoadWarning.detail`,
+ * 1. **Registry-built structural descriptions**: `TerminologyError.message`, `LoadWarning.detail`,
  *    `ExpansionDiagnostic.detail`, `ParseFailure.reason`. These reach a consumer's logs and error
  *    reporter *without the consumer choosing to put them there*: an error propagates through every
  *    frame above it and lands in a stack trace. They must be value-free, they say so in their own
  *    `@param` and type docs, and this file is what holds them to it.
- * 2. **Payload the caller asked for** — a resolved concept's `code`/`display`, a release's canonical
+ * 2. **Payload the caller asked for**: a resolved concept's `code`/`display`, a release's canonical
  *    `url`, a map's provenance, the queried code echoed back on a typed `unmapped`/`unknown`
  *    outcome. Bounding these would fabricate: they are lookup keys and answers, not loci. They are
  *    pinned separately, at the bottom of this file, so the boundary is a reviewed decision rather
@@ -26,8 +26,8 @@
  *
  * What this file asserts about class 1 is the consumer-facing property, and only that: **no value
  * the caller configured and no value their document contained reaches one of those strings.** The
- * *mechanism* that makes it so — which kinds of string a message may be assembled from, and the
- * factories whose `string` parameters are engine-owned rather than caller-owned — is stated in
+ * *mechanism* that makes it so (which kinds of string a message may be assembled from, and the
+ * factories whose `string` parameters are engine-owned rather than caller-owned) is stated in
  * exactly one place, the module docblock of `src/common/diagnostics.ts`. Do not restate it here.
  * Three successive drafts of this slice restated it and got it wrong each time, in a file no gate in
  * this repo can grade, because no gate can read an English sentence.
@@ -41,23 +41,23 @@
  * two ways.** In a *marker-driven* slot the declared code is raised by the very element the marker
  * sits in (a short CSV row that IS the marker, a FHIR concept whose only field is the marked
  * `display`, an unmodelled `TTY`, a malformed GEM line). In a *model-only* slot the marker lands
- * somewhere that raises nothing on its own — a configured property name, a `CodeSystem.url`, a
- * `RELA` — and the fixture pairs it with a second, marker-free malformed element so a diagnostic
+ * somewhere that raises nothing on its own (a configured property name, a `CodeSystem.url`, a
+ * `RELA`), and the fixture pairs it with a second, marker-free malformed element so a diagnostic
  * exists to sweep. For those the `expectCode` shows the collection is populated and swept; what
  * covers the marker is the sweep of those diagnostics, not the code assertion. A leak
  * planted in a branch a model-only slot names but does not enter would not be caught by that slot.
  * That is a real limit of the technique, not a wording problem, so it is written here rather than
- * implied away — and it is why the marker-driven fixtures are preferred wherever the branch can be
+ * implied away, and it is why the marker-driven fixtures are preferred wherever the branch can be
  * reached by the marker itself.
  *
- * **What the runner sweeps is exactly what the two selectors return, plus the thrown value — not the
+ * **What the runner sweeps is exactly what the two selectors return, plus the thrown value: not the
  * whole result object.** An earlier version of this paragraph said "the whole rendered result", which
  * overstates the gate in the paragraph written to state its limits honestly. For the `CodeSystem.url`
  * slot, for instance, `collectDiagnostics` returns the one malformed-concept warning and nothing
- * else, so `url` is never swept — correctly, because it is payload, but it is not swept.
+ * else, so `url` is never swept: correctly, because it is payload, but it is not swept.
  *
  * **One diagnostic surface is deliberately NOT in this table: `reduce`.** It is exported, it takes a
- * caller-built `UnitNode`, and it throws a plain `Error` — with no stable code, so it cannot carry an
+ * caller-built `UnitNode`, and it throws a plain `Error`: with no stable code, so it cannot carry an
  * `expectCode` and cannot be a slot in a table whose whole invariant is that every slot names one.
  * It is pinned in `test/ucum/reduce.test.ts` instead, where a forged atom's code is asserted absent
  * from both `message` and `stack`. Do not "fix" that by giving a slot `expectCode: null`.
@@ -120,11 +120,11 @@ const probe = (run: () => unknown): Probe => ({ run });
  * | `RxNormGraph` | `warnings: RxNormLoadWarning[]` |
  * | `ExpandResult` | `diagnostics: ExpansionDiagnostic[]` |
  * | `ValueSetMembershipUndetermined` | `diagnostics: ExpansionDiagnostic[]` |
- * | `TerminologyError` | thrown — the runner sweeps `message`, `stack` and the value itself |
+ * | `TerminologyError` | thrown: the runner sweeps `message`, `stack` and the value itself |
  *
  * The engine is **fatal-only in style** rather than carrying the parsers' Tier-2 warning arrays for
  * every fault (see `src/common/diagnostics.ts`): a structurally unusable *source* throws, while a
- * skipped *row* is surfaced on one of the `warnings` arrays above. Both halves are covered — the
+ * skipped *row* is surfaced on one of the `warnings` arrays above. Both halves are covered: the
  * thrown half by the runner itself, the surfaced half by this selector.
  *
  * A typed non-throwing outcome that carries a stable `code` (`LookupUnknown`, `TranslateUnmapped`,
@@ -152,24 +152,24 @@ function collectDiagnostics(parsed: unknown): readonly unknown[] {
 /**
  * Every **name-like** string on every exported model type, classified, and the loci the model does
  * carry. A structural identifier here means what the shared kit means: a string a **downstream**
- * package would interpolate to describe a *location* — the `hl7`/`deid` shape, where `segment.type`
+ * package would interpolate to describe a *location*: the `hl7`/`deid` shape, where `segment.type`
  * stayed unbounded on the model and `deid` built a manifest locus out of it.
  *
  * The enumeration, walked over the `types.ts` files under `src/` rather than recalled:
  *
  * | Field | Classification |
  * |---|---|
- * | `LoadWarning.line`, `GemLoadWarning.line`, `ComplexMapLoadWarning.line`, `RxNormLoadWarning.line` | **locus** — an integer index, unbounded-free by construction. (FHIR concept warnings hardcode `line: 0`: a JSON concept is not line-addressable, so it is a placeholder, not a position.) |
- * | `RxNormLoadWarning.file` | **locus** — a closed set (`RXNCONSO`/`RXNREL`/`RXNSAT`); returned below |
- * | `ExpansionDiagnostic.path` | **locus** — a `compose.include[2]`-style index path built from integers; returned below |
- * | `Property.code` | payload — see the note under the table |
- * | `RxNormEdge.predicate` | payload — see the note under the table |
- * | `CodeSystem.url` / `.version`, `ValueSet.url` / `.version` | payload — the release's canonical identity. `$lookup` returns them verbatim as `system` / `version`, and a bounded canonical URI is a wrong one. |
- * | `CodeSystem.name` / `ValueSet.name` | payload — the release's own human-readable name, carried through from the caller's resource for the caller's own display. Nothing in `src/` reads it (it is written and returned, never matched on), and no diagnostic is built from it. |
- * | `ConceptStatus.raw` | payload — the steward's own status token, carried verbatim as the evidence for the normalized `activity`. |
- * | `Concept.code` / `.display` / `.definition`, `Property.value`, `RxNormConcept.name` | payload — the answer. |
+ * | `LoadWarning.line`, `GemLoadWarning.line`, `ComplexMapLoadWarning.line`, `RxNormLoadWarning.line` | **locus**: an integer index, unbounded-free by construction. (FHIR concept warnings hardcode `line: 0`: a JSON concept is not line-addressable, so it is a placeholder, not a position.) |
+ * | `RxNormLoadWarning.file` | **locus**: a closed set (`RXNCONSO`/`RXNREL`/`RXNSAT`); returned below |
+ * | `ExpansionDiagnostic.path` | **locus**: a `compose.include[2]`-style index path built from integers; returned below |
+ * | `Property.code` | payload: see the note under the table |
+ * | `RxNormEdge.predicate` | payload: see the note under the table |
+ * | `CodeSystem.url` / `.version`, `ValueSet.url` / `.version` | payload: the release's canonical identity. `$lookup` returns them verbatim as `system` / `version`, and a bounded canonical URI is a wrong one. |
+ * | `CodeSystem.name` / `ValueSet.name` | payload: the release's own human-readable name, carried through from the caller's resource for the caller's own display. Nothing in `src/` reads it (it is written and returned, never matched on), and no diagnostic is built from it. |
+ * | `ConceptStatus.raw` | payload: the steward's own status token, carried verbatim as the evidence for the normalized `activity`. |
+ * | `Concept.code` / `.display` / `.definition`, `Property.value`, `RxNormConcept.name` | payload: the answer. |
  * | `RxNormConcept.tty`, `GemMap.direction`, `ConceptStatus.activity` | closed unions, validated on load |
- * | `MapProvenance.targetSystem` / `.conceptMapUrl` | payload — the map's provenance, returned on matched *and* unmapped results alike; see the boundary pin at the bottom of this file |
+ * | `MapProvenance.targetSystem` / `.conceptMapUrl` | payload: the map's provenance, returned on matched *and* unmapped results alike; see the boundary pin at the bottom of this file |
  * | `MapProvenance.sourceSystem` | payload, but **your query echoed back**, not the map's provenance: it is the `system` off the `Coding` you passed to `translate` whenever it carries one, and the group's `source` only when it does not. Classified with `TranslateUnmapped.source`, not with the two rows above. |
  *
  * **`Property.code` and `RxNormEdge.predicate` are the two rows to argue with**, because they are
@@ -177,25 +177,25 @@ function collectDiagnostics(parsed: unknown): readonly unknown[] {
  * a test that is checkable rather than on taste: **is the field spec-bounded?** An HL7 v2
  * `segment.type` is three characters by the standard, so an unbounded one is already malformed and
  * bounding it discards nothing. A FHIR `CodeSystem.concept.property.code` is a `code` primitive with
- * no length bound, and an RxNorm `RELA` is an **open vocabulary** — the vocabulary is the
+ * no length bound, and an RxNorm `RELA` is an **open vocabulary**: the vocabulary is the
  * load-bearing half of that clause, since the RRF column's own width is not verified here; both are
  * the keys the engine and the caller match on (`props.find((p) => p.code === "status")` in `src/codesystem/fhir.ts`,
  * `matchesFilter` in `src/valueset/filters.ts`, `predicates.has(edge.predicate)` in
  * `src/rxnorm/navigate.ts`). Truncating either silently turns a hit into a miss, which is
- * fabrication — the thing this package exists not to do.
+ * fabrication: the thing this package exists not to do.
  *
  * **The residual, named rather than waved away:** that argument protects the *lookup*, not a future
  * consumer who builds a diagnostic locus by interpolating a `Property.code`. If one appears, the fix
- * belongs at that consumer, or in a new bounded accessor here — never in a silent truncation of the
+ * belongs at that consumer, or in a new bounded accessor here: never in a silent truncation of the
  * key itself. Today no such consumer exists, and that is checked rather than assumed:
  * **`@cosyte/cli` is the only package in the ecosystem that depends on `@cosyte/terminology`**
  * (`cli/package.json`; `cli/src/commands/map-codes.ts` imports `loadConceptMap` + `translate` and
- * touches neither field). `@cosyte/transform` declares **no** dependency on this package at all —
+ * touches neither field). `@cosyte/transform` declares **no** dependency on this package at all:
  * an earlier draft of this comment said it was the downstream, which was simply wrong, and a
  * classification whose evidence is wrong is not a classification.
  *
- * So the selector returns the model's **actual** loci — which are already integers and closed-set
- * tokens — rather than a bare `[]`. There is no unbounded locus to return, and the table above is
+ * So the selector returns the model's **actual** loci (which are already integers and closed-set
+ * tokens) rather than a bare `[]`. There is no unbounded locus to return, and the table above is
  * the thing to review, not the result.
  *
  * **Be clear about what that buys: nothing the diagnostic sweep does not already cover.** Every
@@ -547,7 +547,7 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
     expectCode: DIAGNOSTIC_CODES.TERM_FHIR_CONCEPT_MALFORMED,
   },
   {
-    name: "CodeSystem.concept[].property[].code — a document-derived ELEMENT NAME",
+    name: "CodeSystem.concept[].property[].code: a document-derived ELEMENT NAME",
     plant: (m) =>
       probe(() =>
         parseFhirCodeSystem({
@@ -1000,7 +1000,7 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
 
 /**
  * The runner's non-slot options. Each slot is asserted in **its own** `it`, so a regression names
- * the exact slot and every failing slot is reported in one run — the aggregate form stops at the
+ * the exact slot and every failing slot is reported in one run: the aggregate form stops at the
  * first violation, which is how a second leak stays hidden behind the first one.
  */
 const phiOptions = {
@@ -1031,7 +1031,7 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
     // `validateCode`, `makeStatus`, `asTermType`, the `src/valueset/filters.ts` helpers and the
     // row-shaped `loadComplexMap` are all exported and all unslotted. What bounds the table is the
     // enumeration in the header and in `documentation/agent-notes.md` (relocated out of `CLAUDE.md`
-    // on 2026-08-04; `CLAUDE.md` keeps the imperative and points there), reviewed by a human —
+    // on 2026-08-04; `CLAUDE.md` keeps the imperative and points there), reviewed by a human:
     // never this number.
     expect(slots).toHaveLength(SLOT_COUNT);
   });
@@ -1044,7 +1044,7 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
  * also, deliberately, hands the caller's own query back on its typed never-fabricate outcomes, and
  * carries the loaded artifact's provenance on its results. That boundary is pinned here rather than
  * left as an omission: what these tests assert is that the echo is **exactly the caller's own
- * value, in the named payload field, and nowhere else** — never in a message, never in a stack.
+ * value, in the named payload field, and nowhere else**: never in a message, never in a stack.
  */
 describe("PHI: the payload boundary is exactly the caller's own query", () => {
   const marker = "ZqPhI7xK".repeat(64);
@@ -1065,7 +1065,7 @@ describe("PHI: the payload boundary is exactly the caller's own query", () => {
 
   // Scoped deliberately, and the scope is the point: this pins the `code` echo, using a coding that
   // carries no `system`. Hand `translate` a coding that DOES carry one and that system is echoed
-  // **twice** — in `source.system` and, verbatim, in `provenance.sourceSystem`. Both are payload,
+  // **twice**: in `source.system` and, verbatim, in `provenance.sourceSystem`. Both are payload,
   // neither is a diagnostic surface, and `MapProvenance.sourceSystem` is documented as the query
   // echo it is. Do not restate this pin as "the caller's value appears in exactly one field".
   it("translate echoes a system-less source coding only in `source`", () => {

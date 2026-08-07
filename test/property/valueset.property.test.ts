@@ -1,14 +1,14 @@
 /**
  * Property-based conformance for the Phase-3 ValueSet binding invariants (roadmap §4.4, §6):
  *
- *   1. **Never fabricate a member** — every code `expand` returns is one the value set actually
+ *   1. **Never fabricate a member**: every code `expand` returns is one the value set actually
  *      selects (an explicit `concept`, or a code present in the loaded code system for an intensional
  *      part). An `exclude` never leaves an excluded member behind.
- *   2. **Truncation is never completeness** — a code absent from a *truncated* pre-computed expansion
+ *   2. **Truncation is never completeness**: a code absent from a *truncated* pre-computed expansion
  *      is `undetermined`, never a confident "not a member". A `complete: false` expansion is a lower
  *      bound; a decided `validateCodeInValueSet` is always consistent with the full expansion.
- *   3. **Order-independent membership** — expansion membership does not depend on include order.
- *   4. **Liberal load, typed failure** — `loadValueSet` over arbitrary JSON returns a frozen value set
+ *   3. **Order-independent membership**: expansion membership does not depend on include order.
+ *   4. **Liberal load, typed failure**: `loadValueSet` over arbitrary JSON returns a frozen value set
  *      or throws a typed `TerminologyError`, never any other error.
  */
 
@@ -18,7 +18,7 @@ import fc from "fast-check";
 /**
  * This file declares its own test budget. A property test draws fresh random input every run (this
  * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again — making the property suite the one
+ * box, and the gating coverage run roughly doubles it again: making the property suite the one
  * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
  * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
  * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),

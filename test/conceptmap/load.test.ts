@@ -24,7 +24,7 @@ const MINIMAL = {
   ],
 };
 
-describe("loadConceptMap() — well-formed", () => {
+describe("loadConceptMap(): well-formed", () => {
   it("loads and deep-freezes a minimal ConceptMap", () => {
     const map = loadConceptMap(MINIMAL);
     expect(map.url).toBe("http://example.org/cm/gender");
@@ -89,7 +89,7 @@ describe("loadConceptMap() — well-formed", () => {
   });
 });
 
-describe("loadConceptMap() — malformed throws TERM_CONCEPTMAP_MALFORMED", () => {
+describe("loadConceptMap(): malformed throws TERM_CONCEPTMAP_MALFORMED", () => {
   function expectMalformed(json: unknown): void {
     try {
       loadConceptMap(json);

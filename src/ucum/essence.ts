@@ -1,12 +1,12 @@
 /**
  * Parse the vendored, verbatim UCUM `ucum-essence.xml` (embedded as {@link UCUM_ESSENCE_XML}) into
- * the engine's in-memory unit model — the {@link UcumEssence} table of prefixes and atoms.
+ * the engine's in-memory unit model: the {@link UcumEssence} table of prefixes and atoms.
  *
  * Hand-rolled, **zero-dependency** scanning of a known-well-formed document (not a general XML
  * parser): the essence file is a flat, regular list of `<prefix>` / `<base-unit>` / `<unit>`
- * elements. Parsed **once**, lazily, and cached — the engine reads no file at runtime; the table is
+ * elements. Parsed **once**, lazily, and cached: the engine reads no file at runtime; the table is
  * a pure in-process transform of the embedded verbatim content, never serialized or distributed. The
- * UCUM table is copyright © Regenstrief Institute, Inc. and is bundled verbatim — see
+ * UCUM table is copyright © Regenstrief Institute, Inc. and is bundled verbatim: see
  * `vendor/ucum/NOTICE.md`, which ships with this package.
  *
  * @packageDocumentation
@@ -37,15 +37,15 @@ function readValue(block: string): { factor: number; unit: string } | undefined 
  * Parse a UCUM essence XML document into the prefix + atom tables. Exported for the drift/robustness
  * tests (feeding it malformed rows); production code calls {@link loadUcumEssence}, which caches.
  *
- * The table it returns is **deeply frozen** — every atom, every atom's definition, every prefix and
- * both arrays — so the `readonly` on those is enforced when the code runs and not only when it
+ * The table it returns is **deeply frozen** (every atom, every atom's definition, every prefix and
+ * both arrays), so the `readonly` on those is enforced when the code runs and not only when it
  * compiles. The two lookup maps refuse `set` / `delete` / `clear`; a `Map` cannot be made immutable
  * in place, so that is the direct route and not every route (see {@link sealLookup}).
  *
  * The three `?? ""` capture-group fallbacks below cannot be reached from any input, so this function
  * does not report 100% branch coverage and is not meant to. They used to carry `v8 ignore` hints,
- * which is **the wrong tool twice over**: this repo's coverage provider does not honour one (measured
- * — the hinted branches were reported uncovered either way, with and without a `--` reason and under
+ * which is **the wrong tool twice over**: this repo's coverage provider does not honour one (measured,
+ * the hinted branches were reported uncovered either way, with and without a `--` reason and under
  * `--coverage.experimentalAstAwareRemapping`), and an ignore is an assertion about reachability that
  * the next reader inherits without a way to check it. The package's posture is that an unreachable
  * `noUncheckedIndexedAccess` artifact stays visibly uncovered under a directory floor of 90.
@@ -73,7 +73,7 @@ export function parseEssence(xml: string): UcumEssence {
     const openTag = m[1] ?? "";
     const body = m[2] ?? "";
     const code = attr(openTag, "Code");
-    // A prefix's `<value>` carries only a `value` attribute (no `Unit`) — read it directly.
+    // A prefix's `<value>` carries only a `value` attribute (no `Unit`): read it directly.
     const valueTag = /<value\b([^>]*)>/.exec(body);
     const valueAttr = valueTag?.[1] === undefined ? undefined : attr(valueTag[1], "value");
     const factor = valueAttr === undefined ? NaN : Number(valueAttr);
@@ -103,7 +103,7 @@ export function parseEssence(xml: string): UcumEssence {
     if (code === undefined) continue;
     const special = attr(openTag, "isSpecial") === "yes";
     const arbitrary = attr(openTag, "isArbitrary") === "yes";
-    // Special units are non-linear (a `<function>`, not a scalar) — never carry a linear value.
+    // Special units are non-linear (a `<function>`, not a scalar): never carry a linear value.
     const value = special ? undefined : readValue(body);
     atoms.push({
       code,
@@ -138,7 +138,7 @@ function refuseTableWrite(): never {
  * assumed.** `Map.prototype.set.call(table.atomByCode, …)` still inserts. What that reaches is
  * bounded by where the maps are read: {@link parseUcum} resolves an atom by scanning `atoms`, never
  * through `atomByCode`, so an entry forced in this way changes **no** reduction and no `ucumEqual`
- * answer — only what the caller's own `atomByCode.get` hands back. Both halves are pinned in
+ * answer: only what the caller's own `atomByCode.get` hands back. Both halves are pinned in
  * `test/ucum/essence-immutable.test.ts`.
  */
 function sealLookup<V>(map: Map<string, V>): ReadonlyMap<string, V> {
@@ -160,12 +160,12 @@ function sealLookup<V>(map: Map<string, V>): ReadonlyMap<string, V> {
  * table back exactly as shipped. Measured on `bf153cb` with the litre defined as `1`:
  * `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` both answered `true` where the uncorrupted
  * control answered `false`, and `mmol/L` fell from `6.0221407599999985e+23 × m-3` to a dimensionless
- * `6.02214076e+20` — a concentration reading equal to a mass, out of an engine whose stated
+ * `6.02214076e+20`: a concentration reading equal to a mass, out of an engine whose stated
  * invariant is that it never fabricates.
  *
  * **The freeze has to be deep, and a shallow one is worth nothing here**: freezing the atom alone
  * leaves `atom.value.unit = "1"`, which reproduces the same three readings. The `atoms` array is
- * frozen too, because that is the one {@link parseUcum} scans — replacing an element there hands the
+ * frozen too, because that is the one {@link parseUcum} scans: replacing an element there hands the
  * parser a forged atom directly, with the same result and without touching the memo at all.
  *
  * Note that `Object.freeze` refuses a write by **throwing in strict mode and silently ignoring it in
@@ -194,7 +194,7 @@ let cached: UcumEssence | undefined;
  * One table is shared by every caller and by the engine itself, so it is handed out **frozen**: an
  * atom's definition cannot be rewritten in place, and neither can the `atoms` array the parser
  * scans. It used to be, and doing so before that atom's first reduction poisoned the
- * reduction memo for the life of the process — a fabricated unit equivalence that survived putting
+ * reduction memo for the life of the process: a fabricated unit equivalence that survived putting
  * the table back. A write is refused, which in strict mode means a `TypeError`.
  *
  * @returns The shared, frozen in-memory {@link UcumEssence} model.

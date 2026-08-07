@@ -210,7 +210,7 @@
 #                          `UcumFunctionalTests.xml` source data. It is upstream's text,
 #                          not ours to sweep, and sweeping it would be the one edit the
 #                          UCUM License forbids. NOTICE.md is carved OUT of this exclusion
-#                          and scanned (above) — it is our prose and it now ships.
+#                          and scanned (above): it is our prose and it now ships.
 #   * documentation/       the agent-facing narrative relocated out of CLAUDE.md on
 #                          2026-08-04 (`agent-notes.md`). PROSE, but internal by
 #                          definition and NOT named in package.json's `files`, so no
@@ -285,14 +285,20 @@
 #         exactly like prose. That is deliberate (a reader sees it either way), but it
 #         means a legitimate quotation of an internal path in an example would have to be
 #         rewritten rather than escaped.
-#   (iv)  This gate does not check the em dash. That rule is not enforced in this
-#         repository at all today: there is no `scripts/check-no-emdash.sh` here and no
-#         workflow for one, and `U+2014` is live in most tracked files. Adding the em-dash
-#         gate is a separate, deliberate piece of work with its own remediation, and this
-#         file must not grow into it. What this file DOES owe the em-dash rule is not to
-#         make it worse: the remediation that shipped alongside this gate added ZERO new
-#         `U+2014` bytes. VERIFIED PER FILE with `od -An -tx1 -v` against the baseline tree,
-#         not in aggregate and not with grep: every per-file delta is zero or negative. THE
+#   (iv)  This gate does not check the em dash, and it must not grow into one.
+#         `scripts/check-no-emdash.mjs` does, over every tracked file and every tracked
+#         filename, plus the PR title, body and commit messages through its `--stdin`
+#         mode; `.github/workflows/no-emdash.yml` runs both halves. That gate landed WITH
+#         its own sweep, in one commit, because a gate arriving before its sweep reds
+#         `main` on arrival and a sweep arriving before its gate grows the character back.
+#         THE SENTENCE THAT USED TO SIT HERE SAID THE RULE WAS UNENFORCED AND THE
+#         CHARACTER LIVE IN MOST TRACKED FILES. Both halves were true when written and
+#         both are now false; the note is corrected here rather than deleted, because
+#         deleting a claim makes whatever replaces it a new claim.
+#         What this file still owes the em-dash rule is not to make it worse: the
+#         remediation that shipped alongside THIS gate added ZERO new `U+2014` bytes.
+#         VERIFIED PER FILE with `od -An -tx1 -v` against the baseline tree, not in
+#         aggregate and not with grep: every per-file delta is zero or negative. THE
 #         PER-FILE COMPARISON IS THE MEASUREMENT; the total is not, and is deliberately not
 #         quoted here, because it moved every time a later edit removed another one and a
 #         stale total is the same defect this file keeps catching. An earlier pass of this

@@ -1,6 +1,6 @@
 /**
  * Tests for the SNOMED CT → ICD-10-CM complex-map resolver. All fixtures are **synthetic rows** in
- * the shape of the SNOMED complex/extended-map refset — the rule machinery, not real SNOMED content
+ * the shape of the SNOMED complex/extended-map refset: the rule machinery, not real SNOMED content
  * (none is bundled). SNOMED concept ids for the Female/Male findings and the map-category concepts
  * are published metadata identifiers.
  */
@@ -47,7 +47,7 @@ describe("loadComplexMap (rows)", () => {
   });
 });
 
-describe("applyComplexMap — unconditional resolution", () => {
+describe("applyComplexMap: unconditional resolution", () => {
   it("resolves a TRUE rule to an ICD-10-CM target coding with system + category + advice", () => {
     const map = loadComplexMap({
       format: "rows",
@@ -72,7 +72,7 @@ describe("applyComplexMap — unconditional resolution", () => {
   });
 });
 
-describe("applyComplexMap — gender IFA rules", () => {
+describe("applyComplexMap: gender IFA rules", () => {
   const map = loadComplexMap({
     format: "rows",
     rows: [
@@ -125,7 +125,7 @@ describe("applyComplexMap — gender IFA rules", () => {
   });
 });
 
-describe("applyComplexMap — age IFA rules", () => {
+describe("applyComplexMap: age IFA rules", () => {
   const map = loadComplexMap({
     format: "rows",
     rows: [
@@ -293,7 +293,7 @@ describe("applyComplexMap — age IFA rules", () => {
   });
 });
 
-describe("applyComplexMap — multiple groups are an AND", () => {
+describe("applyComplexMap: multiple groups are an AND", () => {
   it("returns one resolution per group (manifestation + etiology)", () => {
     const map = loadComplexMap({
       format: "rows",
@@ -318,7 +318,7 @@ describe("applyComplexMap — multiple groups are an AND", () => {
   });
 });
 
-describe("applyComplexMap — No-Map + absence", () => {
+describe("applyComplexMap: No-Map + absence", () => {
   it("returns a typed No-Map for a 447638001 category row", () => {
     const map = loadComplexMap({
       format: "rows",

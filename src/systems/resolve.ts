@@ -1,13 +1,13 @@
 /**
- * The **code-system identity / canonical-URI resolver** — `resolveSystem`.
+ * The **code-system identity / canonical-URI resolver**: `resolveSystem`.
  *
- * Given a code system named any of the ways the ecosystem names it — a canonical URI, an OID (bare
- * or `urn:oid:`-prefixed), or an HL7 v2 mnemonic (`LN`, `SCT`, …) — it returns the one canonical
+ * Given a code system named any of the ways the ecosystem names it, whether a canonical URI, an OID
+ * (bare or `urn:oid:`-prefixed), or an HL7 v2 mnemonic (`LN`, `SCT`, …), it returns the one canonical
  * {@link SystemIdentity}. This is the piece `@cosyte/transform` pins so a `Coding` off any parser
  * (HL7 v2 CE/CWE, C-CDA, FHIR) can be canonicalized to a single system URI before translation.
  *
  * **Never guesses.** An identifier that matches nothing known returns a typed
- * `{ unknown: true, input }` — never a fabricated URI (the never-fabricate invariant, applied to
+ * `{ unknown: true, input }`: never a fabricated URI (the never-fabricate invariant, applied to
  * system identity).
  *
  * @packageDocumentation
@@ -20,7 +20,7 @@ import {
   type SystemIdentity,
 } from "./registry.js";
 
-/** The typed "not recognized" outcome from {@link resolveSystem} — surfaced, never a guess. */
+/** The typed "not recognized" outcome from {@link resolveSystem}: surfaced, never a guess. */
 export interface UnknownSystem {
   /** Discriminant: the identifier was not recognized. */
   readonly unknown: true;
@@ -98,7 +98,7 @@ function resolveV2Table(rawInput: string, bareOid: string): SystemIdentity | und
  * Accepts, in order of attempt: a canonical URI (case-insensitive), a `v2-XXXX` mnemonic or a
  * v2 table URI/OID (resolved structurally), a bare or `urn:oid:`-prefixed OID, or an HL7 v2
  * Table 0396 mnemonic. Whitespace is trimmed. An empty or unrecognized identifier yields a typed
- * {@link UnknownSystem} — the resolver **never** invents a URI.
+ * {@link UnknownSystem}: the resolver **never** invents a URI.
  *
  * @param id - The identifier (canonical URI, OID, `urn:oid:` OID, or mnemonic).
  * @returns The resolved {@link SystemIdentity}, or `{ unknown: true, input }`.

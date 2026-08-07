@@ -15,7 +15,7 @@ const CS: CodeSystem = loadCodeSystem({
   },
 });
 
-describe("lookup() — $lookup", () => {
+describe("lookup(): $lookup", () => {
   it("returns display + system + version for a known code", () => {
     const r = lookup(CS, "A");
     if (!r.found) throw new Error("expected found");
@@ -45,12 +45,12 @@ describe("lookup() — $lookup", () => {
   });
 });
 
-describe("validateCode() — $validate-code", () => {
+describe("validateCode(): $validate-code", () => {
   it("valid:true for a present code", () => {
     expect(validateCode(CS, "A")).toStrictEqual({ valid: true });
   });
 
-  it("never guesses valid:true — an absent code is valid:false + TERM_CODE_UNKNOWN", () => {
+  it("never guesses valid:true, an absent code is valid:false + TERM_CODE_UNKNOWN", () => {
     expect(validateCode(CS, "NOPE")).toStrictEqual({ valid: false, code: "TERM_CODE_UNKNOWN" });
   });
 
