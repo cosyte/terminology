@@ -1,11 +1,11 @@
 /**
- * {@link loadConceptMap} — validate and normalize an untrusted FHIR R4 `ConceptMap` JSON resource
+ * {@link loadConceptMap}: validate and normalize an untrusted FHIR R4 `ConceptMap` JSON resource
  * into the immutable {@link ConceptMap} model the `$translate` engine runs over.
  *
  * **Conservative on load** (unlike a wire parser's lenient posture): a ConceptMap drives a clinical
  * translation, so a structurally unusable map is a typed **fatal**
  * ({@link FATAL_CODES.TERM_CONCEPTMAP_MALFORMED}), never a silently partial map that would translate
- * *some* codes and quietly drop others. Fault messages are **value-free** — they name the resource
+ * *some* codes and quietly drop others. Fault messages are **value-free**: they name the resource
  * *path* and the fault, never echo a code or display *value*.
  *
  * @packageDocumentation
@@ -120,7 +120,7 @@ function loadGroup(raw: unknown, path: string): ConceptMapGroup {
  * variant. The result is deep-frozen. Anything structurally unusable throws a
  * {@link TerminologyError} carrying {@link FATAL_CODES.TERM_CONCEPTMAP_MALFORMED}.
  *
- * @param json - The untrusted resource (typically `JSON.parse` output — hence `unknown`).
+ * @param json - The untrusted resource (typically `JSON.parse` output, hence `unknown`).
  * @returns The immutable, validated {@link ConceptMap}.
  * @throws {TerminologyError} `TERM_CONCEPTMAP_MALFORMED` when the resource is not a usable ConceptMap.
  * @example
@@ -152,7 +152,7 @@ export function loadConceptMap(json: unknown): ConceptMap {
   const out: Writable<ConceptMap> = { group };
   assignString(out, json, "url");
   assignString(out, json, "version");
-  // R4 source[x]/target[x] — accept either the Uri or Canonical form.
+  // R4 source[x]/target[x]: accept either the Uri or Canonical form.
   const sourceScope = getString(json, "sourceUri") ?? getString(json, "sourceCanonical");
   const targetScope = getString(json, "targetUri") ?? getString(json, "targetCanonical");
   if (sourceScope !== undefined) out.sourceScope = sourceScope;

@@ -1,12 +1,12 @@
 /**
  * **Dimensional reduction** of a parsed UCUM unit: reduce an expression to its
- * canonical base-unit form — a scalar factor times a map of the seven UCUM base dimensions
+ * canonical base-unit form: a scalar factor times a map of the seven UCUM base dimensions
  * (`m s g rad K C cd`), recursively substituting each atom's essence definition down to base units.
  *
  * This is **representation** canonicalization, not magnitude *conversion*: it answers "are these two
  * expressions the same unit" (`N` ≡ `kg.m/s2`, `mmol/L` ≡ `mmol.L-1`), never "what is 5 mg/dL in
  * mmol/L" (that needs an analyte's molar mass, which the engine refuses). **Special** units (`Cel`,
- * `B`, `[pH]`) are non-linear and carry no factor/dimension — they reduce to an opaque normalized
+ * `B`, `[pH]`) are non-linear and carry no factor/dimension: they reduce to an opaque normalized
  * form and are never equated with a linear unit. **Arbitrary** units (`[IU]`, `[arb'U]`) are modeled
  * as their own dimension axis, so they cancel with themselves but convert to nothing else.
  *
@@ -48,7 +48,7 @@ function power(r: LinearReduction, p: number): LinearReduction {
 /**
  * The dimensionless reduction, used as an internal building block. **Frozen, and never handed to a
  * caller**: it is module-global, so a consumer able to mutate the object it received would be
- * mutating the engine. On `0.0.5` it was neither — `reduce` returned it for a term with no factors,
+ * mutating the engine. On `0.0.5` it was neither: `reduce` returned it for a term with no factors,
  * and setting `dims.m = 1` and `factor = 999` on that result made every later reduction in the
  * process start from those, so `kg.m/s2` came back as `999000 × m2.g.s-2` and
  * `ucumEqual("N", "kg.m/s2")` answered `false`. {@link linearReduceTerm} now accumulates from a
@@ -71,20 +71,20 @@ const DIMENSIONLESS: LinearReduction = Object.freeze({
  * reduction of the shipped atom in that process read what the forged one left. Measured on `0.0.5`,
  * forging `{ code: "L" }` with no `value` as the first touch of `L`: `ucumEqual("L", "1")` and
  * `ucumEqual("mg/L", "mg")` both answered `true` (control: `false`), and `mmol/L` reduced without
- * its `m-3` — a concentration reading equal to a mass, out of a never-fabricate engine.
+ * its `m-3`: a concentration reading equal to a mass, out of a never-fabricate engine.
  *
  * Identity keying makes an entry describe the atom it was computed from, and it does not cost the
  * hot path: the atoms `parseUcum` resolves are the singletons `loadUcumEssence` caches, so a parsed
  * expression still finds one entry per atom, and the lookup is a reference compare rather than a
- * string hash. Benchmarked warm against the string-keyed original two ways — separate processes,
+ * string hash. Benchmarked warm against the string-keyed original two ways (separate processes,
  * and both trees alternating inside one process, best-of-n over hundreds of thousands of `reduce`
- * calls — the difference did **not** reproduce in either direction: over twelve alternating trials
+ * calls), the difference did **not** reproduce in either direction: over twelve alternating trials
  * the head/base ratio landed above 1 four times and below it eight, spread far wider than any
  * difference between the two. So the claim here is
  * only that identity keying has **no measured cost on the hot path**, and no figures are quoted,
  * because three drafts quoted three pairs and none of them was reproducible. Do not add one back.
  * An atom a caller
- * built gets its own entry, collected with it — the containers hold their keys weakly, so forged
+ * built gets its own entry, collected with it: the containers hold their keys weakly, so forged
  * atoms cannot accumulate either.
  *
  * **Identity keying closes the forged-atom route and does not reach the mutation one, so the other
@@ -102,7 +102,7 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
   // Every base atom in the bundled table carries its `dim`, but this function is reachable with an
   // atom a caller assembled, so `?? atom.code` is a real arm rather than a type-narrowing fallback
   // and is covered as one. It used to sit under a `/* v8 ignore next */` asserting the table's
-  // property as if it were the exported surface's — the same over-scoped claim that hid a leak one
+  // property as if it were the exported surface's: the same over-scoped claim that hid a leak one
   // function over. Answering a forged base atom on its own code changes nothing for the table's
   // atoms: it is keyed by identity like every other memo entry.
   if (atom.base) return { kind: "linear", factor: 1, dims: { [atom.dim ?? atom.code]: 1 } };
@@ -113,13 +113,13 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
   if (cached) return cached;
 
   // The three guards below. No expression `parseUcum` accepts reaches any of them, but **that is a
-  // property of `reduce`'s own control flow, not of the unit table** — an earlier wording of this
+  // property of `reduce`'s own control flow, not of the unit table**: an earlier wording of this
   // comment said the table's atoms all carry a resolvable definition and that was false. Measured on
-  // the bundled v2.2 table: of its 312 atoms, 28 carry no `value` at all — the 7 base units and the
+  // the bundled v2.2 table: of its 312 atoms, 28 carry no `value` at all, the 7 base units and the
   // 21 special ones (`Cel`, `[pH]`, `B`, `Np`, `[degF]`, …), 0 arbitrary. What keeps them out of
   // here is that `reduce` short-circuits a special-containing expression to the opaque `special`
   // form before any linear reduction, and base and arbitrary atoms are answered above. Of the 291
-  // non-special atoms — the 7 base units, answered above, plus the 284 that carry a `value` — every
+  // non-special atoms (the 7 base units, answered above, plus the 284 that carry a `value`), every
   // one reduces fully: no definition chain in the table reaches a value-less atom, an unparseable
   // definition, or a cycle. **284 is the count that carries a `value`, not the count of non-special
   // atoms**, and a draft of this comment attached it to the wrong noun; both are asserted in
@@ -130,14 +130,14 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
   // below it: nothing checks an atom's provenance, and an atom **defined in terms of a special unit**
   // (`{ value: { unit: "Cel" } }`) lands on the table's own `Cel` in the no-linear-definition guard.
   // The cyclic guard is reached differently again, and this took three wrong descriptions to get
-  // right — do not re-derive it from the shape of the code, because the shape is misleading. Naming
+  // right: do not re-derive it from the shape of the code, because the shape is misleading. Naming
   // is not enough: a definition is resolved by `parseUcum` against the loaded table, so an assembled
   // atom, or one off a second table built with `parseEssence`, can name a table atom but never be
   // one; a self-referential `Pa` taken off a table copy resolves to the shipped pascal and answers
   // 1000 g.m-1.s-2. Corrupting a *loaded* atom in place used to reach it and no longer does, because
   // the table is frozen. **What reaches it is an ACCESSOR**: `UcumAtom.value` is `readonly` to
   // TypeScript only, which a getter satisfies, and `atom.value.unit` is read *below*, after
-  // `inProgress.add(atom)` — so a caller's getter runs inside the recursion and can re-enter
+  // `inProgress.add(atom)`, so a caller's getter runs inside the recursion and can re-enter
   // `reduce` with this very atom. No mutation, no table, no cast. That is a supported public call
   // and it is pinned in `test/ucum/reduce.test.ts`, under a 100,000-byte atom code, so this guard
   // is covered rather than excluded. A definition cycle in the vendored table would reach it too,
@@ -148,7 +148,7 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
   // Do not put an atom back into a message, and do not memoize an answer for an atom none of these
   // let through. All three are pinned in `test/ucum/reduce.test.ts` by whole-message equality, a
   // length bound, and `err.stack` under a 100,000-byte caller-supplied code. Equality is the
-  // load-bearing part — `toThrowError(string)` is a substring match, and a draft that used only that
+  // load-bearing part: `toThrowError(string)` is a substring match, and a draft that used only that
   // stayed green with the atom interpolated back in.
   if (inProgress.has(atom)) {
     throw new Error("cyclic UCUM atom definition in the unit table");
@@ -173,14 +173,14 @@ function reduceAtomLinear(atom: UcumAtom): LinearReduction {
     atomMemo.set(atom, result);
     return result;
   } finally {
-    // `finally`, because `linearReduceTerm` can throw while this atom is marked in progress — an
+    // `finally`, because `linearReduceTerm` can throw while this atom is marked in progress: an
     // atom defined in terms of a special unit reaches the no-linear-definition guard from inside the
     // recursion, and one whose definition does not parse reaches the guard just above. The delete
     // used to sit on the success path only, so the entry stayed behind and every later reduction
     // touching that atom hit the cyclic guard for the rest of the process. Measured on published
     // `0.0.5`, where a forged atom coded `N` and defined as `N` did re-enter the cyclic guard,
     // because the keys were code strings: after one such call every `ucumEqual("N", "kg.m/s2")`
-    // threw. **That route is closed here** — identity keys mean an assembled atom is never the table
+    // threw. **That route is closed here**: identity keys mean an assembled atom is never the table
     // atom its definition names, and the same call now reduces cleanly. The `finally` is still
     // load-bearing, for the two throws named above rather than for that one. Do not read the message
     // literals in this file back onto `0.0.5`: it threw `cyclic UCUM atom definition for 'N'`, still
@@ -245,7 +245,7 @@ function serializeSpecial(node: UnitNode): string {
       } else if (comp.kind === "group") {
         walk(comp.term, s);
       }
-      // annotations are inert — dropped
+      // annotations are inert: dropped
     }
   };
   walk(node, 1);
@@ -253,7 +253,7 @@ function serializeSpecial(node: UnitNode): string {
 }
 
 /**
- * Reduce a parsed UCUM unit to its canonical {@link Reduction} — a linear scalar×dimension form, or
+ * Reduce a parsed UCUM unit to its canonical {@link Reduction}: a linear scalar×dimension form, or
  * an opaque `special` form for expressions involving a non-linear special unit.
  *
  * The reduction of one atom is cached against **that atom object**, so a `UnitNode` you assembled
@@ -266,8 +266,8 @@ function serializeSpecial(node: UnitNode): string {
  *   definition does not parse. **No expression {@link parseUcum} accepts reaches either**; a node
  *   you assemble yourself can, including by defining an atom in terms of a special unit such as
  *   `Cel`, which lands on the table's own `Cel`. A third guard catches a definition that leads back
- *   to itself. Naming a table atom does not reach it — a definition is resolved against the loaded
- *   table, so your atom can name one but never be one — and neither does the table itself, which is
+ *   to itself. Naming a table atom does not reach it (a definition is resolved against the loaded
+ *   table, so your atom can name one but never be one), and neither does the table itself, which is
  *   frozen; what reaches it is a `value` accessor that re-enters `reduce` for the same atom while
  *   that atom is still being reduced. The message names the fault, never the atom.
  * @example

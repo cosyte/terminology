@@ -5,16 +5,16 @@
  * These mirror the FHIR R4 datatypes of the same names (the interchange lingua franca the whole
  * ecosystem speaks), reduced to the fields the terminology operations need. Every instance the
  * engine hands back is deep-frozen, so a translated result is safe to share across a pipeline
- * without defensive copying — the immutability discipline the parsers follow.
+ * without defensive copying: the immutability discipline the parsers follow.
  *
  * @packageDocumentation
  */
 
 /**
- * A single coded value — a `code` drawn from a code `system`, optionally versioned and displayed.
+ * A single coded value: a `code` drawn from a code `system`, optionally versioned and displayed.
  *
  * Models FHIR R4 `Coding`. `system` is the code system's **canonical URI** (e.g.
- * `http://loinc.org`), not a mnemonic or OID — use {@link ../systems/resolve.resolveSystem} to
+ * `http://loinc.org`), not a mnemonic or OID: use {@link ../systems/resolve.resolveSystem} to
  * canonicalize before constructing one. `system` is optional because a raw wire code sometimes
  * arrives without one; the engine surfaces that rather than inventing a system.
  *
@@ -29,7 +29,7 @@
 export interface Coding {
   /** The code system's canonical URI (e.g. `http://snomed.info/sct`). Optional when unknown. */
   readonly system?: string;
-  /** The symbol in the code system's syntax. Required — a coding without a code is meaningless. */
+  /** The symbol in the code system's syntax. Required: a coding without a code is meaningless. */
   readonly code: string;
   /** The code system version this code is drawn from, when known (mappings are release-scoped). */
   readonly version?: string;
@@ -38,7 +38,7 @@ export interface Coding {
 }
 
 /**
- * A concept described by one or more {@link Coding}s plus optional free text — FHIR R4
+ * A concept described by one or more {@link Coding}s plus optional free text: FHIR R4
  * `CodeableConcept`. Included so the value layer is complete for downstream consumers even though
  * {@link ../conceptmap/translate.translate} operates on a single {@link Coding}.
  *
@@ -63,7 +63,7 @@ export interface CodeableConcept {
 /**
  * Construct a deep-frozen {@link Coding}.
  *
- * The returned object is `Object.freeze`d so it cannot be mutated in place — parsed/translated
+ * The returned object is `Object.freeze`d so it cannot be mutated in place: parsed/translated
  * values are immutable by default. Optional fields are only present when supplied (no `undefined`
  * keys), so structural equality checks stay clean.
  *

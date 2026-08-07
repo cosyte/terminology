@@ -1,6 +1,6 @@
 /**
- * The RxNorm **term-type (`TTY`) vocabulary** relevant to the drug graph — the normal-form ladder and
- * the cross-link kinds — encoded as published identity facts (grounded firsthand on the NLM RxNorm
+ * The RxNorm **term-type (`TTY`) vocabulary** relevant to the drug graph (the normal-form ladder and
+ * the cross-link kinds), encoded as published identity facts (grounded firsthand on the NLM RxNorm
  * Technical Documentation, Appendix 5). **No RxNorm release is bundled**: what ships is these
  * *labels*, not the drug list.
  *

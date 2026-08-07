@@ -5,7 +5,7 @@ import { parseEssence } from "../../src/ucum/essence.js";
 
 /**
  * `reduce` memoizes each atom's reduction in module-global state. Until `0.0.5` inclusive that memo,
- * and the guard against a self-referential definition, were keyed on the atom's `code` **string** —
+ * and the guard against a self-referential definition, were keyed on the atom's `code` **string**:
  * so an atom a caller assembled wrote under the key of the shipped atom whose code it happened to
  * share, and every later reduction of the shipped atom in that process read what the caller's atom
  * had left. `reduce` is exported and takes a caller-built `UnitNode`, and nothing validates that an
@@ -13,13 +13,13 @@ import { parseEssence } from "../../src/ucum/essence.js";
  *
  * **This file has NINE tests. Six forge an atom; three do not.** Of the six, **four collide with
  * a DIFFERENT shipped atom (`L`, `Hz`, `N`, `min`) and depend on being the first touch of that code
- * in this module instance** — a memo entry written by an earlier reduction would answer from the
+ * in this module instance**: a memo entry written by an earlier reduction would answer from the
  * cache and hide the defect entirely. Keep one atom per test, keep those four codes distinct, and
  * keep the whole-table sweep last: it touches every atom in the table. The other two forged atoms
- * are coded `XX` and `XY` and deliberately collide with **nothing** — their subjects are a
+ * are coded `XX` and `XY` and deliberately collide with **nothing**: their subjects are a
  * definition that names a special unit, and a base atom carrying no `dim`. The three that forge nothing: the `Pa` case reduces an atom off a
  * second table, the per-call-state case reduces an empty term, and the sweep reduces the table's
- * own atoms. **Recount when you add one** — a draft of this header said four and three, which was
+ * own atoms. **Recount when you add one**: a draft of this header said four and three, which was
  * both a wrong count and a wrong total.
  *
  * **The `Pa` case used to corrupt the loaded table in place, and no test here does that any more.**
@@ -29,7 +29,7 @@ import { parseEssence } from "../../src/ucum/essence.js";
  * exclusion on the cyclic guard rests on.
  *
  * Measured on published `0.0.5`, and again on the base commit these tests were written against
- * (`c3c4988`, which carries the same memo, cycle guard and no-`value` branch — only the two `Error`
+ * (`c3c4988`, which carries the same memo, cycle guard and no-`value` branch, only the two `Error`
  * messages differ there, since `0.0.5` still interpolated the atom into them). Each assertion below
  * inverts one of those readings: forging a value-less `L` made `ucumEqual("L", "1")` and
  * `ucumEqual("mg/L", "mg")` answer `true` where the unforged control answered `false`, and dropped
@@ -74,7 +74,7 @@ function reduceUnit(unit: string): ReturnType<typeof reduce> {
   return reduce(parsed.node);
 }
 
-describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
+describe("reduce: a caller-built atom cannot corrupt a shipped one", () => {
   it("a value-less forged atom does not change how the shipped atom with that code reduces (L)", () => {
     // The first touch of `L` in this module instance is a forged, value-less atom. It is refused;
     // what matters here is the state it leaves behind, so the outcome is deliberately swallowed.
@@ -98,14 +98,14 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
   it("an atom carrying no definition is refused, never answered as dimensionless (Hz)", () => {
     expect(() => reduce(forgedAtomNode("Hz"))).toThrowError("UCUM atom has no linear definition");
     // That the message cannot grow with a caller-supplied code is asserted where it belongs, by
-    // whole-message equality against a 100,000-byte code, in `reduce.test.ts` — not here, where a
+    // whole-message equality against a 100,000-byte code, in `reduce.test.ts`: not here, where a
     // substring match would pass with the atom interpolated back in.
     expect(ucumEqual("Hz", "1")).toBe(false);
   });
 
   it("a forged atom that names its own code resolves through the table, and wedges nothing (N)", () => {
     // A definition is resolved by `parseUcum` against the bundled table, so `unit: "N"` on a forged
-    // atom means the table's newton — a reference, not a cycle. On the base commit both atoms were
+    // atom means the table's newton: a reference, not a cycle. On the base commit both atoms were
     // the string `"N"`, so this threw `cyclic …` from inside the recursion, and the cleanup that
     // never ran left the shipped newton throwing that for the life of the process.
     const forged = reduce(forgedAtomNode("N", { factor: 1, unit: "N" }));
@@ -119,7 +119,7 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
     // This case used to corrupt the loaded table in place; the table is frozen now, so that write is
     // refused. What it pins instead is the half of the cyclic guard's reachability that is easy to
     // get wrong: **naming is not being.** (The guard IS reachable, through a `value` accessor that
-    // re-enters `reduce` — pinned in `reduce.test.ts`. Do not read this case as saying otherwise.)
+    // re-enters `reduce`: pinned in `reduce.test.ts`. Do not read this case as saying otherwise.)
     // The atom here is self-referential **by construction**, off a table the caller parsed for
     // itself, with no mutation anywhere; its
     // definition is still resolved by `parseUcum` against the loaded table, so it *names* the
@@ -181,8 +181,8 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
   });
 
   it("an atom defined in terms of a special unit is refused, naming the fault and not the atom", () => {
-    // The case that falsified an earlier draft of this file's claims. 21 of the table's 312 atoms —
-    // the special units — carry no `value`, so they DO reach the no-linear-definition guard; what
+    // The case that falsified an earlier draft of this file's claims. 21 of the table's 312 atoms
+    // (the special units) carry no `value`, so they DO reach the no-linear-definition guard; what
     // keeps a parsed expression away from it is that `reduce` short-circuits a special-containing
     // expression to the opaque `special` form first. An assembled atom whose *definition* names a
     // special unit walks straight past that short-circuit, and the atom in the throwing frame is the
@@ -200,7 +200,7 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
 
   it("answers a forged base atom on its own code when it carries no dim, and moves no table atom", () => {
     // `reduceAtomLinear`'s `atom.dim ?? atom.code` sat under a `/* v8 ignore next */` justified by a
-    // property of the bundled table — every base atom there carries a `dim`. `reduce` takes a
+    // property of the bundled table: every base atom there carries a `dim`. `reduce` takes a
     // caller-built node, so the arm is reachable through the exported surface, and the ignore was
     // hiding it rather than describing it. Same class as the ignore beside it, which was deleted
     // when its branches turned out to be reachable too; this is the one that survived that audit.
@@ -263,7 +263,7 @@ describe("reduce — a caller-built atom cannot corrupt a shipped one", () => {
       }
     }
     // No definition chain in the bundled table reaches a value-less atom, an unparseable definition
-    // or a cycle. That is the measurement the comments in `reduce.ts` cite — it is a property of
+    // or a cycle. That is the measurement the comments in `reduce.ts` cite: it is a property of
     // this table plus `reduce`'s control flow, NOT of every atom having a linear definition.
     expect(refused).toEqual([]);
   });

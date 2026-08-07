@@ -6,8 +6,8 @@ import { parseEssence } from "../../src/ucum/essence.js";
 
 /**
  * `loadUcumEssence()` hands out one table, shared by every caller and by the engine itself. Through
- * every version published before this change it was `readonly` to **TypeScript only** —
- * `essence.ts` froze nothing — so a
+ * every version published before this change it was `readonly` to **TypeScript only**
+ * (`essence.ts` froze nothing), so a
  * consumer could rewrite a loaded atom's definition in place.
  *
  * That is not cosmetic, because `reduce` memoizes each atom's reduction against the atom **object**:
@@ -145,7 +145,7 @@ describe("the loaded UCUM table is immutable at run time, not only to the type c
     expect(metre?.base).toBe(true);
     if (!metre) return;
 
-    // `ReadonlyMap` has no mutators to call, so reaching them is a cast — which is exactly the
+    // `ReadonlyMap` has no mutators to call, so reaching them is a cast, which is exactly the
     // position a JavaScript consumer is in, with no cast required at all.
     const atoms = essence.atomByCode as Map<string, unknown>;
     const prefixes = essence.prefixByCode as Map<string, unknown>;
@@ -161,7 +161,7 @@ describe("the loaded UCUM table is immutable at run time, not only to the type c
   });
 
   it("bounds what the map refusal does NOT cover, rather than claiming it covers everything", () => {
-    // `Map.prototype.set.call(…)` still inserts — no `Map` can be made fully immutable in place.
+    // `Map.prototype.set.call(…)` still inserts: no `Map` can be made fully immutable in place.
     // What that reaches is the point: the maps are a lookup convenience, and `parseUcum` resolves an
     // atom by scanning `atoms`, never through `atomByCode`. So a forced entry changes what the
     // caller's own `get` hands back and changes NO reduction. Both halves are asserted, so a future

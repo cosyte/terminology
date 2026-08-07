@@ -5,7 +5,7 @@
  * {@link ValueSetMembership} outcomes.
  *
  * The model is **content-agnostic**: a `ValueSet` names codes by system URI and is expanded over
- * **consumer-supplied** {@link CodeSystem} releases — the engine ships **zero** encoded value-set
+ * **consumer-supplied** {@link CodeSystem} releases: the engine ships **zero** encoded value-set
  * content (SNOMED CT / CPT / LOINC / UMLS / VSAC value sets are strictly BYO). The FHIR
  * operation shapes are grounded firsthand on the FHIR R4 Terminology Module
  * (`https://hl7.org/fhir/R4/valueset.html`, `https://hl7.org/fhir/R4/valueset-operation-expand.html`,
@@ -19,14 +19,14 @@ import type { DiagnosticCode } from "../common/diagnostics.js";
 import type { CodeSystem } from "../codesystem/types.js";
 
 /**
- * A FHIR R4 `ValueSet.compose.include.filter` operator — the subset the engine implements plus the
+ * A FHIR R4 `ValueSet.compose.include.filter` operator: the subset the engine implements plus the
  * ones it explicitly does not. Grounded on the FHIR `filter-operator` code system
  * (`https://hl7.org/fhir/R4/valueset-filter-operator.html`).
  *
  * **Implemented:** `is-a` / `descendent-of` / `is-not-a` (subsumption over the loaded release's
  * hierarchy), `=` / `in` / `not-in` / `exists` (property predicates). **Not implemented** (surfaced as
  * a typed {@link DiagnosticCode.TERM_VALUESET_CANNOT_EXPAND}, never silently mis-expanded): `regex`,
- * `generalizes`. Anything unrecognized is treated as not-implemented — never as "matches nothing".
+ * `generalizes`. Anything unrecognized is treated as not-implemented: never as "matches nothing".
  */
 export type FilterOperator =
   | "="
@@ -39,7 +39,7 @@ export type FilterOperator =
   | "generalizes"
   | "exists";
 
-/** One `ValueSet.compose.include.filter` — a `property op value` predicate over a code system. */
+/** One `ValueSet.compose.include.filter`: a `property op value` predicate over a code system. */
 export interface ConceptSetFilter {
   /** The concept property the predicate is on (e.g. `"concept"` for the code hierarchy, or a code). */
   readonly property: string;
@@ -49,7 +49,7 @@ export interface ConceptSetFilter {
   readonly value: string;
 }
 
-/** One explicit `ValueSet.compose.include.concept` — an enumerated code (extensional). */
+/** One explicit `ValueSet.compose.include.concept`: an enumerated code (extensional). */
 export interface ConceptRef {
   /** The code, drawn verbatim from the value set. */
   readonly code: string;
@@ -58,7 +58,7 @@ export interface ConceptRef {
 }
 
 /**
- * One `ValueSet.compose.include` / `.exclude` component — a `ConceptSet`. Selects codes by an explicit
+ * One `ValueSet.compose.include` / `.exclude` component: a `ConceptSet`. Selects codes by an explicit
  * `concept` list, by `filter`s over a `system`, by referencing other value sets (`valueSet`), or a
  * combination (the combination is an **intersection**, per FHIR).
  */
@@ -75,11 +75,11 @@ export interface ConceptSetComponent {
   readonly valueSet?: readonly string[];
 }
 
-/** A `ValueSet.compose` — the intensional/extensional definition of membership. */
+/** A `ValueSet.compose`: the intensional/extensional definition of membership. */
 export interface ValueSetCompose {
   /** The `include` components (their union, minus every {@link exclude}, is the membership). */
   readonly include: readonly ConceptSetComponent[];
-  /** The `exclude` components — codes removed from the include union. */
+  /** The `exclude` components: codes removed from the include union. */
   readonly exclude: readonly ConceptSetComponent[];
 }
 
@@ -87,7 +87,7 @@ export interface ValueSetCompose {
 export interface ExpansionContains {
   /** The code system URI, when the entry names one. */
   readonly system?: string;
-  /** The code. Required — a `contains` entry without a code is a malformed expansion. */
+  /** The code. Required: a `contains` entry without a code is a malformed expansion. */
   readonly code: string;
   /** The display, carried verbatim when present. */
   readonly display?: string;
@@ -96,7 +96,7 @@ export interface ExpansionContains {
 }
 
 /**
- * A **pre-computed** `ValueSet.expansion` — a cached membership snapshot, used as-is (extensional).
+ * A **pre-computed** `ValueSet.expansion`: a cached membership snapshot, used as-is (extensional).
  * The engine never re-derives it; it only checks whether it is **complete** (a truncated
  * expansion must never read as full membership).
  */
@@ -114,7 +114,7 @@ export interface ValueSetExpansion {
 }
 
 /**
- * A loaded, immutable `ValueSet` — the subset of the FHIR R4 `ValueSet` resource the binding layer
+ * A loaded, immutable `ValueSet`: the subset of the FHIR R4 `ValueSet` resource the binding layer
  * needs. Produced by {@link loadValueSet}; every field deep-frozen.
  */
 export interface ValueSet {
@@ -149,14 +149,14 @@ export interface ExpansionContext {
   readonly valueSets?: ReadonlyMap<string, ValueSet>;
 }
 
-/** A surfaced expansion concern — a part that could not be expanded, or a truncated snapshot. */
+/** A surfaced expansion concern: a part that could not be expanded, or a truncated snapshot. */
 export interface ExpansionDiagnostic {
   /** The stable code (`TERM_VALUESET_CANNOT_EXPAND` / `TERM_VALUESET_EXPANSION_TRUNCATED`). */
   readonly code: DiagnosticCode;
   /** A **value-free** structural description of the concern (never echoes a patient value). */
   readonly detail: string;
   /**
-   * A **value-free structural locus** into the caller's own resource — `"expansion"`, or a
+   * A **value-free structural locus** into the caller's own resource: `"expansion"`, or a
    * `compose`-relative index path such as `"compose.include[2]"` or
    * `"compose.include[0].valueSet[1]"`. A diagnostic raised while expanding a *referenced* value set
    * is prefixed with the reference that reached it (`"compose.include[0].valueSet[1]/compose.include[3]"`).
@@ -188,7 +188,7 @@ export interface ExpandResult {
   readonly diagnostics: readonly ExpansionDiagnostic[];
 }
 
-/** A definitive membership answer — the code is (or is not) a member of the value set. */
+/** A definitive membership answer: the code is (or is not) a member of the value set. */
 export interface ValueSetMemberDecided {
   /** Discriminant: membership was decided. */
   readonly undetermined: false;
@@ -199,7 +199,7 @@ export interface ValueSetMemberDecided {
 }
 
 /**
- * A **fail-safe undetermined** membership — the never-fabricate outcome for a value set that could
+ * A **fail-safe undetermined** membership: the never-fabricate outcome for a value set that could
  * not be fully evaluated (a missing code system, a truncated expansion). The engine refuses to guess:
  * it returns neither `true` nor `false`, so a caller can never mistake "we could not check" for "not a
  * member" (a false "not a member" is a clinical error).

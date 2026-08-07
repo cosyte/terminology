@@ -1,15 +1,15 @@
 /**
  * Property-based conformance tests for the Phase-6 RxNorm drug-graph invariants (roadmap §4.2):
  *
- *   1. **Never fabricate** — every concept a navigation returns is present in the loaded graph and is
+ *   1. **Never fabricate**: every concept a navigation returns is present in the loaded graph and is
  *      the `object` of an **authored** edge from the queried subject under the followed predicate.
- *   2. **Never invert** — the graph only ever follows authored edges; a target is never reached via a
+ *   2. **Never invert**: the graph only ever follows authored edges; a target is never reached via a
  *      synthesized reverse edge.
- *   3. **Liberal load, total apply** — `loadRxNormGraph` over arbitrary text returns a frozen graph
+ *   3. **Liberal load, total apply**: `loadRxNormGraph` over arbitrary text returns a frozen graph
  *      (never a crash); navigation and NDC/approximate queries never throw.
- *   4. **NDC is release-scoped** — `resolveNdc` resolves only NDCs present in the loaded release; an
+ *   4. **NDC is release-scoped**: `resolveNdc` resolves only NDCs present in the loaded release; an
  *      absent NDC is always a typed unmapped, never a guessed RXCUI.
- *   5. **Approximate is always labeled** — every `approximateMatch` candidate is `approximate: true`
+ *   5. **Approximate is always labeled**: every `approximateMatch` candidate is `approximate: true`
  *      with a score in `[0, 1]`, drawn verbatim from a loaded concept.
  */
 
@@ -19,7 +19,7 @@ import fc from "fast-check";
 /**
  * This file declares its own test budget. A property test draws fresh random input every run (this
  * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again — making the property suite the one
+ * box, and the gating coverage run roughly doubles it again: making the property suite the one
  * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
  * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
  * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),

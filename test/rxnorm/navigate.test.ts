@@ -1,6 +1,6 @@
 /**
- * Tests for RxNorm drug-graph navigation. Fixtures are **synthetic rows in the real RRF wire format**
- * — a small lisinopril graph (IN → SCDC → SCD → SBD, with BN + DF cross-links). No real RxNorm
+ * Tests for RxNorm drug-graph navigation. Fixtures are **synthetic rows in the real RRF wire format**:
+ * a small lisinopril graph (IN → SCDC → SCD → SBD, with BN + DF cross-links). No real RxNorm
  * content is bundled: the rows are assembled here, and only the public-domain RxNorm identifiers and
  * normalized names are reused (roadmap §5).
  *
@@ -73,7 +73,7 @@ function graph(): RxNormGraph {
   return loadRxNormGraph({ conso, rel, sat, version: "RXNORM_2026AA" });
 }
 
-describe("graph navigation — direction is the authored edge direction", () => {
+describe("graph navigation: direction is the authored edge direction", () => {
   it("resolves a clinical component to its ingredient (has_ingredient)", () => {
     const r = ingredientsOf(graph(), SCDC);
     expect(r.found).toBe(true);
@@ -149,7 +149,7 @@ describe("graph navigation — direction is the authored edge direction", () => 
   });
 });
 
-describe("graph navigation — never fabricate", () => {
+describe("graph navigation: never fabricate", () => {
   it("a present concept with no such relationship is a found result with empty targets", () => {
     const r = doseFormsOf(graph(), BN); // the brand name has no dose-form edge
     expect(r.found).toBe(true);
@@ -172,7 +172,7 @@ describe("graph navigation — never fabricate", () => {
   });
 });
 
-describe("NDC resolution — temporal, release-scoped, never a guess", () => {
+describe("NDC resolution: temporal, release-scoped, never a guess", () => {
   it("resolves a known NDC to its RXCUI, carrying active status and the as-of release", () => {
     const r = resolveNdc(graph(), "00000000001");
     expect(r.resolved).toBe(true);
@@ -205,7 +205,7 @@ describe("NDC resolution — temporal, release-scoped, never a guess", () => {
   });
 });
 
-describe("approximate match — opt-in, explicitly labeled, never the default", () => {
+describe("approximate match: opt-in, explicitly labeled, never the default", () => {
   it("returns labeled candidates best-first, every one marked approximate", () => {
     const r = approximateMatch(graph(), "lisinopril oral tablet");
     expect(r.length).toBeGreaterThan(0);

@@ -5,7 +5,7 @@
  *
  * The model is **content-agnostic**: it is fed a code system's *release* (a consumer-supplied RRF,
  * CSV, fixed-width file, or FHIR `CodeSystem` JSON) and answers the two identity questions. It ships
- * **no code-system release** — every concept comes from the caller's data (the BYO-data posture).
+ * **no code-system release**: every concept comes from the caller's data (the BYO-data posture).
  * The FHIR operation shapes are grounded firsthand on the FHIR R4 Terminology Module
  * (`https://hl7.org/fhir/R4/codesystem-operation-lookup.html`,
  * `https://hl7.org/fhir/R4/codesystem-operation-validate-code.html`).
@@ -16,16 +16,16 @@
 import type { DiagnosticCode } from "../common/diagnostics.js";
 
 /**
- * A concept's normalized activity — whether it is a clean, current, usable code, or carries a
+ * A concept's normalized activity: whether it is a clean, current, usable code, or carries a
  * steward status that a caller must not ignore. `active` is the boolean convenience derived from it.
  *
- * - `active` — current and usable.
- * - `deprecated` — no longer current (LOINC `DEPRECATED`; a FHIR `inactive`/`deprecated` concept).
- * - `discouraged` / `trial` — LOINC lifecycle states (usable, but not settled).
- * - `obsolete` — withdrawn (RxNorm `SUPPRESS = O`).
- * - `suppressed` — editor-suppressed (RxNorm/UMLS `SUPPRESS = Y`/`E`).
- * - `header` — a classification header, **not a billable/valid leaf** (ICD-10-CM flag `0`).
- * - `unknown` — a status token the mapper did not recognize; carried verbatim, never guessed clean.
+ * - `active`: current and usable.
+ * - `deprecated`: no longer current (LOINC `DEPRECATED`; a FHIR `inactive`/`deprecated` concept).
+ * - `discouraged` / `trial`: LOINC lifecycle states (usable, but not settled).
+ * - `obsolete`: withdrawn (RxNorm `SUPPRESS = O`).
+ * - `suppressed`: editor-suppressed (RxNorm/UMLS `SUPPRESS = Y`/`E`).
+ * - `header`: a classification header, **not a billable/valid leaf** (ICD-10-CM flag `0`).
+ * - `unknown`: a status token the mapper did not recognize; carried verbatim, never guessed clean.
  */
 export type ConceptActivity =
   | "active"
@@ -38,7 +38,7 @@ export type ConceptActivity =
   | "unknown";
 
 /**
- * The status flags a `$lookup`/`$validate-code` carries on a concept — the safety surface that stops
+ * The status flags a `$lookup`/`$validate-code` carries on a concept: the safety surface that stops
  * a non-current or non-billable code from being presented as clean. Present only when
  * the loaded release supplied status information; the engine never fabricates a status.
  */
@@ -56,7 +56,7 @@ export interface ConceptStatus {
 }
 
 /**
- * One property value on a concept — models FHIR R4 `$lookup` `property` ("one or more properties
+ * One property value on a concept: models FHIR R4 `$lookup` `property` ("one or more properties
  * that contain additional information about the code, including status"). Carried verbatim from the
  * release; never fabricated.
  */
@@ -70,7 +70,7 @@ export interface Property {
 }
 
 /**
- * One loaded, immutable concept — the subset of a `CodeSystem.concept` the operations need.
+ * One loaded, immutable concept: the subset of a `CodeSystem.concept` the operations need.
  */
 export interface Concept {
   /** The code, exactly as it appears in the release. */
@@ -86,7 +86,7 @@ export interface Concept {
 }
 
 /**
- * A surfaced, non-fatal load warning — a malformed row that was **skipped**, reported with its line
+ * A surfaced, non-fatal load warning: a malformed row that was **skipped**, reported with its line
  * number and a **value-free** structural reason (never the row's content). Liberal on load.
  */
 export interface LoadWarning {
@@ -99,14 +99,14 @@ export interface LoadWarning {
 }
 
 /**
- * A loaded, immutable code-system release — the queryable model {@link loadCodeSystem} produces and
+ * A loaded, immutable code-system release: the queryable model {@link loadCodeSystem} produces and
  * {@link lookup} / {@link validateCode} run over. Concepts are keyed by code for O(1) identity, and
  * every concept is frozen.
  */
 export interface CodeSystem {
   /** The code system's canonical URI, when supplied by the source. */
   readonly url?: string;
-  /** The release version, when supplied — mappings and displays are release-scoped. */
+  /** The release version, when supplied: mappings and displays are release-scoped. */
   readonly version?: string;
   /** A short human-readable name, when supplied. */
   readonly name?: string;
@@ -117,7 +117,7 @@ export interface CodeSystem {
    * iteration behave as a `Map`'s do, adding / deleting / clearing is refused however it is
    * attempted, and every value is frozen.
    *
-   * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+   * A view is not a `Map` instance: `instanceof Map` is `false` and this model cannot be
    * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
    */
   readonly concepts: ReadonlyMap<string, Concept>;
@@ -147,7 +147,7 @@ export interface LookupResult {
   readonly version?: string;
 }
 
-/** A **fail-safe unknown** {@link lookup} — the never-fabricate outcome; no display is ever guessed. */
+/** A **fail-safe unknown** {@link lookup}: the never-fabricate outcome; no display is ever guessed. */
 export interface LookupUnknown {
   /** Discriminant: the code was not found. */
   readonly found: false;
@@ -161,7 +161,7 @@ export interface LookupUnknown {
 export type LookupOutcome = LookupResult | LookupUnknown;
 
 /**
- * The result of {@link validateCode} — models FHIR R4 `$validate-code`'s `result` boolean. A found
+ * The result of {@link validateCode}: models FHIR R4 `$validate-code`'s `result` boolean. A found
  * concept is `valid: true` **carrying its status** (a deprecated or header code validates as present
  * but is flagged, never presented clean); an absent code is `valid: false`, never a guessed `true`.
  */
@@ -208,9 +208,9 @@ export interface RrfColumnMap {
 }
 
 /**
- * An **RRF** (Rich Release Format — pipe-delimited RxNorm/UMLS release) source. One parameterized
+ * An **RRF** (Rich Release Format, pipe-delimited RxNorm/UMLS release) source. One parameterized
  * reader serves both: RxNorm `RXNCONSO`/`RXNSAT` and UMLS `MRCONSO`/`MRSAT` share the RRF shape
- * (pipe-delimited, one trailing pipe per line). BYO — the consumer supplies the file.
+ * (pipe-delimited, one trailing pipe per line). BYO: the consumer supplies the file.
  */
 export interface RrfSource {
   /** Discriminant. */
@@ -223,7 +223,7 @@ export interface RrfSource {
   readonly url?: string;
   /** A human-readable name. */
   readonly name?: string;
-  /** The release version (RRF carries none inline — supply it so displays stay release-scoped). */
+  /** The release version (RRF carries none inline, supply it so displays stay release-scoped). */
   readonly version?: string;
   /** Override the default status interpretation of the `status` column's raw token. */
   readonly statusMap?: StatusMapper;
@@ -242,7 +242,7 @@ export interface CsvColumnMap {
 }
 
 /**
- * An **RFC-4180 CSV** source (quoted fields, embedded commas/quotes/newlines) — e.g. LOINC's
+ * An **RFC-4180 CSV** source (quoted fields, embedded commas/quotes/newlines): e.g. LOINC's
  * `Loinc.csv`. The one release format that needs real quote handling; hand-rolled, zero-dep. BYO.
  */
 export interface CsvSource {
@@ -293,7 +293,7 @@ export interface FixedWidthFieldMap {
 }
 
 /**
- * A **fixed-width** source (slice by column) — e.g. the ICD-10-CM order file. Fully parameterized:
+ * A **fixed-width** source (slice by column): e.g. the ICD-10-CM order file. Fully parameterized:
  * the consumer supplies the field slices (see {@link ICD10CM_ORDER_FILE_FIELDS} for the documented
  * ICD-10-CM preset, which they confirm against their release's README, since the byte offsets are
  * not confirmed against an authoritative machine-readable source). BYO.
@@ -323,7 +323,7 @@ export interface FixedWidthSource {
 export interface FhirCodeSystemSource {
   /** Discriminant. */
   readonly format: "fhir";
-  /** The untrusted FHIR `CodeSystem` resource (typically `JSON.parse` output — hence `unknown`). */
+  /** The untrusted FHIR `CodeSystem` resource (typically `JSON.parse` output, hence `unknown`). */
   readonly resource: unknown;
 }
 

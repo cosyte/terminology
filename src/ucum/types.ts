@@ -2,12 +2,12 @@
  * Types for the **UCUM unit layer**: the parsed unit AST, the reduced
  * (canonical) dimensional form, and the public {@link UcumValidation} result.
  *
- * The layer is **recognition + validation + representation canonicalization only** — it answers
+ * The layer is **recognition + validation + representation canonicalization only**: it answers
  * "is this a valid UCUM expression" and "are these two expressions the same unit", and it
  * canonicalizes a unit's *representation*. It performs **no magnitude conversion** (`mg/dL` →
- * `mmol/L` needs an analyte's molar mass — a clinical computation the engine refuses). The tables
+ * `mmol/L` needs an analyte's molar mass: a clinical computation the engine refuses). The tables
  * are the UCUM `ucum-essence.xml`, **bundled verbatim** in this package (copyright © Regenstrief
- * Institute, Inc. — see `vendor/ucum/NOTICE.md`) and transformed to an in-memory model at runtime;
+ * Institute, Inc.: see `vendor/ucum/NOTICE.md`) and transformed to an in-memory model at runtime;
  * the engine ships **no derivative** of the UCUM table.
  *
  * @packageDocumentation
@@ -30,18 +30,18 @@ export interface UcumAtom {
   readonly code: string;
   /** Whether a metric prefix may attach to this atom (essence `isMetric`). Only metric atoms prefix. */
   readonly metric: boolean;
-  /** A **base** unit (one of the 7: `m s g rad K C cd`) — its own dimension, factor 1. */
+  /** A **base** unit (one of the 7: `m s g rad K C cd`), its own dimension, factor 1. */
   readonly base: boolean;
   /** A base unit's dimension key (its own `code`), or `undefined` for derived atoms. */
   readonly dim?: string;
   /**
-   * A **special** unit (essence `isSpecial`, e.g. `Cel`, `B`, `[pH]`) — defined by a non-linear
+   * A **special** unit (essence `isSpecial`, e.g. `Cel`, `B`, `[pH]`): defined by a non-linear
    * function, so it has **no** linear factor/dimension and is never reduced to one. Compared only by
    * identity of its normalized representation (never claimed equal to a linear unit).
    */
   readonly special: boolean;
   /**
-   * An **arbitrary** unit (essence `isArbitrary`, e.g. `[IU]`, `[arb'U]`) — not commensurable with
+   * An **arbitrary** unit (essence `isArbitrary`, e.g. `[IU]`, `[arb'U]`): not commensurable with
    * any other unit. Modeled as its own dimension axis keyed by the atom `code`, so `[IU]/[IU]`
    * reduces to unity but `[IU]` is never equated with a mass or another arbitrary unit.
    */
@@ -53,7 +53,7 @@ export interface UcumAtom {
   readonly value?: { readonly factor: number; readonly unit: string };
 }
 
-/** The parsed UCUM essence table — the engine's in-memory unit model, built lazily and cached. */
+/** The parsed UCUM essence table: the engine's in-memory unit model, built lazily and cached. */
 export interface UcumEssence {
   /** Prefix symbols → prefix, longest symbols first (for greedy matching). */
   readonly prefixes: readonly UcumPrefix[];
@@ -97,7 +97,7 @@ export interface AnnotationNode {
   readonly kind: "annotation";
 }
 
-/** A component: a simple unit, a factor, a group, or an annotation — each optionally exponentiated. */
+/** A component: a simple unit, a factor, a group, or an annotation, each optionally exponentiated. */
 export type ComponentNode = SimpleUnitNode | FactorNode | GroupNode | AnnotationNode;
 
 /**
@@ -126,10 +126,10 @@ export interface LinearReduction {
 }
 
 /**
- * A **non-linear** (special) reduction — the expression involves a special unit (`Cel`, `B`, …) and
+ * A **non-linear** (special) reduction: the expression involves a special unit (`Cel`, `B`, …) and
  * cannot be reduced to a scalar×dimension form. Carried by its normalized representation `form`;
  * two special reductions are the same unit iff their `form`s are identical (never equated with a
- * linear unit — the never-fabricate posture applied to units).
+ * linear unit: the never-fabricate posture applied to units).
  */
 export interface SpecialReduction {
   readonly kind: "special";
@@ -151,7 +151,7 @@ export type UcumValidation =
       /** The expression is a well-formed UCUM unit over known atoms. */
       readonly valid: true;
       /**
-       * A stable, normalized **descriptor** of the unit's canonical form — equal iff the units are
+       * A stable, normalized **descriptor** of the unit's canonical form: equal iff the units are
        * the same (see {@link ucumEqual}). Note: this is a comparison/debug descriptor, **not**
        * guaranteed to be a re-parseable UCUM expression (UCUM cannot express arbitrary numeric
        * factors as literals).
@@ -161,7 +161,7 @@ export type UcumValidation =
   | {
       /** The expression is not a valid UCUM unit. */
       readonly valid: false;
-      /** The stable diagnostic code — never a guessed "nearest" unit (the never-fabricate rule). */
+      /** The stable diagnostic code: never a guessed "nearest" unit (the never-fabricate rule). */
       readonly code: "TERM_UCUM_INVALID";
       /** A **value-free** structural reason (a grammar fault or an unknown atom; never PHI). */
       readonly reason: string;

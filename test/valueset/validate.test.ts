@@ -32,7 +32,7 @@ function ctx(): { codeSystems: Map<string, CodeSystem> } {
   return { codeSystems: new Map([[CS_URL, animalCs()]]) };
 }
 
-describe("validateCodeInValueSet — decided membership", () => {
+describe("validateCodeInValueSet: decided membership", () => {
   it("a code in an explicit include is a definite member (no code system needed)", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
@@ -165,7 +165,7 @@ describe("validateCodeInValueSet — decided membership", () => {
   });
 });
 
-describe("validateCodeInValueSet — undetermined (never a fabricated false)", () => {
+describe("validateCodeInValueSet: undetermined (never a fabricated false)", () => {
   it("a filter over a missing code system is undetermined, not false", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
@@ -228,7 +228,7 @@ describe("validateCodeInValueSet — undetermined (never a fabricated false)", (
   });
 
   it("a definite include with an undetermined exclude is undetermined (exclude could remove it)", () => {
-    // The exclude is a filter over the SAME system, but that code system is not supplied — so we
+    // The exclude is a filter over the SAME system, but that code system is not supplied, so we
     // cannot prove `dog` is not excluded. The explicit include needs no code system, yet the answer
     // must be undetermined rather than a false "member".
     const vs = loadValueSet({
@@ -288,7 +288,7 @@ describe("validateCodeInValueSet — undetermined (never a fabricated false)", (
   });
 });
 
-describe("validateCodeInValueSet — whole-system include and system-less expansion", () => {
+describe("validateCodeInValueSet: whole-system include and system-less expansion", () => {
   it("a whole-system include admits any code in the supplied code system", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",

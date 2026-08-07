@@ -1,5 +1,5 @@
 /**
- * {@link lookup} and {@link validateCode} — the FHIR R4 CodeSystem `$lookup` and `$validate-code`
+ * {@link lookup} and {@link validateCode}: the FHIR R4 CodeSystem `$lookup` and `$validate-code`
  * operations over a loaded {@link CodeSystem}.
  *
  * Grounded firsthand on FHIR R4 (`https://hl7.org/fhir/R4/codesystem-operation-lookup.html`,
@@ -10,7 +10,7 @@
  * - `$validate-code` returns `result` (*"True if the concept details supplied are valid"*).
  *
  * Both honor the **never-fabricate invariant**, applied here to code identity: an
- * unknown code yields a typed `unknown` / `valid: false` — **never** a fabricated display and
+ * unknown code yields a typed `unknown` / `valid: false`: **never** a fabricated display and
  * **never** a guessed `valid: true`. A found-but-non-current concept (deprecated, or an ICD-10-CM
  * header) validates as present **but carries its status flag**, so a caller never treats it as clean.
  *
@@ -31,7 +31,7 @@ import type {
  *
  * @param cs - The loaded {@link CodeSystem}.
  * @param code - The code to look up.
- * @returns A {@link LookupResult} when found, or a typed {@link LookupUnknown} — never a guess.
+ * @returns A {@link LookupResult} when found, or a typed {@link LookupUnknown}: never a guess.
  * @example
  * ```ts
  * import { loadCodeSystem, lookup } from "@cosyte/terminology";
@@ -67,7 +67,7 @@ export function lookup(cs: CodeSystem, code: string): LookupOutcome {
  * `$validate-code`: is `code` a valid member of the loaded code system?
  *
  * A found code is `valid: true`, **carrying its status** (a deprecated or header code is present but
- * flagged — never silently clean). An absent code is `valid: false` with `TERM_CODE_UNKNOWN`, never a
+ * flagged: never silently clean). An absent code is `valid: false` with `TERM_CODE_UNKNOWN`, never a
  * guessed `true`.
  *
  * @param cs - The loaded {@link CodeSystem}.

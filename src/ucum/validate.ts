@@ -2,7 +2,7 @@
  * The public **UCUM** surface: {@link validateUcum} (recognition + a canonical
  * descriptor) and {@link ucumEqual} (are two expressions the *same unit*).
  *
- * Both are **recognition / validation / representation-canonicalization only** — never magnitude
+ * Both are **recognition / validation / representation-canonicalization only**: never magnitude
  * conversion. The never-fabricate posture holds: an unparseable or unknown unit is
  * a typed {@link TERM_UCUM_INVALID} outcome carrying a value-free reason, **never** a guessed
  * "nearest" unit; and a special (non-linear) unit is never claimed equal to a linear one.
@@ -32,7 +32,7 @@ function canonicalOf(r: Reduction): string {
  *
  * Validation **is** parsing against the UCUM grammar over the known atom table: an expression is
  * valid iff it parses completely. An invalid expression returns a typed {@link TERM_UCUM_INVALID}
- * with a value-free reason — never a coerced or guessed unit.
+ * with a value-free reason: never a coerced or guessed unit.
  *
  * @param unit - The UCUM unit expression (e.g. `"mmol/L"`, `"kg.m/s2"`, `"Cel"`).
  * @returns `{ valid: true, canonical }` or `{ valid: false, code: "TERM_UCUM_INVALID", reason }`.
@@ -52,13 +52,13 @@ export function validateUcum(unit: string): UcumValidation {
 }
 
 /**
- * Whether two UCUM expressions denote the **same unit** — i.e. they reduce to the same canonical
+ * Whether two UCUM expressions denote the **same unit**: i.e. they reduce to the same canonical
  * form (equal base dimensions *and* equal scale). This recognizes representational equivalences
  * (`N` ≡ `kg.m/s2`, `mmol/L` ≡ `mmol.L-1`, annotations inert) but is **not** magnitude conversion:
  * `mg` and `g` are different units and compare unequal.
  *
  * A unit is never equal to an invalid expression, and a special (non-linear) unit (`Cel`, `[pH]`) is
- * equal only to a structurally identical special unit — never to a linear unit (the never-fabricate
+ * equal only to a structurally identical special unit: never to a linear unit (the never-fabricate
  * posture: the engine will not assert an equivalence it cannot prove).
  *
  * @param a - The first UCUM unit expression.

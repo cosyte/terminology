@@ -1,18 +1,18 @@
 /**
- * {@link expand} — the FHIR R4 ValueSet `$expand` operation over a loaded {@link ValueSet}.
+ * {@link expand}: the FHIR R4 ValueSet `$expand` operation over a loaded {@link ValueSet}.
  *
  * Grounded firsthand on FHIR R4 (`https://hl7.org/fhir/R4/valueset-operation-expand.html`,
  * `https://hl7.org/fhir/R4/valueset.html#compose`):
  *
- * - A **pre-computed** `expansion` is used as-is (extensional), and its completeness is checked — a
+ * - A **pre-computed** `expansion` is used as-is (extensional), and its completeness is checked: a
  *   truncated snapshot is flagged, never treated as full membership.
  * - An intensional `compose` is expanded over **consumer-supplied** {@link ../codesystem/types.CodeSystem}
  *   releases: the union of `include` components minus the union of `exclude` components. Each component
  *   selects by explicit `concept`, by `filter` (subsumption + property predicates), by the whole
  *   `system`, and/or by intersecting referenced value sets.
  *
- * **Never fabricate.** A part that cannot be computed — a missing code system, an unresolved
- * referenced value set, an unimplemented `filter` operator — yields a typed
+ * **Never fabricate.** A part that cannot be computed (a missing code system, an unresolved
+ * referenced value set, an unimplemented `filter` operator) yields a typed
  * {@link ../common/diagnostics.DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND} and marks the result
  * `complete: false`, so the `contains` set is an explicit **lower bound**, never a silently-empty or
  * fabricated membership.
@@ -31,7 +31,7 @@ import type {
   ValueSet,
 } from "./types.js";
 
-/** The stable identity of a coding for set operations — `system` + `code` (version is a refinement). */
+/** The stable identity of a coding for set operations: `system` + `code` (version is a refinement). */
 function codingKey(system: string | undefined, code: string): string {
   return `${system ?? ""}\u001f${code}`;
 }
@@ -131,7 +131,7 @@ function expandComponent(
   const diagnostics: ExpansionDiagnostic[] = [];
   let complete = true;
   const { system, version, concept, filter, valueSet } = component;
-  // A present `concept` (even empty) is an **enumeration** — never re-read as a whole-system include;
+  // A present `concept` (even empty) is an **enumeration**: never re-read as a whole-system include;
   // "all of system" is only the concept-absent, filter-absent case (FHIR ValueSet.compose semantics).
   const hasConcept = concept !== undefined;
   const hasFilter = filter !== undefined && filter.length > 0;
@@ -146,7 +146,7 @@ function expandComponent(
       base.set(codingKey(system, c.code), makeCoding(system, c.code, c.display, version));
     }
   } else if (hasFilter || (system !== undefined && !hasVs)) {
-    // Intensional filter, or a whole-system include — both need the loaded code system.
+    // Intensional filter, or a whole-system include: both need the loaded code system.
     if (system === undefined) {
       diagnostics.push(cannotExpand("intensional filter without a code system 'system'", path));
       return { members: new Map(), complete: false, diagnostics };
@@ -253,7 +253,7 @@ function expandInternal(
         complete = false;
         // An exclude we could not fully compute may exclude MORE than we proved. To keep `contains` a
         // true LOWER bound (never retain a possible non-member), drop every remaining member the
-        // exclude could still match — a member in the exclude's system (or all members when the
+        // exclude could still match: a member in the exclude's system (or all members when the
         // exclude names no system). A dropped genuine member is fine for a lower bound; a retained
         // excluded one would be a fabricated membership (the never-fabricate contract).
         for (const [k, c] of [...included]) {
@@ -281,7 +281,7 @@ function expandInternal(
  *
  * @param vs - The loaded value set.
  * @param ctx - The loaded code systems / referenced value sets the intensional parts resolve against.
- * @returns An {@link ExpandResult} — the `contains` members plus an honest `complete` flag. When
+ * @returns An {@link ExpandResult}: the `contains` members plus an honest `complete` flag. When
  *   `complete` is `false`, `contains` is a lower bound (never treat it as exhaustive membership).
  * @example
  * ```ts

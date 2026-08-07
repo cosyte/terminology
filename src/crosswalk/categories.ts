@@ -1,9 +1,9 @@
 /**
  * Steward-defined **map category** and **map-relationship** identifiers the crosswalk resolvers carry
- * through verbatim — the SNOMED CT complex-map `mapCategoryId` concepts and the map-correlation
+ * through verbatim: the SNOMED CT complex-map `mapCategoryId` concepts and the map-correlation
  * concepts. These are SNOMED CT metadata concepts, and **they are bundled**: the four ids below and
  * their steward descriptions ship inside this package. SNOMED CT is copyright © International Health
- * Terminology Standards Development Organisation. **No SNOMED CT refset or release is bundled** — a
+ * Terminology Standards Development Organisation. **No SNOMED CT refset or release is bundled**: a
  * caller still supplies the map refset itself under their own SNOMED CT licence (the BYO posture).
  *
  * The category on a resolved SNOMED→ICD-10-CM map row is the steward telling the caller *how much to
@@ -16,8 +16,8 @@
  */
 
 /**
- * The SNOMED CT complex-map **map category** concept ids — the `mapCategoryId` column of the
- * SNOMED→ICD-10-CM extended-map refset. These four SNOMED CT concepts — id and steward description —
+ * The SNOMED CT complex-map **map category** concept ids: the `mapCategoryId` column of the
+ * SNOMED→ICD-10-CM extended-map refset. These four SNOMED CT concepts (id and steward description)
  * are **bundled** in this package (SNOMED CT is copyright © International Health Terminology
  * Standards Development Organisation); carried through a resolution verbatim so a caller sees the
  * steward's own trust signal.
@@ -30,17 +30,17 @@
  * ```
  */
 export const MAP_CATEGORIES = {
-  /** `447637006` — "Map source concept is properly classified" (a normal, usable target). */
+  /** `447637006`: "Map source concept is properly classified" (a normal, usable target). */
   PROPERLY_CLASSIFIED: "447637006",
-  /** `447638001` — "Map source concept cannot be classified with available data" — a **No-Map**. */
+  /** `447638001`: "Map source concept cannot be classified with available data" (a **No-Map**). */
   NO_MAP: "447638001",
-  /** `447639009` — "Map of source concept is context dependent" (needs runtime patient context). */
+  /** `447639009`: "Map of source concept is context dependent" (needs runtime patient context). */
   CONTEXT_DEPENDENT: "447639009",
-  /** `447640006` — "Source concept is ambiguous" — surface candidates, never pick one. */
+  /** `447640006`: "Source concept is ambiguous" (surface candidates, never pick one). */
   AMBIGUOUS: "447640006",
 } as const;
 
-/** A value from {@link MAP_CATEGORIES} — the SNOMED map-category id carried on a resolution. */
+/** A value from {@link MAP_CATEGORIES}: the SNOMED map-category id carried on a resolution. */
 export type MapCategoryId = (typeof MAP_CATEGORIES)[keyof typeof MAP_CATEGORIES];
 
 /**
@@ -50,7 +50,7 @@ export type MapCategoryId = (typeof MAP_CATEGORIES)[keyof typeof MAP_CATEGORIES]
 export const NO_MAP_CATEGORIES: ReadonlySet<string> = new Set([MAP_CATEGORIES.NO_MAP]);
 
 /**
- * The canonical code-system URI for **ICD-10-CM** — the target system of both crosswalks. A published
+ * The canonical code-system URI for **ICD-10-CM**: the target system of both crosswalks. A published
  * identity fact (mirrors {@link ../systems/registry.SYSTEM_IDENTITIES}); attached to a resolved
  * target {@link ../common/coding.Coding} so a translation is self-describing.
  */
@@ -63,7 +63,7 @@ export const ICD10CM_SYSTEM = "http://hl7.org/fhir/sid/icd-10-cm";
 export const ICD9CM_SYSTEM = "http://hl7.org/fhir/sid/icd-9-cm";
 
 /**
- * The canonical code-system URI for **SNOMED CT** — the source system of the SNOMED→ICD-10-CM complex
+ * The canonical code-system URI for **SNOMED CT**: the source system of the SNOMED→ICD-10-CM complex
  * map. Recognised by URI only; **no SNOMED CT refset or release is bundled**.
  */
 export const SNOMEDCT_SYSTEM = "http://snomed.info/sct";

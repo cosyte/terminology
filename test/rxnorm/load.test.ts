@@ -1,6 +1,6 @@
 /**
  * Tests for the RxNorm drug-graph loader. All fixtures are **synthetic rows in the real RxNorm RRF
- * wire format** (built by column index in `./fixtures`) — the format, not real RxNorm content; the
+ * wire format** (built by column index in `./fixtures`): the format, not real RxNorm content; the
  * engine bundles no RxNorm data.
  */
 
@@ -10,7 +10,7 @@ import { loadRxNormGraph } from "../../src/index.js";
 import { nth, only } from "../helpers.js";
 import { consoRow, relRow, satNdcRow } from "./fixtures.js";
 
-describe("loadRxNormGraph — RXNCONSO concepts", () => {
+describe("loadRxNormGraph: RXNCONSO concepts", () => {
   it("loads only SAB=RXNORM atoms with a drug-graph TTY, first-atom-per-RXCUI wins", () => {
     const conso = [
       consoRow({ rxcui: "29046", tty: "IN", str: "lisinopril" }),
@@ -44,7 +44,7 @@ describe("loadRxNormGraph — RXNCONSO concepts", () => {
     expect(g.concepts.get("2")?.suppressed).toBe(true);
   });
 
-  it("is liberal on load — skips and surfaces a structurally short RXNCONSO row, value-free", () => {
+  it("is liberal on load: skips and surfaces a structurally short RXNCONSO row, value-free", () => {
     const conso = [
       consoRow({ rxcui: "1", tty: "IN", str: "aspirin" }),
       "1|ENG|RXNORM", // far too short to reach STR
@@ -87,7 +87,7 @@ describe("loadRxNormGraph — RXNCONSO concepts", () => {
   });
 });
 
-describe("loadRxNormGraph — RXNREL edges (documented direction)", () => {
+describe("loadRxNormGraph: RXNREL edges (documented direction)", () => {
   it("normalizes a row to subject=RXCUI2, object=RXCUI1 (RELA is RXCUI2's relationship to RXCUI1)", () => {
     // "SCDC(316151) has_ingredient IN(29046)": the component HAS the ingredient. This is the edge
     // RxNorm authors. It authors no `SCD has_ingredient IN` row, so using one here would pin the
@@ -124,11 +124,11 @@ describe("loadRxNormGraph — RXNREL edges (documented direction)", () => {
   });
 });
 
-describe("loadRxNormGraph — RXNSAT NDC attributes", () => {
+describe("loadRxNormGraph: RXNSAT NDC attributes", () => {
   it("indexes ATN=NDC attributes as active-as-of-release; ignores non-NDC attributes", () => {
     const sat = [
       satNdcRow({ rxcui: "314076", ndc: "00000000001" }),
-      "314076|||||||RXTERM_FORM|RXNORM|TAB|N||", // a non-NDC attribute — ignored silently
+      "314076|||||||RXTERM_FORM|RXNORM|TAB|N||", // a non-NDC attribute, ignored silently
     ].join("\n");
     const g = loadRxNormGraph({
       conso: consoRow({ rxcui: "314076", tty: "SCD", str: "lisinopril 10 MG Oral Tablet" }),
@@ -197,7 +197,7 @@ describe("loadRxNormGraph — RXNSAT NDC attributes", () => {
   });
 });
 
-describe("loadRxNormGraph — immutability", () => {
+describe("loadRxNormGraph: immutability", () => {
   it("freezes the graph, its concepts, and its edge lists", () => {
     const g = loadRxNormGraph({
       conso: consoRow({ rxcui: "1", tty: "IN", str: "aspirin" }),

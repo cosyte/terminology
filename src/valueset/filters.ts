@@ -1,13 +1,13 @@
 /**
- * Subsumption + `compose.include.filter` evaluation — the shared machinery {@link ./expand.expand}
+ * Subsumption + `compose.include.filter` evaluation: the shared machinery {@link ./expand.expand}
  * and {@link ./validate.validateCodeInValueSet} both draw on.
  *
  * **Subsumption** is read from the loaded {@link CodeSystem}'s **`parent`** concept-properties
- * (`http://hl7.org/fhir/concept-properties#parent`) — which the FHIR loader synthesizes from a nested
+ * (`http://hl7.org/fhir/concept-properties#parent`), which the FHIR loader synthesizes from a nested
  * `concept` hierarchy and carries verbatim from an explicit `parent` property. This is deliberately
  * the release's **own** hierarchy: subsumption across two separate releases is not computed, and a
  * code system that encodes no parent edges has no descendants beyond identity, which is treated as
- * complete — not guessed deeper.
+ * complete: not guessed deeper.
  *
  * **Filter support is explicit.** `is-a` / `descendent-of` / `is-not-a` / `=` / `in` / `not-in` /
  * `exists` are implemented; `regex` / `generalizes` / anything unrecognized report `supported: false`
@@ -32,7 +32,7 @@ const SUPPORTED_OPS: ReadonlySet<FilterOperator> = new Set<FilterOperator>([
 ]);
 
 /**
- * The filters whose operator the engine does **not** implement (`regex` / `generalizes` / unknown) —
+ * The filters whose operator the engine does **not** implement (`regex` / `generalizes` / unknown):
  * a non-empty result means the caller must surface a typed cannot-expand, never mis-expand.
  *
  * @param filters - The component's filters.
@@ -104,7 +104,7 @@ export function buildSubsumption(cs: CodeSystem): Subsumption {
 }
 
 /**
- * True when `code` is-a `anchor` — the same code, or a (transitive) descendant of it.
+ * True when `code` is-a `anchor`: the same code, or a (transitive) descendant of it.
  *
  * @param sub - The subsumption index (from {@link buildSubsumption}).
  * @param code - The candidate code.
@@ -158,7 +158,7 @@ const UNSUPPORTED: FilterMatch = Object.freeze({ matched: false, supported: fals
  *
  * The `concept` filter property (and the hierarchy operators regardless of property) reads the code
  * itself / its subsumption; other properties read the concept's `property` values. An unimplemented
- * operator returns `{ supported: false }` — never a coerced `matched`.
+ * operator returns `{ supported: false }`: never a coerced `matched`.
  *
  * @param concept - The concept under test.
  * @param filter - The filter predicate.
@@ -216,7 +216,7 @@ export function matchesFilter(
     case "regex":
     case "generalizes":
     default:
-      // Not implemented (or an unrecognized runtime operator) — surfaced, never mis-expanded.
+      // Not implemented (or an unrecognized runtime operator): surfaced, never mis-expanded.
       return UNSUPPORTED;
   }
 }

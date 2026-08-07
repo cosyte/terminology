@@ -4,7 +4,7 @@
  * specification's syntax (base units, metric prefixes attached with no delimiter and resolved by
  * longest-match, `.` multiply / `/` divide, signed integer exponents, `{…}` inert annotations, and
  * the `10*` / `10^` powers-of-ten). Validation **is** parsing: an expression is valid iff it parses
- * completely over **known** atoms — an unknown atom yields no match and fails, never a guessed unit.
+ * completely over **known** atoms: an unknown atom yields no match and fails, never a guessed unit.
  *
  * @packageDocumentation
  */
@@ -72,14 +72,14 @@ function simpleMatches(essence: UcumEssence, s: string, pos: number): SimpleMatc
 interface Cursor {
   readonly s: string;
   pos: number;
-  /** Current parenthesis-nesting depth — capped to keep hostile input from overflowing the stack. */
+  /** Current parenthesis-nesting depth: capped to keep hostile input from overflowing the stack. */
   depth: number;
   readonly essence: UcumEssence;
 }
 
 /**
  * Maximum parenthesis nesting. Real UCUM units nest a handful of levels at most; a cap keeps a
- * hostile input (e.g. thousands of `(`) from overflowing the recursive-descent stack — it degrades
+ * hostile input (e.g. thousands of `(`) from overflowing the recursive-descent stack: it degrades
  * to a typed invalid, never a crash: the parser does not crash on hostile input.
  */
 const MAX_PAREN_DEPTH = 100;
@@ -96,7 +96,7 @@ function parseExponent(cur: Cursor): { value: number; consumed: boolean } {
   }
   const start = i;
   while (i < s.length && isDigitAt(s, i)) i++;
-  if (i === start) return { value: 1, consumed: false }; // no digits — no exponent
+  if (i === start) return { value: 1, consumed: false }; // no digits, no exponent
   cur.pos = i;
   return { value: sign * Number(s.slice(start, i)), consumed: true };
 }
@@ -111,7 +111,7 @@ function parseAnnotation(cur: Cursor): ParseFailure | undefined {
       cur.pos = i + 1;
       return undefined;
     }
-    // Annotation text is printable ASCII (0x20–0x7E) except the curly braces — no Unicode.
+    // Annotation text is printable ASCII (0x20–0x7E) except the curly braces: no Unicode.
     if (code < 0x20 || code > 0x7e || code === 0x7b /* { */) {
       return { ok: false, reason: "annotation contains a non-ASCII or illegal character" };
     }
@@ -126,7 +126,7 @@ function parseSimpleUnit(cur: Cursor): { ok: true; node: SimpleUnitNode } | Pars
     const save = cur.pos;
     cur.pos = save + cand.len;
     const exp = parseExponent(cur);
-    // `10*` / `10^` are the powers-of-ten — they require an explicit exponent.
+    // `10*` / `10^` are the powers-of-ten: they require an explicit exponent.
     if ((cand.atom.code === "10*" || cand.atom.code === "10^") && !exp.consumed) {
       cur.pos = save;
       continue;
@@ -147,7 +147,7 @@ function parseSimpleUnit(cur: Cursor): { ok: true; node: SimpleUnitNode } | Pars
         : { kind: "simple", atom: cand.atom, exponent: exp.value };
       return { ok: true, node };
     }
-    cur.pos = save; // this interpretation doesn't reach a boundary — try the next
+    cur.pos = save; // this interpretation doesn't reach a boundary: try the next
   }
   return { ok: false, reason: "unrecognized unit atom" };
 }
@@ -155,7 +155,7 @@ function parseSimpleUnit(cur: Cursor): { ok: true; node: SimpleUnitNode } | Pars
 /** Parse a single component: a group `( … )`, an annotation-only term, a factor, or a simple unit. */
 function parseComponent(cur: Cursor): { ok: true; node: ComponentNode } | ParseFailure {
   const { s } = cur;
-  const cc = s.charCodeAt(cur.pos); // NaN at end-of-input — falls through to the atom parser
+  const cc = s.charCodeAt(cur.pos); // NaN at end-of-input: falls through to the atom parser
 
   if (cc === 0x28 /* ( */) {
     if (cur.depth >= MAX_PAREN_DEPTH) {
@@ -175,7 +175,7 @@ function parseComponent(cur: Cursor): { ok: true; node: ComponentNode } | ParseF
     return { ok: true, node: { kind: "annotation" } };
   }
 
-  // A bare integer factor (e.g. the `4` in `4.[pi]`) — but `10*n` / `10^n` are simple units, not factors.
+  // A bare integer factor (e.g. the `4` in `4.[pi]`), but `10*n` / `10^n` are simple units, not factors.
   if (isDigitCode(cc) && !s.startsWith("10*", cur.pos) && !s.startsWith("10^", cur.pos)) {
     const start = cur.pos;
     while (cur.pos < s.length && isDigitAt(s, cur.pos)) cur.pos++;
@@ -215,7 +215,7 @@ function parseTerm(cur: Cursor, inParen: boolean): { ok: true; node: UnitNode } 
   }
 
   if (inParen) {
-    if (cur.s[cur.pos] !== ")") return { ok: false, reason: "unbalanced '(' — missing ')'" };
+    if (cur.s[cur.pos] !== ")") return { ok: false, reason: "unbalanced '(': missing ')'" };
     cur.pos++;
   }
   return { ok: true, node: { kind: "term", factors } };

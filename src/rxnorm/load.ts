@@ -1,8 +1,8 @@
 /**
- * The **RxNorm drug graph loader** — build an immutable {@link RxNormGraph} from a
+ * The **RxNorm drug graph loader**: build an immutable {@link RxNormGraph} from a
  * **caller-supplied** RxNorm RRF release (`RXNCONSO.RRF` + `RXNREL.RRF`, and optionally `RXNSAT.RRF`
  * for NDC attributes). Reuses the shared, zero-dep {@link ../codesystem/rrf.parseRrfLine} (pipe split,
- * reserved trailing pipe) — the same RRF reader the CodeSystem layer uses.
+ * reserved trailing pipe): the same RRF reader the CodeSystem layer uses.
  *
  * **Column layouts, grounded firsthand** on the NLM RxNorm Technical Documentation (§ file
  * descriptions):
@@ -13,7 +13,7 @@
  * - `RXNREL.RRF` (16 cols): `RXCUI1`(0) `RXAUI1`(1) `STYPE1`(2) `REL`(3) `RXCUI2`(4) `RXAUI2`(5)
  *   `STYPE2`(6) `RELA`(7) `RUI`(8) `SRUI`(9) `SAB`(10) `SL`(11) `RG`(12) `DIR`(13) `SUPPRESS`(14)
  *   `CVF`(15). Read `subject = RXCUI2`, `predicate = RELA`, `object = RXCUI1` (the direction
- *   convention — see {@link ../rxnorm/rela}). Only concept-level rows (both `RXCUI`s present) with a
+ *   convention: see {@link ../rxnorm/rela}). Only concept-level rows (both `RXCUI`s present) with a
  *   non-empty `RELA` become edges; atom-level (`RXAUI`) rows are not part of the concept graph.
  * - `RXNSAT.RRF` (13 cols): `RXCUI`(0) … `ATN`(8) `SAB`(9) `ATV`(10) `SUPPRESS`(11) `CVF`(12). Rows
  *   with `ATN=NDC` index `ATV`(the NDC) → `RXCUI`, marked `active` **as of** the loaded release.
@@ -33,7 +33,7 @@
  * **Liberal on load**: a structurally unusable *row* (too few columns, missing a required
  * value) is **skipped and surfaced** as a `TERM_RXNORM_MALFORMED_ROW` warning, never a partial
  * concept/edge, never a crash. Rows that are simply *not of interest* (a non-`RXNORM` atom, an
- * atom-level relationship, a non-`NDC` attribute) are skipped **silently** — they are expected, not
+ * atom-level relationship, a non-`NDC` attribute) are skipped **silently**: they are expected, not
  * faults. Ships **no** RxNorm release: every concept/edge is the caller's.
  *
  * @packageDocumentation
@@ -56,7 +56,7 @@ const SAB_RXNORM = "RXNORM";
 /** `RXNSAT.ATN` value marking an NDC attribute. */
 const ATN_NDC = "NDC";
 
-// ── Column indices (grounded firsthand on the RxNorm Technical Documentation — see the module doc) ──
+// ── Column indices (grounded firsthand on the RxNorm Technical Documentation, see the module doc) ──
 const CONSO = { RXCUI: 0, SAB: 11, TTY: 12, STR: 14, SUPPRESS: 16 } as const;
 const REL = { RXCUI1: 0, RXCUI2: 4, RELA: 7 } as const;
 const SAT = { RXCUI: 0, ATN: 8, ATV: 10 } as const;
@@ -70,9 +70,9 @@ export interface RxNormGraphSource {
   readonly conso: string;
   /** The raw `RXNREL.RRF` content (pipe-delimited relationships). */
   readonly rel: string;
-  /** The raw `RXNSAT.RRF` content (pipe-delimited attributes) — supply to resolve NDCs. Optional. */
+  /** The raw `RXNSAT.RRF` content (pipe-delimited attributes): supply to resolve NDCs. Optional. */
   readonly sat?: string;
-  /** The release version (e.g. `"RXNORM_2026AA"`), when known — mappings are release-scoped. */
+  /** The release version (e.g. `"RXNORM_2026AA"`), when known: mappings are release-scoped. */
   readonly version?: string;
 }
 
@@ -193,7 +193,7 @@ function parseRel(
     const rela = cell(cells, REL.RELA);
     const rxcui1 = cell(cells, REL.RXCUI1);
     const rxcui2 = cell(cells, REL.RXCUI2);
-    // No navigable predicate, or an atom-level (RXAUI) row with a blank RXCUI — not a concept edge.
+    // No navigable predicate, or an atom-level (RXAUI) row with a blank RXCUI: not a concept edge.
     if (rela === undefined || rela === "") continue;
     if (rxcui1 === undefined || rxcui1 === "" || rxcui2 === undefined || rxcui2 === "") continue;
 
@@ -228,7 +228,7 @@ function parseNdcs(
       );
       continue;
     }
-    if (cell(cells, SAT.ATN) !== ATN_NDC) continue; // not an NDC attribute — expected, skip silently
+    if (cell(cells, SAT.ATN) !== ATN_NDC) continue; // not an NDC attribute: expected, skip silently
     const ndc = cell(cells, SAT.ATV);
     const rxcui = cell(cells, SAT.RXCUI);
     if (ndc === undefined || ndc === "" || rxcui === undefined || rxcui === "") {
@@ -252,8 +252,8 @@ function parseNdcs(
  * Load a **caller-supplied** RxNorm RRF release into an immutable {@link RxNormGraph}.
  *
  * Parses `RXNCONSO` (concepts), `RXNREL` (directed edges, normalized to the documented direction), and
- * — when supplied — `RXNSAT` (NDC attributes). Liberal on load: a structurally unusable row is a
- * skipped, surfaced {@link RxNormLoadWarning}, never partial. Ships **no** RxNorm release — the graph
+ * (when supplied) `RXNSAT` (NDC attributes). Liberal on load: a structurally unusable row is a
+ * skipped, surfaced {@link RxNormLoadWarning}, never partial. Ships **no** RxNorm release: the graph
  * is entirely the caller's release.
  *
  * A concept is typed only by a **defining** atom, never by a synonym-class one and never by file
@@ -285,7 +285,7 @@ export function loadRxNormGraph(source: RxNormGraphSource): RxNormGraph {
   // Freeze each edge list, then hand out the three indexes as read-only views rather than the maps
   // themselves. `Object.freeze(out)` below cannot reach a `Map`, so without this a holder could
   // clear the edges of a medication graph, delete a concept, or add one the release never
-  // authored — and `conceptCount` / `edgeCount` would go on reporting the loaded figures.
+  // authored, and `conceptCount` / `edgeCount` would go on reporting the loaded figures.
   for (const list of edges.values()) Object.freeze(list);
 
   const out: Writable<RxNormGraph> = {

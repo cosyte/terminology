@@ -6,5 +6,5 @@
  * @packageDocumentation
  */
 
-/** A shallow-mutable view of `T` — every property assignable during construction. */
+/** A shallow-mutable view of `T`: every property assignable during construction. */
 export type Writable<T> = { -readonly [K in keyof T]: T[K] };

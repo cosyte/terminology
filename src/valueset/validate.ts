@@ -1,14 +1,14 @@
 /**
- * {@link validateCodeInValueSet} — the FHIR R4 ValueSet `$validate-code` operation (value-set
+ * {@link validateCodeInValueSet}: the FHIR R4 ValueSet `$validate-code` operation (value-set
  * binding): is a {@link Coding} a member of a {@link ValueSet}?
  *
  * Grounded firsthand on FHIR R4 (`https://hl7.org/fhir/R4/valueset-operation-validate-code.html`): a
  * binding decides whether a code is *allowed* in a slot. The engine returns a **decided** membership
- * (`result: true`/`false`) **only when it can prove it** — a code found in a computable `include` and
+ * (`result: true`/`false`) **only when it can prove it**: a code found in a computable `include` and
  * not removed by any computable `exclude` is a definite member; a code absent from a fully-evaluated
  * value set is a definite non-member. When any relevant part cannot be evaluated (a missing code
  * system, a truncated pre-computed expansion, an unimplemented `filter`), the answer is a typed
- * {@link ValueSetMemberUndetermined} — **never** a fabricated `false` (a false "not a member" is a
+ * {@link ValueSetMemberUndetermined}: **never** a fabricated `false` (a false "not a member" is a
  * clinical error).
  *
  * @packageDocumentation
@@ -50,7 +50,7 @@ function underPath(d: ExpansionDiagnostic, prefix: string): ExpansionDiagnostic 
 
 /** Whether a single `include`/`exclude` component matches `target`, and whether that is decidable. */
 interface ComponentMatch {
-  /** The match verdict — meaningful only when {@link complete}. */
+  /** The match verdict: meaningful only when {@link complete}. */
   readonly matched: boolean;
   /** Whether the verdict is trustworthy (both a match and a non-match were fully evaluated). */
   readonly complete: boolean;
@@ -67,7 +67,7 @@ function matchComponent(
   const diagnostics: ExpansionDiagnostic[] = [];
   const { system, concept, filter, valueSet } = component;
   // A present `concept` (even empty) is an enumeration; "all of system" is the concept/filter-absent
-  // case only — mirrors expandComponent so membership and expansion agree.
+  // case only: mirrors expandComponent so membership and expansion agree.
   const hasConcept = concept !== undefined;
   const hasFilter = filter !== undefined && filter.length > 0;
   const hasVs = valueSet !== undefined && valueSet.length > 0;
@@ -226,7 +226,7 @@ function validateInternal(
  * @param valueSet - The loaded value set.
  * @param ctx - The loaded code systems / referenced value sets the intensional parts resolve against.
  * @returns A decided {@link ValueSetMembership} (`result: true`/`false`), or a typed
- *   {@link ValueSetMemberUndetermined} when membership could not be proven — never a fabricated `false`.
+ *   {@link ValueSetMemberUndetermined} when membership could not be proven: never a fabricated `false`.
  * @example
  * ```ts
  * import { loadValueSet, validateCodeInValueSet } from "@cosyte/terminology";

@@ -9,7 +9,7 @@ generated output.
 
 Two shapes to avoid in a summary, both measured on real releases:
 
-- **No heading at the start of a line** — neither `##` (with up to three leading spaces, which
+- **No heading at the start of a line**: neither `##` (with up to three leading spaces, which
   CommonMark still reads as a heading) nor a setext underline (`===` or `---` under a line of text).
   Continuation lines are indented by exactly two spaces, which is the content column of the entry's
   own bullet, so such a line becomes a real heading nested inside the release section, permanently,
@@ -23,5 +23,5 @@ Add a changeset for every meaningful change:
 pnpm changeset
 ```
 
-During pre-alpha, pick **patch** — that keeps the package on the `0.0.x` ladder until its first
+During pre-alpha, pick **patch**: that keeps the package on the `0.0.x` ladder until its first
 alpha. See the cosyte version ladder in the meta-repo's `documentation/conventions.md`.

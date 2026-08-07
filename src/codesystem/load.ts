@@ -1,5 +1,5 @@
 /**
- * {@link loadCodeSystem} — the single entry point that dispatches a {@link CodeSystemSource} to the
+ * {@link loadCodeSystem}: the single entry point that dispatches a {@link CodeSystemSource} to the
  * right reader (RRF / CSV / fixed-width / FHIR) and assembles the immutable {@link CodeSystem}.
  *
  * The engine is **content-agnostic**: it loads a *consumer-supplied* release and ships
@@ -21,10 +21,10 @@ import type { CodeSystem, CodeSystemSource, Concept, LoadWarning } from "./types
  * Load a consumer-supplied code-system release into an immutable, queryable {@link CodeSystem}.
  *
  * Dispatches on `source.format`:
- * - `"rrf"` — pipe-delimited RxNorm/UMLS release (one parameterized reader for both).
- * - `"csv"` — RFC-4180 CSV (e.g. LOINC `Loinc.csv`), with real quote handling.
- * - `"fixed-width"` — slice-by-column order files (e.g. ICD-10-CM; see `ICD10CM_ORDER_FILE_FIELDS`).
- * - `"fhir"` — a native FHIR R4 `CodeSystem` JSON resource.
+ * - `"rrf"`: pipe-delimited RxNorm/UMLS release (one parameterized reader for both).
+ * - `"csv"`: RFC-4180 CSV (e.g. LOINC `Loinc.csv`), with real quote handling.
+ * - `"fixed-width"`: slice-by-column order files (e.g. ICD-10-CM; see `ICD10CM_ORDER_FILE_FIELDS`).
+ * - `"fhir"`: a native FHIR R4 `CodeSystem` JSON resource.
  *
  * **Liberal on load:** a malformed *row* is skipped and surfaced in `warnings` (never a crash, never a
  * partial concept). **Conservative on structure:** an unusable *source* (wrong FHIR `resourceType`, or

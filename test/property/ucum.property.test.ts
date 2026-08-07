@@ -1,12 +1,12 @@
 /**
  * Property-based conformance tests for the Phase-4 UCUM invariants:
  *
- *   1. **Total & fail-safe** — `validateUcum` over *any* string returns a well-typed result and
+ *   1. **Total & fail-safe**: `validateUcum` over *any* string returns a well-typed result and
  *      never throws; an invalid unit is always the typed `TERM_UCUM_INVALID` outcome, never a guess.
- *   2. **Canonical determinism** — a valid unit's canonical descriptor is stable (pure).
- *   3. **Equivalence relation** — `ucumEqual` is reflexive on valid units and symmetric everywhere.
- *   4. **Annotations are inert** — appending `{…}` to a valid unit yields an equal unit.
- *   5. **Never fabricate / never convert** — a valid unit is never equal to an invalid one; a
+ *   2. **Canonical determinism**: a valid unit's canonical descriptor is stable (pure).
+ *   3. **Equivalence relation**: `ucumEqual` is reflexive on valid units and symmetric everywhere.
+ *   4. **Annotations are inert**: appending `{…}` to a valid unit yields an equal unit.
+ *   5. **Never fabricate / never convert**: a valid unit is never equal to an invalid one; a
  *      unit and its milli-scaled form are never equal (that would be magnitude conversion).
  *
  * Arbitraries are local; the invariants are asserted directly.
@@ -18,7 +18,7 @@ import fc from "fast-check";
 /**
  * This file declares its own test budget. A property test draws fresh random input every run (this
  * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again — making the property suite the one
+ * box, and the gating coverage run roughly doubles it again: making the property suite the one
  * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
  * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
  * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),

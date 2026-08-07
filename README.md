@@ -7,19 +7,19 @@
 
 # @cosyte/terminology
 
-> A **zero-dependency terminology engine** for US healthcare code systems — FHIR-shaped, BYO-data,
+> A **zero-dependency terminology engine** for US healthcare code systems: FHIR-shaped, BYO-data,
 > and it **never fabricates a code**.
 
 `@cosyte/terminology` is **not a wire parser**. It mirrors the FHIR **Terminology Module**
 (`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating over **consumer-supplied** FHIR
 resources. It is the sibling engine `@cosyte/transform` and, later, the parsers' code-system
-recognition consume. It ships the **engine, and no code-system release** — SNOMED CT, CPT, LOINC,
+recognition consume. It ships the **engine, and no code-system release**: SNOMED CT, CPT, LOINC,
 UMLS/RxNorm, and VSAC value sets are strictly bring-your-own. It is not content-free, though: what it
 _does_ bundle, including the UCUM unit table, the code-system _identities_ (OID ↔ canonical URI), the
 SNOMED CT concepts the crosswalk resolver names and RxNorm's relationship and term-type names, is
 listed with its copyright under [What is bundled](#what-is-bundled).
 
-> **Status:** pre-alpha (`0.0.x`), **published on npm.** The **engine is complete** — every
+> **Status:** pre-alpha (`0.0.x`), **published on npm.** The **engine is complete**, every
 > operation below ships today. The surface:
 >
 > - the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
@@ -29,17 +29,17 @@ listed with its copyright under [What is bundled](#what-is-bundled).
 > - **ValueSet** binding (`compose` / **`$expand`** / **`$validate-code`**), subsumption read from the
 >   release's own hierarchy;
 > - **UCUM** unit validation and canonicalization (`validateUcum` / `ucumEqual`, recognition only, **no
->   magnitude conversion**) — the official UCUM functional-test suite is the conformance gate;
-> - the **crosswalk resolvers** — the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
+>   magnitude conversion**): the official UCUM functional-test suite is the conformance gate;
+> - the **crosswalk resolvers**: the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
 >   public-domain) and the NLM **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` /
->   `applyComplexMap`, BYO — no SNOMED CT refset bundled), never inverted;
+>   `applyComplexMap`, BYO: no SNOMED CT refset bundled), never inverted;
 > - the **RxNorm drug graph** (`loadRxNormGraph` + `ingredientsOf` / `genericFor` / `brandsFor` /
 >   `doseFormsOf` / `consistsOf` / `resolveNdc` / `approximateMatch`) over a **BYO** RxNorm RRF release,
 >   edges read in RxNorm's documented direction and never inverted, an absent `RXCUI`/NDC typed, never
 >   fabricated.
 >
 > **Bring your own data.** The engine is whole; **no code-system release is bundled.** It runs over
-> the FHIR resources and standard releases _you_ supply — SNOMED CT, CPT, LOINC, UMLS/RxNorm, the CMS
+> the FHIR resources and standard releases _you_ supply: SNOMED CT, CPT, LOINC, UMLS/RxNorm, the CMS
 > GEM files, the NLM complex-map refset and VSAC value sets are all bring-your-own, under whatever
 > terms their steward sets. The content packs that would change that (RxNorm Prescribable, ICD-10-CM)
 > are not bundled either. For the things that **are** bundled, and under whose copyright, see
@@ -72,7 +72,7 @@ const map = loadConceptMap(myFhirConceptMapJson); // a standard FHIR R4 ConceptM
 const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
 
 if (result.unmapped) {
-  // Typed, surfaced outcome — carries any group.unmapped fallback mode. Never a guessed target.
+  // Typed, surfaced outcome: carries any group.unmapped fallback mode. Never a guessed target.
 } else {
   for (const m of result.matches) {
     m.target; // a frozen Coding, drawn verbatim from the map
@@ -89,7 +89,7 @@ if (result.unmapped) {
 import { loadCodeSystem, lookup, validateCode } from "@cosyte/terminology";
 
 // Load a consumer-supplied release: RRF (RxNorm/UMLS), CSV (LOINC), fixed-width
-// (ICD-10-CM order file — see ICD10CM_ORDER_FILE_FIELDS), or a FHIR CodeSystem JSON.
+// (ICD-10-CM order file, see ICD10CM_ORDER_FILE_FIELDS), or a FHIR CodeSystem JSON.
 const cs = loadCodeSystem({ format: "fhir", resource: myFhirCodeSystemJson });
 
 const hit = lookup(cs, "2160-0"); // $lookup
@@ -97,48 +97,48 @@ if (hit.found) {
   hit.display; // the preferred display, verbatim from the release
   hit.status; // deprecated / header-not-billable / obsolete / … carried, never presented clean
 } else {
-  hit.code; // "TERM_CODE_UNKNOWN" — never a fabricated display
+  hit.code; // "TERM_CODE_UNKNOWN": never a fabricated display
 }
 
-validateCode(cs, "2160-0").valid; // $validate-code — true iff present; never a guessed true
+validateCode(cs, "2160-0").valid; // $validate-code: true iff present; never a guessed true
 ```
 
 ## Validate and compare UCUM units
 
-Recognition and canonicalization only — **no magnitude conversion** (`5 mg/dL` → `mmol/L` needs the
+Recognition and canonicalization only: **no magnitude conversion** (`5 mg/dL` → `mmol/L` needs the
 analyte's molar mass, a clinical computation this engine refuses).
 
 ```ts
 import { validateUcum, ucumEqual } from "@cosyte/terminology";
 
 const v = validateUcum("mmol/L");
-v.valid; // true — v.canonical is a stable canonical descriptor
-validateUcum("mg/dl/").valid; // false — code "TERM_UCUM_INVALID", never a guessed "nearest" unit
+v.valid; // true: v.canonical is a stable canonical descriptor
+validateUcum("mg/dl/").valid; // false: code "TERM_UCUM_INVALID", never a guessed "nearest" unit
 
-ucumEqual("N", "kg.m/s2"); // true  — same unit, different spelling
-ucumEqual("mmol/L", "mmol.L-1"); // true  — annotations inert, operators normalized
-ucumEqual("mg", "g"); // false — different units (this is not conversion)
-ucumEqual("Cel", "K"); // false — a special (non-linear) unit is never equated with a linear one
+ucumEqual("N", "kg.m/s2"); // true: same unit, different spelling
+ucumEqual("mmol/L", "mmol.L-1"); // true: annotations inert, operators normalized
+ucumEqual("mg", "g"); // false: different units (this is not conversion)
+ucumEqual("Cel", "K"); // false: a special (non-linear) unit is never equated with a linear one
 ```
 
 The UCUM table is the official `ucum-essence.xml` (version 2.2), and it **is bundled with this
-package** — embedded verbatim in the published build and parsed at runtime. It is copyright
+package**: embedded verbatim in the published build and parsed at runtime. It is copyright
 ©1999–2024 Regenstrief Institute, Inc., reproduced under the UCUM Copyright Notice and License
 (<https://ucum.org/license>); the engine ships no derivative of it and passes the official UCUM
-functional-test suite. The full notice ships in the package at `vendor/ucum/NOTICE.md` — see
+functional-test suite. The full notice ships in the package at `vendor/ucum/NOTICE.md`: see
 [What is bundled](#what-is-bundled).
 
-> **Case-sensitive (c/s) mode only.** UCUM's normative interchange mode — the one FHIR/HL7 bind to —
+> **Case-sensitive (c/s) mode only.** UCUM's normative interchange mode (the one FHIR/HL7 bind to)
 > is case-sensitive (`m` = metre, `M` = mega, `Pa` = pascal, `pA` = picoampere). The
 > case-**insensitive** (c/i) spelling variant is **not** supported; a c/i-only string returns a typed
-> `TERM_UCUM_INVALID` (fail-safe — never silently reinterpreted). Magnitude conversion is likewise a
+> `TERM_UCUM_INVALID` (fail-safe, never silently reinterpreted). Magnitude conversion is likewise a
 > deliberate non-goal (recognition and canonicalization only).
 
 ## Navigate the RxNorm drug graph
 
 Load a **bring-your-own** RxNorm RRF release and walk the ingredient / brand / clinical-drug /
 dose-form graph. Relationships are read in RxNorm's documented direction (`RELA` is the relationship
-the **second** `RXCUI` has to the **first**); navigation follows only authored edges — the engine
+the **second** `RXCUI` has to the **first**); navigation follows only authored edges: the engine
 never synthesizes an inverse, and never fabricates a concept, edge, or NDC.
 
 Authored edges only means the graph you get is RxNorm's, including where its shape surprises you.
@@ -182,7 +182,7 @@ ingredientsOf(graph, "314076"); // an SCD → { found: true, targets: [] }, beca
 consistsOf(graph, "314076"); // → the SCDC, the first of the two hops to the ingredient
 genericFor(graph, "104377"); // an SBD → its SCD, via the authored tradename_of edge
 resolveNdc(graph, "00000000001"); // { resolved: true, rxcui: "314076", status: "active", asOf: "RXNORM_2026AA" }
-ingredientsOf(graph, "99999999"); // { found: false, code: "TERM_RXNORM_UNKNOWN_RXCUI" } — never a guess
+ingredientsOf(graph, "99999999"); // { found: false, code: "TERM_RXNORM_UNKNOWN_RXCUI" }, never a guess
 ```
 
 The engine ships **no** RxNorm release; you supply it (the public-domain Current Prescribable
@@ -202,19 +202,19 @@ _names_, listed under [What is bundled](#what-is-bundled).
 - **Liberal load, conservative assertion.** Malformed input degrades to a typed diagnostic; a 1:many
   mapping returns the full candidate set, never collapsed to one.
 - **Value-free diagnostic messages.** Nothing you configured and nothing your release or resource
-  contained reaches a `message`, `detail`, `reason` or `err.stack` — not a column name, not a
-  canonical URI, not a unit atom — at any length. What sits beside a message is a locus: a line
+  contained reaches a `message`, `detail`, `reason` or `err.stack` (not a column name, not a
+  canonical URI, not a unit atom) at any length. What sits beside a message is a locus: a line
   number, a column count, an index path into your own resource (`compose.include[2]`), or a fixed
   token naming which file of a release it came from. The
   **objects** are a different matter: a typed `unknown`/`unmapped` outcome names the code, unit or
-  NDC you asked about, so log the `code` and the locus rather than the whole result — a code _in
+  NDC you asked about, so log the `code` and the locus rather than the whole result: a code _in
   patient context_ can be PHI.
 - **Zero runtime dependencies. Dual ESM + CJS.** Node stdlib only; built with `tsup`, validated with
   `attw`. A release you load is frozen, its indexes included: a code system's concepts, a GEM's or a
   complex map's entries and a drug graph's concepts, edges and NDCs are each a read-only **view** of a
   map rather than the map itself, so nothing holding one can add, delete or clear an entry, whichever
   way it tries. A view is not a `Map` instance, so a model carrying one cannot be `structuredClone`d
-  or posted to a worker — copy out what you need (`new Map(cs.concepts)`). The bundled unit table is frozen deeply, atom by atom and definition by
+  or posted to a worker: copy out what you need (`new Map(cs.concepts)`). The bundled unit table is frozen deeply, atom by atom and definition by
   definition, because it is shared with the engine's own reducer; its two lookup maps refuse `set`,
   `delete` and `clear` by name, and an entry forced past that through `Map.prototype` changes nothing
   the engine reads, because `parseUcum` resolves an atom by scanning the frozen atom array rather than
@@ -227,14 +227,14 @@ _names_, listed under [What is bundled](#what-is-bundled).
 The engine bundles **no code-system release**. What it _does_ bundle includes the following, named
 with its copyright:
 
-- **The UCUM unit table** — `ucum-essence.xml`, version 2.2, revision-date 2024-06-17. The Unified
+- **The UCUM unit table**: `ucum-essence.xml`, version 2.2, revision-date 2024-06-17. The Unified
   Code for Units of Measure (UCUM) is copyright ©1999–2024 Regenstrief Institute, Inc., all rights
   reserved, and is reproduced **verbatim** under the UCUM Copyright Notice and License
   (<https://ucum.org/license>). It is embedded byte-for-byte in the published build and parsed at
   runtime; no modified or derivative copy is distributed. The UCUM Specification is provided "as is"
-  **without warranty of any kind** — see the License for the full disclaimer. The complete notice
+  **without warranty of any kind**: see the License for the full disclaimer. The complete notice
   ships with this package at `vendor/ucum/NOTICE.md`.
-- **Code-system identity facts** — the OID ↔ canonical-URI pairings (`SYSTEM_IDENTITIES`). These
+- **Code-system identity facts**: the OID ↔ canonical-URI pairings (`SYSTEM_IDENTITIES`). These
   identify the systems; they are not any system's code list.
 - **The SNOMED CT concepts the crosswalk resolver names**, each with its description: the four
   map-category concepts in `MAP_CATEGORIES` (`447637006`, `447638001`, `447639009`, `447640006`) that
@@ -243,7 +243,7 @@ with its copyright:
   ICD-10-CM codes, appear in the API documentation examples, which are distributed in the compiled
   declaration files and in the build's sourcemaps. SNOMED CT is copyright
   © International Health Terminology Standards Development Organisation. **No SNOMED CT release or
-  refset is bundled** — you supply the map rows under your own SNOMED CT licence.
+  refset is bundled**: you supply the map rows under your own SNOMED CT licence.
 - **The RxNorm relationship and term-type names** the drug-graph API is written against: the
   relationship names in `RELA` / `RELA_INVERSE` (`has_ingredient`, `tradename_of`, …), and the
   term-type codes in `TERM_TYPES`, each with its name as published by the U.S. National Library of
@@ -257,6 +257,6 @@ no claim about whether any particular use of these materials is permitted to you
 
 ## License
 
-MIT © Cosyte — this package's own code. The bundled third-party materials above stay under their own
+MIT © Cosyte: this package's own code. The bundled third-party materials above stay under their own
 copyright and licences; the `LICENSE` file that ships with this package carries the MIT text and a
 third-party notices section naming each of them.

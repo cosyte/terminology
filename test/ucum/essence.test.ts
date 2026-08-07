@@ -25,7 +25,7 @@ describe("loadUcumEssence", () => {
     expect(essence.atoms.length).toBeGreaterThan(300);
     expect(essence.atomByCode.get("Cel")?.special).toBe(true);
     expect(essence.atomByCode.get("[IU]")?.arbitrary).toBe(true);
-    // [IU] is arbitrary yet metric — it can take a prefix (m[IU]).
+    // [IU] is arbitrary yet metric: it can take a prefix (m[IU]).
     expect(essence.atomByCode.get("[IU]")?.metric).toBe(true);
     // [iU] and [IU] are distinct case-sensitive atoms.
     expect(essence.atomByCode.has("[iU]")).toBe(true);
@@ -53,7 +53,7 @@ describe("loadUcumEssence", () => {
   });
 
   it("skips structurally-unusable rows (liberal on load) rather than crashing", () => {
-    // Missing Code, missing/blank value, non-numeric value, absent Unit — each row is dropped.
+    // Missing Code, missing/blank value, non-numeric value, absent Unit: each row is dropped.
     const table = parseEssence(
       [
         '<root xmlns="http://unitsofmeasure.org/ucum-essence">',

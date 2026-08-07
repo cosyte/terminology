@@ -1,16 +1,16 @@
 /**
- * Property-based conformance tests for the Phase-5 crosswalk invariants — the never-fabricate /
+ * Property-based conformance tests for the Phase-5 crosswalk invariants: the never-fabricate /
  * never-invert / No-Map rules the whole library is built around, applied to the GEMs and the
  * SNOMED→ICD-10-CM complex map:
  *
- *   1. **Never fabricate** — every target `applyGem` / `applyComplexMap` returns is drawn verbatim
+ *   1. **Never fabricate**: every target `applyGem` / `applyComplexMap` returns is drawn verbatim
  *      from the loaded map; a No-Map or unmapped source never yields a target.
- *   2. **Never invert** — a GEM is applied source→target only; a matched source is always a declared
+ *   2. **Never invert**: a GEM is applied source→target only; a matched source is always a declared
  *      source key. The engine never reaches a target as if it were a source.
- *   3. **Liberal load, total apply** — `loadGems` over arbitrary text returns a frozen map or a typed
+ *   3. **Liberal load, total apply**: `loadGems` over arbitrary text returns a frozen map or a typed
  *      warning-carrying map (never a crash); `applyGem`/`applyComplexMap` never throw.
- *   4. **No-Map is typed** — a source whose only entries are `NoDx` is always a typed No-Map.
- *   5. **Context is never guessed** — a complex-map group needing absent context is context-required,
+ *   4. **No-Map is typed**: a source whose only entries are `NoDx` is always a typed No-Map.
+ *   5. **Context is never guessed**: a complex-map group needing absent context is context-required,
  *      never a silently-picked target.
  */
 
@@ -20,7 +20,7 @@ import fc from "fast-check";
 /**
  * This file declares its own test budget. A property test draws fresh random input every run (this
  * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again — making the property suite the one
+ * box, and the gating coverage run roughly doubles it again: making the property suite the one
  * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
  * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
  * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
@@ -121,7 +121,7 @@ const complexRowArb: fc.Arbitrary<ComplexMapEntry> = fc
       "IFA 248152002 | Female (finding) |",
       "IFA 248153007 | Male (finding) |",
       "IFA 445518008 | Age | >= 65 years",
-      // Compound conjunctions — the map genuinely uses these for intervals + gender/age combos.
+      // Compound conjunctions: the map genuinely uses these for intervals + gender/age combos.
       "IFA 445518008 | Age | >= 15 years AND IFA 445518008 | Age | < 55 years",
       "IFA 248152002 | Female (finding) | AND IFA 445518008 | Age | < 55 years",
     ),

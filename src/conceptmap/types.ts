@@ -1,5 +1,5 @@
 /**
- * The types for the ConceptMap `$translate` engine — the loaded {@link ConceptMap} model, the
+ * The types for the ConceptMap `$translate` engine: the loaded {@link ConceptMap} model, the
  * normalized {@link Relationship} enum, and the fail-safe {@link TranslateResult}.
  *
  * The engine targets **FHIR R4** ConceptMap input (`element.target.equivalence`), but carries an
@@ -32,7 +32,7 @@ export type R4Equivalence =
   | "disjoint";
 
 /**
- * The engine's **normalized, version-neutral relationship** between a source and a target concept —
+ * The engine's **normalized, version-neutral relationship** between a source and a target concept:
  * the FHIR **R5** vocabulary, which the R4 `equivalence` tokens fold into cleanly. Surfaced on every
  * match alongside the verbatim R4 token.
  *
@@ -51,7 +51,7 @@ export type Relationship =
 
 /**
  * One target concept a {@link translate} call produced, with its relationship to the source and
- * the verbatim R4 equivalence token. Never fabricated — every field is drawn from the loaded map.
+ * the verbatim R4 equivalence token. Never fabricated: every field is drawn from the loaded map.
  */
 export interface TranslateMatch {
   /** The target {@link Coding} exactly as declared in the map (frozen). */
@@ -65,18 +65,18 @@ export interface TranslateMatch {
 }
 
 /**
- * The FHIR R4 `group.unmapped.mode` an unmapped source fell through to — the map author's declared
+ * The FHIR R4 `group.unmapped.mode` an unmapped source fell through to: the map author's declared
  * fallback behavior. Surfaced (never silently acted on): the caller decides whether to trust a
  * fallback.
  *
- * - `provided` — echo the source code as the target (the map declares no real mapping).
- * - `fixed` — a single fixed fallback code the map declares for *all* unmapped sources.
- * - `other-map` — consult the referenced ConceptMap (which this engine does not auto-follow).
- * - `none` — no `group.unmapped` directive applied (plain no-match, or an explicit `unmatched`).
+ * - `provided`: echo the source code as the target (the map declares no real mapping).
+ * - `fixed`: a single fixed fallback code the map declares for *all* unmapped sources.
+ * - `other-map`: consult the referenced ConceptMap (which this engine does not auto-follow).
+ * - `none`: no `group.unmapped` directive applied (plain no-match, or an explicit `unmatched`).
  */
 export type UnmappedMode = "provided" | "fixed" | "other-map" | "none";
 
-/** Provenance of a translation — which map (and which group's systems) produced it. */
+/** Provenance of a translation, which map (and which group's systems) produced it. */
 export interface MapProvenance {
   /** The ConceptMap's canonical `url`, when declared. */
   readonly conceptMapUrl?: string;
@@ -105,9 +105,9 @@ export interface TranslateMatched {
 }
 
 /**
- * A **fail-safe unmapped** translation — the never-fabricate outcome. The source is surfaced as-is;
+ * A **fail-safe unmapped** translation: the never-fabricate outcome. The source is surfaced as-is;
  * **no target is ever guessed**. Any `group.unmapped` fallback the author declared is reported via
- * {@link UnmappedMode} (and `fixedTarget`/`otherMapUrl`) for the caller to accept or reject — the
+ * {@link UnmappedMode} (and `fixedTarget`/`otherMapUrl`) for the caller to accept or reject: the
  * engine does not silently substitute it.
  */
 export interface TranslateUnmapped {
@@ -119,9 +119,9 @@ export interface TranslateUnmapped {
   readonly mode: UnmappedMode;
   /** The original source {@link Coding}, surfaced untouched. */
   readonly source: Coding;
-  /** For `mode: "fixed"`, the author's fixed fallback coding — reported, not auto-applied. */
+  /** For `mode: "fixed"`, the author's fixed fallback coding: reported, not auto-applied. */
   readonly fixedTarget?: Coding;
-  /** For `mode: "other-map"`, the referenced map's URL — reported, not auto-followed. */
+  /** For `mode: "other-map"`, the referenced map's URL: reported, not auto-followed. */
   readonly otherMapUrl?: string;
   /** Where the (failed) translation was attempted. */
   readonly provenance: MapProvenance;
@@ -144,7 +144,7 @@ export interface ConceptMapUnmapped {
   readonly url?: string;
 }
 
-/** One `group.element.target` — a candidate target for a source concept (FHIR R4). */
+/** One `group.element.target`: a candidate target for a source concept (FHIR R4). */
 export interface ConceptMapTarget {
   /** The target code (absent for a pure `unmatched` assertion). */
   readonly code?: string;
@@ -156,7 +156,7 @@ export interface ConceptMapTarget {
   readonly comment?: string;
 }
 
-/** One `group.element` — a source concept and its candidate targets (FHIR R4). */
+/** One `group.element`: a source concept and its candidate targets (FHIR R4). */
 export interface ConceptMapElement {
   /** The source code. */
   readonly code?: string;
@@ -166,7 +166,7 @@ export interface ConceptMapElement {
   readonly target: readonly ConceptMapTarget[];
 }
 
-/** One `group` — a source-system/target-system pair with its element mappings (FHIR R4). */
+/** One `group`: a source-system/target-system pair with its element mappings (FHIR R4). */
 export interface ConceptMapGroup {
   /** The group's source code system (canonical URI), when declared. */
   readonly source?: string;
@@ -183,7 +183,7 @@ export interface ConceptMapGroup {
 }
 
 /**
- * A loaded, immutable ConceptMap — the subset of the FHIR R4 `ConceptMap` resource the
+ * A loaded, immutable ConceptMap: the subset of the FHIR R4 `ConceptMap` resource the
  * `$translate` engine needs. Produced by {@link loadConceptMap}; every field frozen.
  */
 export interface ConceptMap {

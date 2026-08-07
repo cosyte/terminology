@@ -9,7 +9,7 @@ describe("diagnostic + fatal code registries", () => {
     for (const [k, v] of Object.entries(FATAL_CODES)) expect(k).toBe(v);
   });
 
-  // The full stable code surface. A rename/removal/addition is a reviewable diff here — the
+  // The full stable code surface. A rename/removal/addition is a reviewable diff here: the
   // contract tripwire (renaming a stable code is a breaking change).
   it("diagnostic-code surface is stable", () => {
     expect(sortedCodeSet(DIAGNOSTIC_CODES)).toMatchInlineSnapshot(`

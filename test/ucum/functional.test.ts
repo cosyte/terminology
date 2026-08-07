@@ -8,12 +8,12 @@ import { parseUcum, reduce, validateUcum } from "../../src/index.js";
 
 /**
  * The official UCUM conformance gate. Drives the vendored, verbatim `UcumFunctionalTests.xml`
- * (EPL, © Grahame Grieve & contributors — see `vendor/ucum/NOTICE.md`). Conformance to UCUM is
+ * (EPL, © Grahame Grieve & contributors, see `vendor/ucum/NOTICE.md`). Conformance to UCUM is
  * *defined* as passing these cases (roadmap §6, Phase 4).
  *
  * We run the **validation** cases in full (recognition is the shipped surface) and use the
  * **conversion** cases only for their *commensurability* (src and dst are always the same
- * dimension) — magnitude conversion itself is a deliberate non-goal (roadmap §2/§4.3), so the
+ * dimension): magnitude conversion itself is a deliberate non-goal (roadmap §2/§4.3), so the
  * numeric `outcome` is not asserted.
  */
 

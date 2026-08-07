@@ -1,12 +1,12 @@
 /**
- * The **FHIR R4 `CodeSystem`** JSON loader — the native, consumer-supplied model. Reads the untrusted
+ * The **FHIR R4 `CodeSystem`** JSON loader: the native, consumer-supplied model. Reads the untrusted
  * resource into the engine's {@link Concept} map, flattening nested `concept` hierarchies and mapping
  * the standard concept properties to {@link ConceptStatus}.
  *
  * Grounded firsthand on FHIR R4 (`https://hl7.org/fhir/R4/codesystem.html` and the concept-properties
  * code system, `https://hl7.org/fhir/R4/codesystem-concept-properties.html`): a concept has
  * `code`/`display`/`definition`/`designation`/`property`/nested `concept`; the base property
- * **`inactive`** (boolean) is *"True if the concept is not considered active — e.g. not a valid
+ * **`inactive`** (boolean) is *"True if the concept is not considered active: e.g. not a valid
  * concept any more"*, **`deprecated`** (dateTime) marks a deprecation, and a `status` string property
  * is common in real systems.
  *
@@ -69,7 +69,7 @@ function deriveStatus(props: readonly Property[]): ConceptStatus | undefined {
  * `parentCode` is the code of the enclosing concept when this array is a nested `concept` list. FHIR
  * `CodeSystem` nesting is the default **is-a** hierarchy (`hierarchyMeaning` defaults to `is-a`), so a
  * nested child gains a synthesized standard **`parent`** concept-property
- * (`http://hl7.org/fhir/concept-properties#parent`) pointing at its enclosing code — the subsumption
+ * (`http://hl7.org/fhir/concept-properties#parent`) pointing at its enclosing code: the subsumption
  * signal the ValueSet `is-a`/`descendent-of` filter reads. A `parent` property already declared
  * verbatim for the same value is never duplicated; the flattened concept map is otherwise unchanged.
  */

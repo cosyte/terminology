@@ -1,16 +1,16 @@
 /**
- * {@link translate} — the ConceptMap `$translate` engine, modeled on the FHIR
+ * {@link translate}: the ConceptMap `$translate` engine, modeled on the FHIR
  * `ConceptMap/$translate` operation.
  *
  * Given a source {@link Coding} and a loaded {@link ConceptMap}, it returns the declared target
- * code(s) with their FHIR relationship and the map's provenance — or, when the source does not map,
+ * code(s) with their FHIR relationship and the map's provenance, or, when the source does not map,
  * a **typed {@link TranslateUnmapped}**. Two invariants govern it:
  *
- * 1. **Never fabricate.** An unmapped source yields a surfaced `unmapped` result — never a guessed
+ * 1. **Never fabricate.** An unmapped source yields a surfaced `unmapped` result: never a guessed
  *    target. Every target returned is drawn verbatim from the map; the engine invents nothing.
  * 2. **Never invert.** Translation reads the map in its authored direction only: a source coding is
  *    matched against `group.element.code` (the source side) and **never** against target codes. A
- *    directional map therefore cannot be run backwards — reverse translation requires an explicit
+ *    directional map therefore cannot be run backwards: reverse translation requires an explicit
  *    inverse map; it is never synthesized here.
  *
  * @packageDocumentation
@@ -101,16 +101,16 @@ function unmappedResult(
 /**
  * Translate a source {@link Coding} through a loaded {@link ConceptMap}.
  *
- * Matches the coding's `code` against each applicable group's `element.code` (the **source** side —
+ * Matches the coding's `code` against each applicable group's `element.code` (the **source** side,
  * never targets, so the map is never inverted) and returns every declared target for it. A target
- * with an `unmatched` equivalence, or with no `code`, is treated as "no target" — the FHIR way of
- * asserting a non-mapping — and does not count as a match. When nothing matches, the map author's
+ * with an `unmatched` equivalence, or with no `code`, is treated as "no target" (the FHIR way of
+ * asserting a non-mapping), and does not count as a match. When nothing matches, the map author's
  * `group.unmapped` directive (if any) is *reported* via the result's {@link UnmappedMode} but never
  * silently applied.
  *
  * @param sourceCoding - The source concept to translate.
  * @param map - A {@link ConceptMap} from {@link loadConceptMap}.
- * @returns A {@link TranslateResult} — matched targets, or a typed unmapped outcome.
+ * @returns A {@link TranslateResult}: matched targets, or a typed unmapped outcome.
  * @example
  * ```ts
  * import { loadConceptMap, translate } from "@cosyte/terminology";
@@ -149,7 +149,7 @@ export function translate(sourceCoding: Coding, map: ConceptMap): TranslateResul
       if (element.code !== source.code) continue;
       sourceCodePresent = true;
       for (const t of element.target) {
-        // A target without a code, or an explicit `unmatched`, asserts "no target" — not a match.
+        // A target without a code, or an explicit `unmatched`, asserts "no target": not a match.
         if (t.code === undefined || t.equivalence === "unmatched") continue;
         const targetCoding = coding({
           ...(group.target !== undefined ? { system: group.target } : {}),

@@ -1,12 +1,12 @@
 /**
- * The **fixed-width** reader — slice a line by column, for order-file layouts like the ICD-10-CM
+ * The **fixed-width** reader: slice a line by column, for order-file layouts like the ICD-10-CM
  * order file (`icd10cm_order_YYYY.txt`). Fully parameterized: the consumer supplies the field slices,
  * so the *engine* is content-agnostic and the byte offsets live in the caller's config, not baked in.
  *
- * The documented ICD-10-CM preset is {@link ICD10CM_ORDER_FILE_FIELDS} — the position-15 flag
+ * The documented ICD-10-CM preset is {@link ICD10CM_ORDER_FILE_FIELDS}: the position-15 flag
  * (0-based char index 14) is `1` for a **billable/valid** code and `0` for a **header** (grounded on
  * the CMS/CDC order-file layout). Confirm the exact offsets against your release's README before
- * relying on the preset — which is exactly why the reader takes the slices as a parameter.
+ * relying on the preset, which is exactly why the reader takes the slices as a parameter.
  *
  * **Liberal on load:** a line too short to contain the code slice, or with an empty code, is skipped
  * and surfaced as a `TERM_FIXED_WIDTH_MALFORMED` warning.
@@ -49,10 +49,10 @@ export function sliceField(line: string, slice: FieldSlice): string {
 /**
  * The documented **ICD-10-CM order file** field layout (0-based char indices).
  *
- * - `code` — the ICD-10-CM code (no decimal point).
- * - `billable` — position-15 flag at index 14: `"1"` = billable/valid leaf, `"0"` = header.
- * - `display` — the long description (to end of line).
- * - property `shortDescription` — the 60-char short description.
+ * - `code`: the ICD-10-CM code (no decimal point).
+ * - `billable`, position-15 flag at index 14: `"1"` = billable/valid leaf, `"0"` = header.
+ * - `display`: the long description (to end of line).
+ * - property `shortDescription`: the 60-char short description.
  *
  * Grounded on the CMS/CDC order-file layout; **verify against your release's README** before relying
  * on the exact offsets, which are not confirmed against an authoritative machine-readable source.

@@ -9,7 +9,7 @@
  * `.changeset/config.json` set `"changelog": false`. The file was hand-maintained
  * under one `[Unreleased]` heading that nothing ever rolled over, so it mixed
  * already-shipped entries in with entries that had not gone out and gave a reader
- * no way to tell which was which — while the package published its way past
+ * no way to tell which was which, while the package published its way past
  * `0.0.10` on top of it. That is not a mislabelling to correct by hand: correcting
  * the headings leaves the mechanism that produced them, and it drifts again on the
  * next release. The flag is what these tests hold down.
@@ -63,7 +63,7 @@
  *  8. THE PRETTIER PASS IS LEFT ON HERE, AND THAT IS DERIVED FROM THIS REPO'S OWN
  *     CONFIG RATHER THAN COPIED FROM A SIBLING. Changesets runs the document it
  *     writes through Prettier unless `"prettier": false` turns the pass off, and
- *     the right answer differs per repo — four sibling repos reached it three
+ *     the right answer differs per repo: four sibling repos reached it three
  *     different ways. THIS REPO HAS NO `.prettierignore` AT ALL AND ITS
  *     `format:check` GLOBS `"*.{json,md,yml}"`, so `CHANGELOG.md` is inside the
  *     repo's own formatting gate and its archived history is already
@@ -77,8 +77,8 @@
  *         literal inside a bold span. Text corruption inside a permanent tarball is
  *         not a formatting preference. Measured here: zero bytes move.
  *       - WITH THE PASS OFF, the generator's raw output is NOT Prettier-canonical
- *         even for the simplest possible summary — it writes `## <version>` and
- *         `### Patch Changes` on adjacent lines with no blank line between them —
+ *         even for the simplest possible summary (it writes `## <version>` and
+ *         `### Patch Changes` on adjacent lines with no blank line between them),
  *         and this repo's own `format:check` rejects that document.
  *
  *     AND THE HONEST QUALIFIER, MEASURED HERE RATHER THAN INHERITED, BECAUSE IT IS
@@ -122,7 +122,7 @@
  * identical to what installed copies hold is a claim about the REGISTRY, and it was
  * measured against the published tarball (`npm pack @cosyte/terminology@0.0.10`,
  * 110,316 bytes, identical to the file at the parent commit) rather than against
- * git — a sibling's draft made that claim from the working tree and was wrong,
+ * git: a sibling's draft made that claim from the working tree and was wrong,
  * because an entry had landed after its version commit and never shipped.
  *
  * Every case runs in a temp directory built from scratch, and every mutation
@@ -336,7 +336,7 @@ function runVersion(opts: {
   // WRITE to any git config, and it pins the two settings that would otherwise decide what the
   // commit does. It is not independent of global git config in general, and `core.hooksPath` is
   // the one that matters, because a global value points the temp repo's `commit` at hooks this
-  // suite never meant to run — this repo installs a `pre-commit` PHI sweep through
+  // suite never meant to run: this repo installs a `pre-commit` PHI sweep through
   // `simple-git-hooks`. Emptying it is not cosmetic: containers here really do set one.
   //
   // NO CASE HERE RUNS `git merge`, and none may: it resolves the committer identity up front
@@ -642,8 +642,8 @@ describe("no pending changeset opens a line with an ATX or setext heading", () =
 
   it("finds the changesets it is meant to be checking", () => {
     // A directory this test could not read, or one that has gone empty between releases,
-    // must not read as a pass. Zero pending changesets is a legitimate state — `main` sat at
-    // exactly zero when this was written — so this asserts the enumeration worked rather than
+    // must not read as a pass. Zero pending changesets is a legitimate state (`main` sat at
+    // exactly zero when this was written), so this asserts the enumeration worked rather than
     // asserting a count. It is also why the case below is generated per changeset: the
     // denominator of this file moves with the release cycle.
     expect(existsSync(join(REPO_ROOT, ".changeset"))).toBe(true);
@@ -809,7 +809,7 @@ describe("the shape that makes generated output land correctly", () => {
       // that raw document is NOT what a Version PR here would carry. This repo's `version`
       // script runs its own `prettier --write` over `CHANGELOG.md` as a later link, and the
       // last assertions below measure that it repairs exactly this. So the argument for
-      // leaving the pass ON is not "otherwise CI reds" — that argument is FALSE here — but
+      // leaving the pass ON is not "otherwise CI reds" (that argument is FALSE here), but
       // that with it off, a canonical published changelog rests entirely on `CHANGELOG.md`
       // staying inside that one argument list, and the archive is byte identical either way
       // so nothing is bought in exchange.
@@ -826,7 +826,7 @@ describe("the shape that makes generated output land correctly", () => {
       // The repair the `version` script's later `prettier --write` would perform, applied
       // here so the qualifier above is measured and not asserted: it lands on a canonical
       // document, and it still leaves the archive untouched. The last line pins the premise
-      // the qualifier rests on — `CHANGELOG.md` being an argument of that pass at all.
+      // the qualifier rests on: `CHANGELOG.md` being an argument of that pass at all.
       const options = await prettier.resolveConfig(CHANGELOG_PATH);
       const repaired = await prettier.format(off.changelog, {
         ...options,

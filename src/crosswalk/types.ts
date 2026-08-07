@@ -1,17 +1,17 @@
 /**
- * The types for the **crosswalk resolvers** — the CMS ICD-9↔ICD-10 **GEMs**
+ * The types for the **crosswalk resolvers**: the CMS ICD-9↔ICD-10 **GEMs**
  * (General Equivalence Mappings) and the NLM **SNOMED CT → ICD-10-CM complex map**.
  *
  * Both are the library's highest-risk surface, and their types are built around the stewards' own
- * warnings: these maps are **approximate, 1:many, context-dependent, and non-invertible** — *"not
+ * warnings: these maps are **approximate, 1:many, context-dependent, and non-invertible**, *"not
  * crosswalks… reference mappings"* (CMS on the GEMs), *"semi-automated"* (NLM on the SNOMED map). So
  * every result type here is a **discriminated, fail-safe outcome** carrying the steward's flags,
  * never a single collapsed target:
  *
- * - a No-Map is a typed {@link CrosswalkNoMap} — the steward said "cannot be classified", surfaced,
+ * - a No-Map is a typed {@link CrosswalkNoMap}: the steward said "cannot be classified", surfaced,
  *   never a guessed code;
  * - a 1:many source yields the **whole** ordered candidate set, never one confident pick;
- * - a context-dependent rule with no runtime context is a typed {@link ComplexMapContextRequired} —
+ * - a context-dependent rule with no runtime context is a typed {@link ComplexMapContextRequired}:
  *   the rule + advice ride through, the engine never picks a branch it wasn't given the data for;
  * - all Map Advice / GEM flags ride through **verbatim** (advice flags must not be swallowed);
  * - a directional map is **never inverted** (see {@link ../crosswalk/gems.invertGem}).
@@ -25,7 +25,7 @@ import type { Coding } from "../common/coding.js";
 
 /**
  * The **direction** of a loaded GEM file. CMS ships the forward (ICD-9→ICD-10, `…_I9gem.txt`) and
- * backward (ICD-10→ICD-9, `…_I10gem.txt`) maps as **separate, non-inverse artifacts** — a forward map
+ * backward (ICD-10→ICD-9, `…_I10gem.txt`) maps as **separate, non-inverse artifacts**: a forward map
  * composed with a backward map is *"not a mirror image"*. A `GemMap` therefore records
  * which direction it is and is only ever applied in that direction.
  */
@@ -39,31 +39,31 @@ export type GemDirection = "9-to-10" | "10-to-9";
  */
 export interface GemFlags {
   /**
-   * Position 1 — **approximate** flag. `true` when the mapping is approximate (the common case: the
+   * Position 1: **approximate** flag. `true` when the mapping is approximate (the common case: the
    * source and target are not identical in meaning); `false` when the entry is an exact identity. A
-   * GEM entry is a *reference* mapping either way — never an assertion of clinical equivalence.
+   * GEM entry is a *reference* mapping either way: never an assertion of clinical equivalence.
    */
   readonly approximate: boolean;
   /**
-   * Position 2 — **no-map** flag. `true` when the source code has **no valid target** in the other
-   * classification (the target field is the `NoDx`/`NoPCS` sentinel). A first-class typed outcome —
+   * Position 2: **no-map** flag. `true` when the source code has **no valid target** in the other
+   * classification (the target field is the `NoDx`/`NoPCS` sentinel). A first-class typed outcome:
    * surfaced as a {@link CrosswalkNoMap}, never a fabricated target.
    */
   readonly noMap: boolean;
   /**
-   * Position 3 — **combination** flag. `true` when the source requires a **combination** of target
+   * Position 3: **combination** flag. `true` when the source requires a **combination** of target
    * codes to be fully represented; the entry is one candidate within a scenario/choice-list cluster
    * (see {@link scenario} / {@link choiceList}), never a standalone 1:1 target.
    */
   readonly combination: boolean;
   /**
-   * Position 4 — **scenario** number (`0` for a non-combination entry). Within a combination, all
+   * Position 4: **scenario** number (`0` for a non-combination entry). Within a combination, all
    * entries sharing a scenario describe **one** valid way to represent the source; distinct scenarios
    * are alternative representations.
    */
   readonly scenario: number;
   /**
-   * Position 5 — **choice-list** number (`0` for a non-combination entry). Within a scenario, a valid
+   * Position 5: **choice-list** number (`0` for a non-combination entry). Within a scenario, a valid
    * cluster is built by taking **one** target from each distinct choice list.
    */
   readonly choiceList: number;
@@ -72,34 +72,34 @@ export interface GemFlags {
 }
 
 /**
- * One loaded GEM entry — a source code, its (optional) target, and the decoded {@link GemFlags}. A
+ * One loaded GEM entry: a source code, its (optional) target, and the decoded {@link GemFlags}. A
  * No-Map entry ({@link GemFlags.noMap}) carries **no** {@link target}: the source has no equivalent,
  * and the engine never invents one.
  */
 export interface GemEntry {
   /** The source code (in the map's source classification), verbatim. */
   readonly source: string;
-  /** The target code (in the map's target classification), verbatim — **absent** for a No-Map entry. */
+  /** The target code (in the map's target classification), verbatim: **absent** for a No-Map entry. */
   readonly target?: string;
   /** The decoded steward flags. */
   readonly flags: GemFlags;
 }
 
 /**
- * A loaded, immutable GEM map. Entries are keyed by source code (a source may have many entries — the
+ * A loaded, immutable GEM map. Entries are keyed by source code (a source may have many entries, the
  * maps are 1:many). Applied **only** in its {@link direction}; never inverted.
  *
  * {@link entries} is a **read-only view**, not a `Map` you were handed, and each source's candidate
  * list is frozen: nothing that holds a loaded map can delete a source's mapping, or add a target the
  * steward's file never authored, and have {@link applyGem} answer from it.
  *
- * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+ * A view is not a `Map` instance: `instanceof Map` is `false` and this model cannot be
  * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
  */
 export interface GemMap {
   /** Which direction this file maps. Applied only this way. */
   readonly direction: GemDirection;
-  /** The GEM version/release (e.g. `"2018"`), when supplied — mappings are release-scoped. */
+  /** The GEM version/release (e.g. `"2018"`), when supplied: mappings are release-scoped. */
   readonly version?: string;
   /** The number of loaded entries. */
   readonly count: number;
@@ -110,7 +110,7 @@ export interface GemMap {
 }
 
 /**
- * A surfaced, non-fatal GEM load warning — a malformed line that was **skipped**, reported with its
+ * A surfaced, non-fatal GEM load warning: a malformed line that was **skipped**, reported with its
  * line number and a value-free structural reason. Liberal on load (the parsers' posture).
  */
 export interface GemLoadWarning {
@@ -122,7 +122,7 @@ export interface GemLoadWarning {
   readonly detail: string;
 }
 
-/** One choice list within a combination scenario — pick **one** of its targets to build a cluster. */
+/** One choice list within a combination scenario: pick **one** of its targets to build a cluster. */
 export interface GemChoiceList {
   /** The choice-list number ({@link GemFlags.choiceList}). */
   readonly choiceList: number;
@@ -131,7 +131,7 @@ export interface GemChoiceList {
 }
 
 /**
- * One combination **scenario** — a single valid way to represent the source as a combination of
+ * One combination **scenario**: a single valid way to represent the source as a combination of
  * target codes. A valid **cluster** is one target taken from each of its {@link choiceLists}.
  */
 export interface GemScenario {
@@ -142,7 +142,7 @@ export interface GemScenario {
 }
 
 /**
- * A successful GEM application — one or more candidate targets for the source. The **full** candidate
+ * A successful GEM application: one or more candidate targets for the source. The **full** candidate
  * set is surfaced (never collapsed to one); when the source is a combination, {@link combinations}
  * carries the scenario/choice-list structure needed to build valid clusters.
  */
@@ -162,7 +162,7 @@ export interface GemMatched {
 // ── SNOMED CT → ICD-10-CM complex map ────────────────────────────────────────────────────────────
 
 /**
- * One row of the SNOMED CT → ICD-10-CM **complex/extended map** refset — the caller-supplied,
+ * One row of the SNOMED CT → ICD-10-CM **complex/extended map** refset: the caller-supplied,
  * SNOMED-licensed content the resolver runs over (**no SNOMED CT refset is bundled**). The field
  * names paraphrase the SNOMED RF2 extended-map refset columns.
  */
@@ -170,7 +170,7 @@ export interface ComplexMapEntry {
   /** The SNOMED CT source concept id (`referencedComponentId`), verbatim. */
   readonly source: string;
   /**
-   * The **map group** (1-based). Distinct groups on one source are an **AND** — the source needs a
+   * The **map group** (1-based). Distinct groups on one source are an **AND**: the source needs a
    * target from *each* group (e.g. a manifestation code plus an etiology code). Every group resolves
    * independently.
    */
@@ -181,17 +181,17 @@ export interface ComplexMapEntry {
    */
   readonly priority: number;
   /**
-   * The **map rule**, verbatim — `"TRUE"` / `"OTHERWISE TRUE"` (unconditional fall-through), or an
+   * The **map rule**, verbatim: `"TRUE"` / `"OTHERWISE TRUE"` (unconditional fall-through), or an
    * `IFA` predicate (e.g. an age-band or gender test) evaluated against caller-supplied context.
    */
   readonly rule: string;
   /**
-   * The **map advice**, verbatim (pipe-delimited in the source) — steward instructions to a human
+   * The **map advice**, verbatim (pipe-delimited in the source): steward instructions to a human
    * (`CONSIDER LATERALITY`, `EPISODE OF CARE INFORMATION NEEDED`, `THIS IS A MANIFESTATION CODE…`).
    * Carried through untouched: advice flags must **never** be swallowed.
    */
   readonly advice: string;
-  /** The ICD-10-CM **map target** code, verbatim — **absent** for a No-Map / empty-target row. */
+  /** The ICD-10-CM **map target** code, verbatim: **absent** for a No-Map / empty-target row. */
   readonly target?: string;
   /** The steward **map category** id (a `MAP_CATEGORIES` value, e.g. `447638001`), when supplied. */
   readonly category?: string;
@@ -207,11 +207,11 @@ export interface ComplexMapEntry {
  * is frozen: nothing that holds a loaded map can delete a source concept's rules, or add one your
  * refset never carried, and have {@link applyComplexMap} resolve from it.
  *
- * A view is not a `Map` instance — `instanceof Map` is `false` and this model cannot be
+ * A view is not a `Map` instance: `instanceof Map` is `false` and this model cannot be
  * `structuredClone`d or posted to a worker; copy out what you need (`new Map(…)`).
  */
 export interface ComplexMap {
-  /** The map version/release, when supplied — mappings are release-scoped. */
+  /** The map version/release, when supplied: mappings are release-scoped. */
   readonly version?: string;
   /** The number of loaded rows. */
   readonly count: number;
@@ -221,7 +221,7 @@ export interface ComplexMap {
   readonly warnings: readonly ComplexMapLoadWarning[];
 }
 
-/** A surfaced, non-fatal complex-map load warning — a malformed refset row that was skipped. */
+/** A surfaced, non-fatal complex-map load warning: a malformed refset row that was skipped. */
 export interface ComplexMapLoadWarning {
   /** The stable diagnostic code for a skipped complex-map row. */
   readonly code: "TERM_COMPLEX_MAP_MALFORMED_ROW";
@@ -244,7 +244,7 @@ export interface PatientContext {
 }
 
 /**
- * One map group's resolution — a discriminated outcome. A group resolves to a target, a No-Map, an
+ * One map group's resolution: a discriminated outcome. A group resolves to a target, a No-Map, an
  * ambiguity (candidates surfaced), or a context-required stall; it is **never** a silently-picked
  * single target when the steward flagged otherwise.
  */
@@ -270,7 +270,7 @@ export interface ComplexMapGroupResolved {
 }
 
 /**
- * A group the steward marked **No-Map** (`447638001` "cannot be classified", or an empty target) — a
+ * A group the steward marked **No-Map** (`447638001` "cannot be classified", or an empty target): a
  * typed, surfaced outcome, never a fabricated target.
  */
 export interface ComplexMapGroupNoMap {
@@ -289,7 +289,7 @@ export interface ComplexMapGroupNoMap {
 /**
  * A group whose winning path is a **context-dependent** `IFA` rule (or `447639009`/`447640006`
  * category) for which the caller supplied **no** matching context. The engine surfaces the rules +
- * advice and refuses to pick a branch — the never-fabricate rule for runtime context.
+ * advice and refuses to pick a branch: the never-fabricate rule for runtime context.
  */
 export interface ComplexMapContextRequired {
   /** Discriminant. */
@@ -302,7 +302,7 @@ export interface ComplexMapContextRequired {
   readonly rules: readonly ComplexMapEntry[];
 }
 
-/** A successful complex-map application — one resolution **per map group**, in group order. */
+/** A successful complex-map application: one resolution **per map group**, in group order. */
 export interface ComplexMapMatched {
   /** Discriminant: the source concept is present in the map. */
   readonly mapped: true;
@@ -315,7 +315,7 @@ export interface ComplexMapMatched {
 // ── Shared fail-safe outcomes ────────────────────────────────────────────────────────────────────
 
 /**
- * A **No-Map** outcome — the source is present in the map but the steward declares it has no valid
+ * A **No-Map** outcome: the source is present in the map but the steward declares it has no valid
  * target ("cannot be classified with available data"). A first-class typed result, **never** a
  * fabricated target. Distinct from {@link CrosswalkUnmapped} (source absent entirely).
  */
@@ -333,7 +333,7 @@ export interface CrosswalkNoMap {
 }
 
 /**
- * An **unmapped** outcome — the source code is **not present in the map at all** (distinct from an
+ * An **unmapped** outcome: the source code is **not present in the map at all** (distinct from an
  * authored No-Map). Surfaced as a typed result, never a guessed target and never a silent success.
  */
 export interface CrosswalkUnmapped {

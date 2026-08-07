@@ -1,9 +1,18 @@
-# @cosyte/terminology — agent notes
+# @cosyte/terminology: agent notes
 
 **The long form of every trap in `CLAUDE.md`.** Relocated out of `CLAUDE.md` on 2026-08-04
 (`CLAUDE-MD-AUDIT`) because that file is always-read by every worker that `cd`s into this repo, and
-this narrative is read on demand. **Nothing was deleted.** Every paragraph below is the original
-wording, verbatim; `CLAUDE.md` keeps a one-line imperative for each and points at the heading here.
+this narrative is read on demand. **Nothing was deleted**, and the relocation itself was
+*verbatim*: not a paragraph was reworded, reordered or summarised as it moved. `CLAUDE.md` keeps a
+one-line imperative for each and points at the heading here.
+
+**One later change edited these bytes, and it edited `CLAUDE.md`'s in the same commit: the em-dash
+sweep** (`EMDASH-CONFORMANCE`). It rewrote `U+2014` as a period, a colon, a comma or parentheses
+throughout, so a paragraph here is no longer byte-identical to the `CLAUDE.md` text it was relocated
+from, and the relocation's *"verbatim"* claim is recorded above as history rather than as a standing
+property of these bytes. **No rule, measurement, count, sha or negative control was changed**, and
+this file is not prettier-formatted (it sits outside `format:check`'s globs, which are root-only) and
+must not become so. The long form is under "No em dash, anywhere".
 
 **Read this file when a `CLAUDE.md` line points you at it, and before you "improve", weaken, restore
 an earlier wording of, or delete any rule it names.** Most of these paragraphs exist because a claim
@@ -15,10 +24,10 @@ a fabricated target can harm someone: treat all of it as clinical-safety content
 
 ## The downstream is cli, not transform
 
-It is a sibling engine consumed the way the parsers are — **`@cosyte/cli` is the only package in the
+It is a sibling engine consumed the way the parsers are: **`@cosyte/cli` is the only package in the
 org that depends on it** (one-way, acyclic), via `loadConceptMap` + `translate` in `map-codes`; the
 parsers do not import it. This line used to say `@cosyte/transform` was the downstream. **It is not,
-and never was** — `transform` declares no dependency on this package in any manifest section, and
+and never was**: `transform` declares no dependency on this package in any manifest section, and
 `ccda`, `synth` and `website` mention it only in prose. Re-derive it, do not recall it:
 `grep -l '"@cosyte/terminology"' /workspace/*/package.json`. The authoritative plan is the meta-repo
 `operations/roadmaps/terminology.md`.
@@ -26,14 +35,14 @@ and never was** — `transform` declares no dependency on this package in any ma
 ## North star and the engine posture
 
 **North star:** a developer holds a code off a parsed message and, in one line, canonicalizes its code
-system (`resolveSystem`) or translates it through a supplied ConceptMap (`translate`) — and is
+system (`resolveSystem`) or translates it through a supplied ConceptMap (`translate`), and is
 **never handed a fabricated target**. The engine is **liberal on load** (a malformed resource is a
 typed diagnostic, not a crash) and **conservative on assertion** (an unmapped source is a typed,
 surfaced `unmapped`, never a guess; a directional map is never inverted).
 
 ## Licensing is the load-bearing constraint
 
-**Licensing is the load-bearing constraint.** Ship the **engine only** — **no bundled code-system
+**Licensing is the load-bearing constraint.** Ship the **engine only**: **no bundled code-system
 release** (SNOMED CT / CPT / LOINC / UMLS / VSAC are strictly BYO). Code-system _identities_
 (OID ↔ canonical URI) are published identifiers, encoded and cited firsthand. See the roadmap §5
 matrix.
@@ -43,7 +52,7 @@ matrix.
 **▶ THE PACKAGE IS NOT CONTENT-FREE, AND SAYING SO WAS A LIVE DEFECT ON A PUBLISHED VERSION.** These
 things ARE bundled and every public claim must be scoped around them: the **UCUM unit table**
 (`ucum-essence.xml` v2.2, © Regenstrief Institute, Inc., verbatim, embedded byte-for-byte in `dist`),
-the **code-system identity pairings**, and the **SNOMED CT concepts the crosswalk resolver names** —
+the **code-system identity pairings**, and the **SNOMED CT concepts the crosswalk resolver names**:
 `MAP_CATEGORIES` _and_ the two gender findings `248152002` / `248153007` defined in
 `src/crosswalk/complex-map.ts`, which ship with their descriptions in a `dist/index.d.ts` `@example`.
 **DO NOT WRITE THIS LIST DOWN AS A CLOSED SET.** A draft of this slice called it "three things …
@@ -52,7 +61,7 @@ concepts were missed. Count from the build, not from this paragraph.
 
 `0.0.1` shipped "zero copyrighted terminology content is bundled" on the README, in
 `dist/index.d.ts`, and on docs.cosyte.com, while `dist` carried the Regenstrief table and
-`vendor/ucum/NOTICE.md` was **not in `files`** — so the attribution never reached the tarball and the
+`vendor/ucum/NOTICE.md` was **not in `files`**, so the attribution never reached the tarball and the
 README pointed at a file the package did not contain. Never write an **unscoped** "no content" claim
 here. Say **"no code-system release"**, and name what is bundled with its copyright.
 
@@ -66,7 +75,7 @@ verbatim rather than shipped. Change both, rebuild, and read the built artifact.
 ## State facts, never legal conclusions
 
 **State facts, never legal conclusions.** Say what is distributed and under whose copyright. Do not
-write that a use is "permitted", that a posture is "license-clean", or invent licence terms — three
+write that a use is "permitted", that a posture is "license-clean", or invent licence terms: three
 such phrases were live and were cut. If a claim cannot be made true by scoping it, **cut it**.
 
 ## Shipped phase histories
@@ -93,56 +102,56 @@ such phrases were live and were cut. If a claim cannot be made true by scoping i
   `expansion` pass-through; `validateCodeInValueSet` binding. Never-fabricate extends to membership: an
   unresolvable part → typed `TERM_VALUESET_CANNOT_EXPAND` and `complete: false` (a lower bound, never a
   silently-empty set); a truncated expansion → `TERM_VALUESET_EXPANSION_TRUNCATED`, membership
-  `undetermined` (never a fabricated "not a member"). Subsumption reads the release's own hierarchy —
+  `undetermined` (never a fabricated "not a member"). Subsumption reads the release's own hierarchy:
   the FHIR CodeSystem loader now synthesizes a standard `parent` concept-property from nested
   `concept`s. Zero deps.
 - **Phase 4 shipped** (`TERMINOLOGY-4`): the **UCUM unit layer** in `src/ucum/`. `validateUcum` is a
   hand-rolled zero-dep UCUM grammar parser (base units, longest-match metric prefixes, `.`/`/`,
   signed exponents, `{…}` inert annotations, `10*`/`10^`, case-sensitive) over the vendored UCUM atom
   table; `ucumEqual` reduces two expressions to base dimensions and reports same-unit equivalence
-  (`N` ≡ `kg.m/s2`). **Recognition/validation/representation-canonicalization only — no magnitude
+  (`N` ≡ `kg.m/s2`). **Recognition/validation/representation-canonicalization only: no magnitude
   conversion** (roadmap §2/§4.3). Never-fabricate extends to units: an unparseable/unknown unit →
   typed `TERM_UCUM_INVALID` (never a guessed unit); a special (non-linear) unit is never equated with
   a linear one; distinct arbitrary units never compare equal. The UCUM `ucum-essence.xml` (v2.2) is
-  **vendored verbatim** (`vendor/ucum/`, embedded byte-for-byte, transformed at runtime — no
+  **vendored verbatim** (`vendor/ucum/`, embedded byte-for-byte, transformed at runtime, no
   derivative, no runtime file read; see `vendor/ucum/NOTICE.md`); the official `UcumFunctionalTests.xml`
   suite is the conformance gate (all 530 validation cases pass). Also exports `parseUcum` / `reduce` /
   `loadUcumEssence`. Zero deps.
-- **Phase 5 shipped** (`TERMINOLOGY-5`): the **crosswalk resolvers** in `src/crosswalk/` — the
+- **Phase 5 shipped** (`TERMINOLOGY-5`): the **crosswalk resolvers** in `src/crosswalk/`, the
   never-fabricate/never-invert invariant applied to the published directional reference maps. `loadGems`
   - `applyGem` resolve the CMS **public-domain** ICD-9↔ICD-10 **GEMs** in their authored `direction`,
     decoding the 5-position flag field (approximate | no-map | combination | scenario | choice-list,
     grounded on the CMS Dx GEM guide/tech-doc): a 1:many source returns the full candidate set, a
     combination source surfaces its scenario→choice-list clusters, a `NoDx` No-Map is typed
     `TERM_CROSSWALK_NO_MAP`, an absent source the distinct `TERM_CROSSWALK_UNMAPPED`. `loadComplexMap` +
-    `applyComplexMap` resolve the NLM **SNOMED→ICD-10-CM complex map** (**BYO** — zero SNOMED content
+    `applyComplexMap` resolve the NLM **SNOMED→ICD-10-CM complex map** (**BYO**, zero SNOMED content
     bundled; structured rows or raw RF2): map groups are an AND, priorities an if-then-else of `IFA`
     age/gender rules against caller `PatientContext`, a group needing absent context is typed
     `TERM_CROSSWALK_CONTEXT_REQUIRED` (never a guessed branch), Map Advice + Categories ride through
     verbatim. `invertGem` throws `TERM_MAP_NOT_INVERTIBLE` (never-invert as a first-class contract). No
     map content bundled (GEMs BYO now / a future public-domain pack; SNOMED BYO forever). Zero deps.
 - **Phase 6 shipped** (`TERMINOLOGY-6`): the **RxNorm drug relationship graph** in `src/rxnorm/`.
-  `loadRxNormGraph` reads a **caller-supplied** RxNorm RRF release — `RXNCONSO` (concepts typed by
+  `loadRxNormGraph` reads a **caller-supplied** RxNorm RRF release: `RXNCONSO` (concepts typed by
   `TTY`: the full Appendix 5 vocabulary, `IN`/`PIN`/`BN`/`SCD`/`SBD`/`SCDC`/`SCDF`/`SBDF`/`SCDFP`/
   `SBDFP`/`SCDGP`/`DF`/…, and typed only from a **defining** atom, see the guardrail below),
   `RXNREL` (directed `RELA` edges), and optionally
-  `RXNSAT` (`ATN=NDC` attributes) — reusing the shared zero-dep RRF reader. The column layouts and the
+  `RXNSAT` (`ATN=NDC` attributes), reusing the shared zero-dep RRF reader. The column layouts and the
   **edge-direction convention** are grounded firsthand on the NLM RxNorm Technical Documentation
   (§12.7) + UMLS Reference Manual: `RELA` is the relationship `RXCUI2` has to `RXCUI1`, so each row is
-  read `RXCUI2 ⟶RELA⟶ RXCUI1` and normalized to `subject=RXCUI2, object=RXCUI1` — the documented
+  read `RXCUI2 ⟶RELA⟶ RXCUI1` and normalized to `subject=RXCUI2, object=RXCUI1`: the documented
   medication-safety trap (roadmap §10 Q5), pinned by fixtures in the real wire format. Navigation
   (`ingredientsOf`/`genericFor`/`brandsFor`/`doseFormsOf`/`consistsOf`/`relatedByRela`) follows
-  **authored edges only** — never synthesizes an inverse (RxNorm ships both directions as separate
+  **authored edges only**: never synthesizes an inverse (RxNorm ships both directions as separate
   rows). `resolveNdc` carries temporal status + as-of release; `approximateMatch` is opt-in + labeled,
   never the default. Never-fabricate extends to the graph: an absent `RXCUI` →
   `TERM_RXNORM_UNKNOWN_RXCUI`, an absent NDC → `TERM_RXNORM_NDC_UNMAPPED`, a present concept with no
   such edge → a found result with **empty** targets. **Content posture:** ships the BYO graph mechanism
-  only — **zero RxNorm content bundled**; the public-domain Current Prescribable Content pack is
+  only: **zero RxNorm content bundled**; the public-domain Current Prescribable Content pack is
   deferred to Phase 7 (a genuine verbatim release could not be obtained in the sandbox; fabricating it
   would breach never-fabricate). Zero deps.
-- **Deferred to later phases:** bundleable content packs — RxNorm Prescribable Content, ICD-10-CM,
+- **Deferred to later phases:** bundleable content packs, RxNorm Prescribable Content, ICD-10-CM,
   LOINC (with notice) + LOINC parts/hierarchy, incl. a GEM pack (P7). **UCUM is NOT on this list: its
-  table is already bundled** (verbatim, embedded in `dist`) — it was listed here as deferred while it
+  table is already bundled** (verbatim, embedded in `dist`): it was listed here as deferred while it
   was in fact shipping, which is the same defect the licensing note above records.
 
 ## Why no version is quoted here
@@ -226,7 +235,7 @@ FHIR field names). Nothing a caller configured and nothing a document contained 
 them. This is the one property that separates every non-leaking design in the ecosystem from every
 leaking one, and it is mechanical, so apply it mechanically: if you find yourself writing
 `` `… ${x} …` `` inside a diagnostic, `x` must be a number or a string this file's own code
-produced — never an argument that traces back to the caller or the document.
+produced: never an argument that traces back to the caller or the document.
 
 ## The rule is about arguments, not signatures
 
@@ -234,12 +243,12 @@ produced — never an argument that traces back to the caller or the document.
 It read "NO DIAGNOSTIC FACTORY TAKES A VALUE PARAMETER … each is a literal or a frozen-table
 entry", which was flatly false of factories in `src/` that it never touched:
 `malformed(path, fault)` in `conceptmap/load.ts` and `valueset/load.ts`, and `cannotExpand` /
-`truncated` / `underPath` in `valueset/` — remembering that `expand.ts` and `validate.ts` each
+`truncated` / `underPath` in `valueset/`: remembering that `expand.ts` and `validate.ts` each
 carry their own copy. **Do not write the count down here**: a draft said "four" and the tree has
 seven. Derive it:
 `rg -n '^function (malformed|cannotExpand|truncated|underPath)' src/`.
-Those are safe — every `fault` and `detail` is a literal at the call
-site, every `path` is index-built — but a guardrail stronger than the code teaches the next reader
+Those are safe (every `fault` and `detail` is a literal at the call
+site, every `path` is index-built), but a guardrail stronger than the code teaches the next reader
 something untrue and gets "fixed" in the wrong direction. Do not restore the absolute form.
 
 ## The leaking sites, and what a v8 ignore asserts
@@ -250,18 +259,18 @@ column name (1,000,000 bytes in → a 1,000,063-byte `err.message`, and the same
 caller-supplied canonical URI in a `system` field, now the value-free index path `path`. The
 ecosystem audit recorded only the first; the third was found by the slot table, not by reading.
 **Positional context is a locus, and a locus is an integer, an index path, or a closed-set token**
-(`RXNCONSO`/`RXNREL`/`RXNSAT`) — never a URI, a column name, or anything the file supplied. Naming
+(`RXNCONSO`/`RXNREL`/`RXNSAT`): never a URI, a column name, or anything the file supplied. Naming
 the **role** (`the configured 'code' column`) is the substitute for naming the caller's string; do
 not "improve" it back into an echo, and do not settle for truncating one.
 A **fourth** site was found by the refuter after those three: `reduce` is exported, takes a
-caller-built `UnitNode`, and interpolated a forged atom's `code` into a plain `Error` — a
+caller-built `UnitNode`, and interpolated a forged atom's `code` into a plain `Error`: a
 1,000,000-byte code gave a 1,000,042-byte `message`, with those same bytes in `err.stack`,
 measured on published `0.0.5`. It sat under a `/* v8 ignore */` labelled "unreachable with the
 shipped data". **A `v8 ignore` is an assertion about reachability; check it against the exported
-surface before you trust one — and check the WHOLE block, because the other branches in that one
+surface before you trust one, and check the WHOLE block, because the other branches in that one
 were reachable too.** That block is now gone: **all three** corrupt-table guards in
 `reduceAtomLinear` are reached by tests rather than excluded from coverage, and the third one is
-why this warning is the most expensive lesson in this file — a later slice asserted it unreachable,
+why this warning is the most expensive lesson in this file: a later slice asserted it unreachable,
 excluded it, and was refuted on a route nobody had considered (see the accessor note below).
 **`reduceAtomLinear` now carries no `v8 ignore` at all, and that is the intended end state.**
 Every `Error` that file constructs carries a literal message; **do not put an atom back into one.**
@@ -274,11 +283,11 @@ on the string made them a channel between atoms that merely share a code, and no
 an atom on a caller-built node came from the vendored table. Measured on published `0.0.5`, one
 `reduce()` over a forged, value-less `L` as the first touch of `L`: `ucumEqual("L", "1")` and
 `ucumEqual("mg/L", "mg")` both answered `true` where the unforged control answered `false`, and
-`mmol/L` fell from `6.02214076e23 × m-3` to a dimensionless `6.02214076e20` — a concentration
+`mmol/L` fell from `6.02214076e23 × m-3` to a dimensionless `6.02214076e20`: a concentration
 reading equal to a mass. The same keying let a forged `N` defined as `N` wedge the shipped newton for the life
 of the process, because `inProgress` was not released on a throw; it is released in a `finally`
 now. **Identity keying was chosen over validating an atom's provenance because it leaves the hot
-path alone** — the atoms `parseUcum` resolves are `loadUcumEssence`'s cached singletons, so a
+path alone**: the atoms `parseUcum` resolves are `loadUcumEssence`'s cached singletons, so a
 parsed expression still finds one entry per atom. **Do not quote a benchmark pair for it**: three
 drafts quoted three pairs, none reproduced, and a fourth measurement put the ratio on both sides
 of 1. The docblock states the conclusion (no measured cost) and no figures, deliberately. The
@@ -291,39 +300,39 @@ dimensionless object, which a caller could mutate into the engine. Pinned in
 
 **▶ AND THE REASON A PARSED EXPRESSION NEVER REACHES THOSE GUARDS IS `reduce`'s CONTROL FLOW, NOT
 A PROPERTY OF THE TABLE. A refuter refused the first pass of that fix for saying otherwise.** Of
-the table's 312 atoms, **28 carry no `value` at all — the 7 base units and the 21 special ones**
+the table's 312 atoms, **28 carry no `value` at all: the 7 base units and the 21 special ones**
 (`Cel`, `[pH]`, `B`, `Np`, `[degF]`, …), and the specials are neither base nor arbitrary, so they
 are exactly what the no-linear-definition guard refuses. What keeps them out of it is that
 `reduce` short-circuits a special-containing expression to the opaque `special` form **before**
 any linear reduction, and base and arbitrary atoms return earlier still. Of the 291 non-special
-atoms — the 7 base units plus the 284 that carry a `value` — every one reduces fully. **284 is the
+atoms (the 7 base units plus the 284 that carry a `value`), every one reduces fully. **284 is the
 count that carries a `value`, NOT the count of non-special atoms**; a draft attached it to the
 wrong noun and both numbers are now asserted, so do not restore it. **A caller-assembled atom defined in terms of a special unit
 (`{ value: { unit: "Cel" } }`) walks straight past that short-circuit and lands on the table's own
-`Cel`** — so "an atom the bundled table never produced" is the wrong description of what these
+`Cel`**, so "an atom the bundled table never produced" is the wrong description of what these
 guards refuse. Do not restore it. The counts are asserted in `test/ucum/reduce-memo.test.ts` so
 the sentence above cannot drift from the table.
 
 ## The UCUM table is frozen
 
-**▶ THE TABLE IS FROZEN, AND THAT IS THE OTHER HALF OF THE MEMO ANSWER — NEITHER SUBSTITUTES FOR
+**▶ THE TABLE IS FROZEN, AND THAT IS THE OTHER HALF OF THE MEMO ANSWER: NEITHER SUBSTITUTES FOR
 THE OTHER.** Identity keying closes the route where the atom was one the caller **built**; it does
 not reach the route where the atom is one the caller was **handed**. Through `bf153cb` and on
-published `0.0.5` **and `0.0.6`** — the latter is that commit plus a version bump, so it carries the
-defect too — `essence.ts` froze nothing, so rewriting a loaded atom's definition **before
+published `0.0.5` **and `0.0.6`** (the latter is that commit plus a version bump, so it carries the
+defect too), `essence.ts` froze nothing, so rewriting a loaded atom's definition **before
 that atom's first reduction** wrote the memo and the reading outlived putting the table back:
 defining the loaded litre as `1` made `ucumEqual("L", "1")` and `ucumEqual("mg/L", "mg")` answer
 `true`, and `mmol/L` fell from `6.0221407599999985e+23 × m-3` to a dimensionless `6.02214076e+20`.
 Three routes reached it, and **a shallow freeze closes only one**: `atom.value = …`,
-`atom.value.unit = …`, and replacing an element of the `atoms` array — the array `parseUcum`
+`atom.value.unit = …`, and replacing an element of the `atoms` array: the array `parseUcum`
 scans, which hands the parser a forged atom without touching the memo at all. So the freeze is
 deep, covers both arrays, and replaces the lookup maps' `set`/`delete`/`clear`, which
 `Object.freeze` cannot reach on a `Map`.
-**The guarantee is that the table does not change, NOT that a write throws** — `Object.freeze` is
+**The guarantee is that the table does not change, NOT that a write throws**: `Object.freeze` is
 a `TypeError` in strict mode and a silent no-op in sloppy mode, and this package ships a CJS build
 a sloppy-mode caller can require. Assert the readings; assert the `TypeError` only as how a
 strict-mode caller observes the refusal. **And do not widen it to the `Map`:**
-`Map.prototype.set.call()` still inserts, which is bounded and asserted in both directions —
+`Map.prototype.set.call()` still inserts, which is bounded and asserted in both directions:
 `parseUcum` scans `atoms` and never reads `atomByCode`, so a forced entry changes no reduction,
 only what the caller's own `get` returns. Pinned in `test/ucum/essence-immutable.test.ts`, whose
 cases each corrupt a **different** atom because the memo is first-touch.
@@ -333,17 +342,17 @@ cases each corrupt a **different** atom because the memo is first-touch.
 **▶ THE CYCLIC GUARD IS REACHED BY AN ACCESSOR, AND THREE DESCRIPTIONS OF ITS REACHABILITY HAVE
 NOW BEEN WRONG. DO NOT RE-DERIVE IT FROM THE SHAPE OF THE CODE.** `UcumAtom.value` is `readonly`
 to **TypeScript only**, which a **getter** satisfies, and `reduceAtomLinear` reads
-`atom.value.unit` **after** `inProgress.add(atom)` — so a caller's accessor runs inside the
+`atom.value.unit` **after** `inProgress.add(atom)`, so a caller's accessor runs inside the
 recursion and can re-enter `reduce` with that same atom. No mutation, no table, no cast, and it
 type-checks against the package's own exported types. **A refuter found this after a draft of this
 slice asserted the guard was unreachable, excluded it from coverage, deleted the two tests that
 reached it, and shipped "no call can reach it" into `dist/index.d.ts`.** It is pinned in
-`test/ucum/reduce.test.ts` under a 100,000-byte caller-supplied atom code — a **stronger** pin
+`test/ucum/reduce.test.ts` under a 100,000-byte caller-supplied atom code: a **stronger** pin
 than the one it replaced, which used the table's own bounded `Pa`.
 Two things that do **not** reach it, both measured, because both look like they should: **naming
-is not being** — a definition resolves through `parseUcum` against the loaded table, so a
+is not being** (a definition resolves through `parseUcum` against the loaded table, so a
 self-referential `Pa` off a `parseEssence` copy resolves to the shipped pascal and answers
-`1000 × g.m-1.s-2` — and corrupting a loaded atom in place, which the freeze now refuses.
+`1000 × g.m-1.s-2`), and corrupting a loaded atom in place, which the freeze now refuses.
 **Never put a `v8 ignore` on this guard.** Whatever route was closed last, it is a
 caller-reachable throw carrying an unbounded caller code, so excluding it drops the value-free pin
 that keeps that code out of `Error.message` and `err.stack`.
@@ -351,11 +360,11 @@ that keeps that code out of `Error.message` and `err.stack`.
 ## The over-scoped v8 ignore on the atom.base line
 
 **The over-scoped `v8 ignore` on the `atom.base` line is gone.** It read "base atoms always carry
-their dim" — true of the table and false of the exported surface, since `reduce()` over a
+their dim": true of the table and false of the exported surface, since `reduce()` over a
 caller-built `{ base: true }` with no `dim` reaches the `?? atom.code` fallback. The arm is
 covered by a test now, and its harmlessness is asserted rather than asserted-in-prose: a forged
 base atom is answered on its own code and leaves the table's base units reducing unchanged.
-**Check the whole file, not the block you came for** — this one survived the audit that deleted
+**Check the whole file, not the block you came for**: this one survived the audit that deleted
 the block beside it.
 
 ## The three reduce messages are pinned by whole-message equality
@@ -363,7 +372,7 @@ the block beside it.
 **The three `reduce` messages are pinned by whole-message equality, and that is deliberate.**
 `toThrowError(string)` is a **substring** match: a draft pinned two of them with it, and putting
 the atom back into the message left the suite green. `test/ucum/reduce.test.ts` asserts each with
-`toBe`, a length bound, and `err.stack` — **all three now under a 100,000-byte caller-supplied
+`toBe`, a length bound, and `err.stack`: **all three now under a 100,000-byte caller-supplied
 atom code**, which is the unbounded value in every one of them. The cyclic one used to be pinned
 through the table's own `Pa`, whose code is bounded and so proved less; the accessor route above
 replaced it.
@@ -372,18 +381,18 @@ replaced it.
 
 `test/phi/diagnostic-surface.test.ts` holds this: 52 slots, each naming the code it must reach, so
 a slot that stops reaching its branch reds instead of passing over dead space. **`reduce` is
-deliberately not one of them** — it throws an un-coded `Error`, so it can carry no `expectCode`,
+deliberately not one of them**: it throws an un-coded `Error`, so it can carry no `expectCode`,
 and the table's invariant is that every slot names one. **The slot count is a shrink tripwire, not
 a coverage claim**; plenty of exported entry points (`parseCsv`, `parseRrfLine`, `parseUcum`,
 `ucumEqual`, `validateCode`, the `filters.ts` helpers) have no slot. **`src/valueset/`
-has TWO copies of the diagnostic factories** — `expand.ts` and `validate.ts` each have their own
-`cannotExpand` and `underPath` — and a first draft of the table covered only `expand`, which let a
+has TWO copies of the diagnostic factories** (`expand.ts` and `validate.ts` each have their own
+`cannotExpand` and `underPath`), and a first draft of the table covered only `expand`, which let a
 planted echo in `validate.ts` pass green. Cover both, always. **Add a slot when
 you add a consumer-controlled position**; `SLOT_COUNT` is asserted so the table cannot shrink
 quietly. Its `getModelIdentifiers` returns the model's real loci and is
 **redundant rather than load-bearing** (every locus here already rides on a diagnostic); it exists
 so the classification of every name-like string on every exported model type is executed and
-reviewable. `Property.code` and `RxNormEdge.predicate` are payload on a checkable test — an HL7 v2
+reviewable. `Property.code` and `RxNormEdge.predicate` are payload on a checkable test: an HL7 v2
 `segment.type` is spec-bounded to three characters so bounding it discards nothing, while a FHIR
 `code` has no `maxLength` and RxNorm's `RELA` is an open vocabulary, and both are the keys the
 engine and the caller match on, so truncating either turns a hit into a miss. **Re-derive that before trusting it, and check the dependency graph
@@ -400,7 +409,7 @@ file: each echo is exactly the caller's value, unaltered, and no query value rea
 stack anywhere (the engine throws only on an unusable _source_, never on a query). **It is not one
 field per echo, and a draft of that sentence said it was.** `translate` returns a coding's `system`
 in `source.system` **and** in `provenance.sourceSystem`, because `MapProvenance.sourceSystem` is
-`sourceSystem ?? group?.source` — the caller's query first, the map's own `group.source` only as
+`sourceSystem ?? group?.source`: the caller's query first, the map's own `group.source` only as
 the fallback. Classify it with the query echoes, never with `.targetSystem` / `.conceptMapUrl`,
 which really are read off the loaded map. The `translate` pin holds only because its fixture coding
 carries no `system`; its name says so.
@@ -482,17 +491,17 @@ the `SCDC` leads to the `IN`.
 ## The attw gate
 
 **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
-BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli` opens with `if (!analysis.types) return 0`
-— an untyped package is a legitimate npm package, so "no types at all" is a description, not a
+BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli` opens with `if (!analysis.types) return 0`:
+an untyped package is a legitimate npm package, so "no types at all" is a description, not a
 problem, and the problem list is never consulted. No `--profile`, `--ignore-rules` or config
 setting reaches that early return. For a package that ships types it means the declarations were
 **not in the tarball**, which is a broken publish reported as a pass. On 2026-08-01, under a
 six-worker parallel run, `verify.sh` printed **"✓ verify green" on a run where `attw` reported
-"does not contain types"** — the only gate defect that run found which fails in the _shipping_
+"does not contain types"**: the only gate defect that run found which fails in the _shipping_
 direction. `verify.sh`'s propagation was never at fault; the step lied to it.
 **The race only supplies the condition.** Reproduced deterministically on a quiet box with no
 concurrency: `rm -rf dist && pnpm attw`, and `rm -f dist/index.d.*ts && pnpm attw`, both print the
-sentence and exit 0. The second is the realistic window — `tsup` emits JS in one pass and
+sentence and exit 0. The second is the realistic window: `tsup` emits JS in one pass and
 declarations in a later one, so **every** build has an interval where `dist/` holds `.mjs`/`.cjs`
 and no `.d.ts`; a concurrent build or `clean` in the same working tree lands `attw` in it. So the
 answer is **not** a lock, a lease or a build queue: the gate must be able to say its own inputs
@@ -508,14 +517,14 @@ three-item list, which a fused `-fjson` walked straight past, and it called `--c
 refused "by inference, not measurement" when the real-file half is measurable in one command.
 A guard described in several files at once drifts in the copies nobody is editing.
 **What belongs here and nowhere else:** do not cite `0.0.1`'s missing `vendor/ucum/NOTICE.md` as
-an instance of the post-check's case, which a draft of this entry did — `attw` analyses types, so
+an instance of the post-check's case, which a draft of this entry did: `attw` analyses types, so
 it never saw that file and neither net would catch it.
 **This is a per-repo script and every sibling now carries its own copy**, ported from this one
 during the 2026-08-03 drain, so a fix here is not a fix there. `config/scripts/parser-template/`
 has a copy too, and `scaffold-parser.mjs` mints new repos from it, so a defect left in the
 template is re-minted into every future parser. **Do not write the repo count down here**; a draft
 said "fourteen" and was wrong twice over (`config`'s own script only delegates, and several of the
-manifests are nested — a template, a starter kit, and `@cosyte/test-utils`). Derive it:
+manifests are nested: a template, a starter kit, and `@cosyte/test-utils`). Derive it:
 `find /workspace -name package.json -not -path '*/node_modules/*' | xargs grep -l '"attw":'`.
 
 ## No internal project bookkeeping: the prefix-keyed gate
@@ -607,10 +616,10 @@ rebase the branch. Expect it every time a context is added here.
 **▶ THE `--staged` ROUTE ASKS GIT FOR ITS RECORD SET ON THE COMMAND LINE, AND EVERY FLAG IN THAT
 ARGUMENT LIST IS LOAD-BEARING. Do not shorten it.** The route is
 `git diff --cached --raw -z --no-renames --ignore-submodules=none --diff-filter=AMTU`, and it is the
-pre-commit half of the PHI gate — the all-mode sweep is the backstop, so anything this route drops
+pre-commit half of the PHI gate: the all-mode sweep is the backstop, so anything this route drops
 is dropped at exactly the moment a commit is being made.
 
-**What was open, all measured on git 2.39.5 in throwaway repositories, all reported as `OK — no
+**What was open, all measured on git 2.39.5 in throwaway repositories, all reported as `OK: no
 hits` and exit 0:**
 
 - **A staged RENAME.** Detection is on by git's default and `R` is returned by neither `AM` nor
@@ -644,8 +653,8 @@ records, so the two-field stride is **structural** rather than conditional on th
 
 **▶ NEVER WRITE "STRICT SUPERSET" HERE, AND NEVER WRITE THE RELATION UNSCOPED.** **Of
 `--no-renames` alone, holding the rest of the argv fixed:** the new enumeration **contains** the old
-one — **equal** whenever git emitted no `R` and no `C`, larger only when it did. The loose form of
-that sentence was refuted in a sibling and the ecosystem backlog item carried it too — this repo is
+one: **equal** whenever git emitted no `R` and no `C`, larger only when it did. The loose form of
+that sentence was refuted in a sibling and the ecosystem backlog item carried it too: this repo is
 where that porting trap originated, so do not re-import it, and **do not port the unscoped form out
 of here either.** Unscoped it is FALSE for this route: on an index holding one unmerged path and no
 rename or copy anywhere, `--diff-filter=AMT` returns nothing while the current argv returns
@@ -656,7 +665,7 @@ equal. The equality is a property of that ONE FLAG, not of the argv.
 being IN `--diff-filter=AMTU`; `--no-renames` does not carry it, and dropping `U` from the filter on
 the belief that the flag covers it reopens the gap (measured: 1 case reds). Likewise the gitlink half
 is closed by `--ignore-submodules=none` alone (measured: 1 case reds when it is removed). Git itself
-refuses to commit while a path is unmerged, so `U` was never a route to a committed leak — what it
+refuses to commit while a path is unmerged, so `U` was never a route to a committed leak: what it
 was is the gate attesting clean over a state it never observed, and `pnpm phi-scan --staged` is run
 by hand and from scripts as well as from the hook.
 
@@ -664,16 +673,16 @@ by hand and from scripts as well as from the hook.
 `--no-renames` AND EMPTY THIS ROUTE AGAIN.** Do not add them. `--find-copies-harder` does so in
 EITHER order, so never write that a later `--no-renames` undoes them. The argv-coupling case guards
 GIT's premise rather than the scanner's argv, so it does not by itself fail if someone edits the
-scanner; the suite as a whole does — injecting `-M` reds 2 cases and `--find-copies-harder` reds 3,
+scanner; the suite as a whole does: injecting `-M` reds 2 cases and `--find-copies-harder` reds 3,
 both measured rather than recalled, because a sibling shipped this warning inverted.
 
-**▶ AND `-B` IS NOT INERT. DO NOT RESTORE THAT READING — IT WAS WRITTEN HERE ONCE AND A REFUTER
+**▶ AND `-B` IS NOT INERT. DO NOT RESTORE THAT READING: IT WAS WRITTEN HERE ONCE AND A REFUTER
 CAUGHT IT.** The "inert" measurement was taken on a RENAME stage, the one stage where `-B` does
 nothing, and the sentence then generalised. On a COMPLETE REWRITE `-B` breaks the pairing, the
 `--diff-filter` letter is `B` and not `M`, `AMTU` drops the record outright, and the gate reports
-`OK — no hits` over a staged dashed SSN: measured on the same index, exit 1 without the flag and
+`OK: no hits` over a staged dashed SSN: measured on the same index, exit 1 without the flag and
 exit 0 with it. It empties this route through the status FILTER rather than by re-enabling
-detection — a different mechanism, the same answer. **A sibling repository ships the "inert" claim
+detection: a different mechanism, the same answer. **A sibling repository ships the "inert" claim
 over the same `AMTU` filter; it is wrong there too, and that is its own item, not this one's.**
 
 **A refusal message was false and is corrected.** `git show :<path>` "hands back its target path
@@ -685,19 +694,19 @@ fallback. It now states what the INDEX holds.
 and exits 128 with "Committer identity unknown" before merging anything when it cannot find one. A
 developer's box has a global identity or auto-detects one; a CI runner has neither, so a fixture
 built that way passes locally and fails on CI **on its own premise**. What this route reads is an
-INDEX STATE, so the unmerged fixtures are built with `git update-index --index-info` — smaller, no
+INDEX STATE, so the unmerged fixtures are built with `git update-index --index-info`: smaller, no
 branches, no merge strategy, no identity, and `git status` still reports `UU`, which is git
 confirming the construction. Every commit helper passes `-c user.email` / `-c user.name` explicitly.
 Re-run the suite under `env -i` before trusting it.
 
 **TWO THINGS MEASURED OPEN AND DELIBERATELY LEFT.** With a scan root replaced by a link to a regular
-file, the all-mode walk raises an uncaught `ENOTDIR` and exits **1** — the code this contract
-reserves for HITS — with a v8 stack trace in place of the scanner's own diagnostic; a missing
+file, the all-mode walk raises an uncaught `ENOTDIR` and exits **1** (the code this contract
+reserves for HITS) with a v8 stack trace in place of the scanner's own diagnostic; a missing
 allow-list throws out of the same route the same way, because `loadAllowList()` runs outside every
 `try`. Both are fail-closed rather than silent, and both belong to the separate exit-code work.
 
 **AND ONE THING THAT IS TRUE HERE FOR A REASON THAT WILL STOP BEING TRUE.** A regular blob staged at
-exactly a scan root is scanned at the SAME tier as one under it — measured, equal hit counts — only
+exactly a scan root is scanned at the SAME tier as one under it (measured, equal hit counts), only
 because `scanTarget` has ONE tier, the SSN/email floor, and it keys on nothing about the path. A
 sibling that dispatches a format-aware tier off the path prefix gives such a blob the shape pass
 only. **Implementing the fenced TODO section with a path-keyed dispatch breaks this**, and a case in
@@ -707,9 +716,9 @@ only. **Implementing the fenced TODO section with a path-keyed dispatch breaks t
 
 **▶ ALL-MODE REFUSES (exit 2) UNLESS EVERY MEMBER OF `SCAN_ROOTS` YIELDED AT LEAST ONE FILE THAT WAS
 ACTUALLY READ**, and the refusal names the starved roots. Before 2026-08-05 there was **no
-observation rule here at all** — not the global "observed zero files in total" form the siblings
-carried, none — so `pnpm phi-scan` with no arguments, which is what CI runs, could print
-`[phi-scan] OK — no hits` and exit **0** having read nothing.
+observation rule here at all**: not the global "observed zero files in total" form the siblings
+carried, none, so `pnpm phi-scan` with no arguments, which is what CI runs, could print
+`[phi-scan] OK: no hits` and exit **0** having read nothing.
 
 **THE STARVED STATE WAS LIVE, NOT HYPOTHETICAL, AND THAT IS WHAT MAKES THIS REPO THE WORSE HALF.**
 The scanner declared two roots, `test/fixtures` and `src`, and `test/fixtures` has **never existed
@@ -718,19 +727,19 @@ TypeScript (`find test -type f -not -name '*.ts'` returns nothing), and the thro
 `test/scripts/phi-scan.test.ts` has only ever created `scripts/` and `src/`. So the clean line was
 being printed over an unopened root on every run the gate has ever made.
 
-**Measured on `0fe4b84` on a clone, three ways, each `[phi-scan] OK — no hits` at exit 0:** `src`
+**Measured on `0fe4b84` on a clone, three ways, each `[phi-scan] OK: no hits` at exit 0:** `src`
 moved aside, `src` replaced by a **dangling symlink** (each leaving all 39 source files unread), and
-the fixture root — which needed no manipulation to reproduce.
+the fixture root, which needed no manipulation to reproduce.
 
 **▶ THE DANGLING CASE IS THE SHARPEST AND NOTHING ELSE IN THE SCANNER CAN SEE IT.** `existsSync`
 **follows** the link and answers false, so `walk()` returns before `readdirSync` and the
-not-a-regular-file refusal never fires — that rule only ever classifies entries found **inside** a
+not-a-regular-file refusal never fires: that rule only ever classifies entries found **inside** a
 root, and this is the root itself. Absent, dangling and empty are one state to the walk.
 
 **▶ AND THIS REPORTER PRINTS NO DENOMINATOR, WHICH IS A WEAKER SIGNAL THAN A SIBLING THAT DOES.**
-`report` writes `OK — no hits` and no file count, so nothing on stdout looked wrong; a sibling at
+`report` writes `OK: no hits` and no file count, so nothing on stdout looked wrong; a sibling at
 least printed a plausible-looking `76 file(s) scanned` over an unread corpus. **Adding a count is a
-DIFFERENT rule and was deliberately not done with this one** — do not smuggle it in under it.
+DIFFERENT rule and was deliberately not done with this one**: do not smuggle it in under it.
 
 **▶ IT IS WRITTEN PER-ROOT THOUGH ONLY ONE ROOT IS DECLARED.** The global form is satisfied by any
 one surviving file, so a single `src/` module would vouch for a whole fixture corpus the moment a
@@ -744,25 +753,25 @@ than reporting clean over content nothing walks.
 PASS.** A first draft filtered `RETIRED_WALK_ROOTS` on nothing but `existsSync`, so (a) following the
 message ("add the path back to `SCAN_ROOTS`") reproduced the identical refusal, and (b) it refused
 over an EMPTY `test/fixtures`, over one holding only MARKDOWN the walk skips anyway, and over a
-GITIGNORED one — three states where the remedy leaves the gate refusing, where the superseded scanner
+GITIGNORED one: three states where the remedy leaves the gate refusing, where the superseded scanner
 exited 0, and the last of which invents a second, stricter gitignore boundary beside the single one
 this file keeps. **A gate that cannot be satisfied gets deleted.** The filter now uses `rootOf` AND a
 content test mirroring the walk's own rules (`walk` + `gitIgnored`), so all three exit 0 again, and
 the recovery path is **pinned by a test**, not asserted: a copy of the scanner with the second root
 declared is spawned in a throwaway repo and the fixture is then really READ (exit 1 on its violator),
-not merely tolerated. **TWO EXCEPTIONS ARE DELIBERATE, AND DO NOT WRITE "one"** — a refuter counted.
+not merely tolerated. **TWO EXCEPTIONS ARE DELIBERATE, AND DO NOT WRITE "one"**: a refuter counted.
 Both count as content, because a scan that cannot account for something must not report clean: a path
 the walk CANNOT LIST, where declaring it hits the unwrapped `readdirSync` and exits 1; and a path
 holding only a NON-REGULAR entry, where declaring it lands on `refuseUnscannable` at exit 2. Both
 behave identically at `0fe4b84`, so neither is a regression. Measured base-vs-head over all five states: empty 0/0, markdown-only 0/0,
 gitignored 0/0, real content 1/2, a regular file at that path 1/2. **The `--staged` predicate is deliberately NOT
-"resynced" to `SCAN_ROOTS`** — it still enumerates `test/fixtures/**` and that path's own name, and
+"resynced" to `SCAN_ROOTS`**: it still enumerates `test/fixtures/**` and that path's own name, and
 narrowing what the pre-commit route enumerates is the opposite of the work this scanner keeps being
 asked to do. The two predicates are separate on purpose; do not unify them.
 
 **THE STARVATION REFUSAL NEVER SWALLOWS A FINDING.** Hits from the roots that DID yield are printed
 before it, and the exit code is still 2. **SCOPE THAT SENTENCE TO THE STARVATION BRANCH AND NO
-WIDER** — a refuter measured the unscoped form false. The reappearing-corpus refusal, like the
+WIDER**: a refuter measured the unscoped form false. The reappearing-corpus refusal, like the
 not-a-regular-entry and unmerged refusals it sits beside, throws out of `buildTargetsForAll` before
 anything is scanned, so with a violator in `src` AND content at `test/fixtures` the base scanner
 printed two hit groups at exit 1 and this one prints none at exit 2. Fail-closed, PRE-EXISTING in
@@ -782,13 +791,13 @@ reds **1**; putting it back on bare `existsSync` reds **3**; emptying `SCAN_ROOT
 correctly; two more cases were added in the same slice, the number was then wrong in three artifacts
 at once, and a refuter measured it. Re-derive it against `0fe4b84` instead.
 
-**▶ FOUR LIMITS ARE OPEN AND EACH IS PINNED BY A CHARACTERIZATION TEST — AND THE LIST IS RE-DERIVED
+**▶ FOUR LIMITS ARE OPEN AND EACH IS PINNED BY A CHARACTERIZATION TEST, AND THE LIST IS RE-DERIVED
 HERE, NOT INHERITED.** Two entries that a sibling records as closed are **open** here. Measured with
 the rule in place: a directory missing from **inside** a root is still unobserved (`mv src/ucum ..`
-prints `OK — no hits` at exit 0 with 6 sources unread; non-vacuous, since a violator planted there
+prints `OK: no hits` at exit 0 with 6 sources unread; non-vacuous, since a violator planted there
 exits 1 while it is present); a root that is **itself a symlink to a directory** is followed, so the
 rule is satisfied by whatever is behind it; the rule is a **floor of one** file; and **ANY DIRECTORY
-THE WALK CANNOT LIST exits 1 — the code this contract reserves for HITS — not 2**, because `walk()`
+THE WALK CANNOT LIST exits 1 (the code this contract reserves for HITS), not 2**, because `walk()`
 here does not wrap `readdirSync`, so the error escapes `buildTargetsForAll`, is not an
 `InvocationError`, and reaches node's default handler. **State that one generally, not as "a root
 that is a regular file"**: measured as `ENOTDIR` on a regular-file root and on a root linking to a
@@ -799,8 +808,8 @@ allow-list that throws the same way because `loadAllowList()` sits outside every
 
 **AND TWO MORE BOUNDS, BOTH `PRE-EXISTING`, WRITTEN DOWN SO NOTHING ABOVE READS AS COMPLETENESS.**
 (1) The reappearing-corpus refusal sees only what `existsSync` can resolve. A **dangling** link at
-`test/fixtures` is deliberately not seen — that guard catches a CORPUS arriving where nothing is
-walked, and a dangling link holds none — **but the same mechanism is silent over a real corpus
+`test/fixtures` is deliberately not seen (that guard catches a CORPUS arriving where nothing is
+walked, and a dangling link holds none), **but the same mechanism is silent over a real corpus
 behind a directory that cannot be traversed** (`chmod 000 test` with `test/fixtures/leak.txt`
 present: `existsSync` answers false, exit 0; identical before this change, so not a narrowing). The
 stated reason does not cover that case; do not let it stand in for one. (2) **ALL-MODE WALKS `src`
@@ -813,10 +822,10 @@ SSN/email only.
 
 **ANTI-VACUITY IS PART OF THE FIX, NOT A NICETY.** A starvation test whose corpus held nothing worth
 finding would pass against the very bug it claims to close. **One case carries that weight
-explicitly** — it scans the same tree twice, as a hit with the root present and as a refusal with it
+explicitly**: it scans the same tree twice, as a hit with the root present and as a refusal with it
 starved. The absent- and dangling-root cases plant no payload and do not claim to: they assert an
 exit 2, which an empty corpus cannot satisfy the way it can satisfy an exit 0. **Do not write "every
-starvation case is paired with a hit"** — a refuter measured that false.
+starvation case is paired with a hit"**: a refuter measured that false.
 
 ---
 
@@ -826,7 +835,7 @@ starvation case is paired with a hit"** — a refuter measured that false.
 `.changeset/config.json` set `"changelog": false` for this package's whole published history, which
 means no release ever wrote a version heading into it and nothing ever rolled `[Unreleased]` over.
 The file was hand-maintained under that one heading, so **released entries sat beside entries that
-had not gone out, with nothing to tell a reader which was which** — and the package published its
+had not gone out, with nothing to tell a reader which was which**, and the package published its
 way to `0.0.10` on top of them. A note further down the same file compounded it by stating that the
 changelog generator was off, which is a maintenance instruction pointing the wrong way inside a
 document a consumer reads. **Correcting the headings by hand was refused as the fix**: the prose is
@@ -837,10 +846,10 @@ release. The flag is the fix.
 under `## Released before this file was generated`, and `test/scripts/changelog-generation.test.ts`
 holds both down against the real `changeset version` in throwaway git repos. **10 cases red on the
 parent tree, measured by running it there.** Quote the 10, not a fraction: the denominator moves with
-the number of pending changesets, because one case is generated per changeset — 26 on the bare parent
+the number of pending changesets, because one case is generated per changeset: 26 on the bare parent
 (which has none pending), 27 with this slice's changeset dropped in, **and the red count is 10 either
 way**, so the numerator is the stable half. **A sibling derived its own count by reading another
-repo's run and was wrong** — run it on your parent.
+repo's run and was wrong**: run it on your parent.
 
 **The claim about installed copies, and how it was checked here.** The right comparison for a
 statement about installed copies is the **published tarball**, never the working tree: a sibling's
@@ -849,7 +858,7 @@ commit and never shipped (94,168 published bytes against 98,036 in the tree). **
 than assumed**: `npm pack @cosyte/terminology@0.0.10` yields a `CHANGELOG.md` of **110,316 bytes,
 byte identical to the file at the parent commit**, because the last commit before this one was the
 `0.0.10` version commit itself and nothing landed after it. So the preamble's claim holds _for this
-version_. **It is not a durable property** — the moment an entry lands after a version commit it
+version_. **It is not a durable property**: the moment an entry lands after a version commit it
 stops being true, which is exactly the shape that caught the sibling. Re-measure against the
 registry before restating it.
 
@@ -860,7 +869,7 @@ registry before restating it.
 heading was maintained by hand… the entries below went out across `0.0.2` through `0.0.10`, and the
 file never recorded which release each one belonged to."_ All three clauses are **false of
 `## [0.0.1] - 2026-07-21`**, which sits below the archive heading with a dated section and a release
-link of its own — about a fifth of the archive. The parent commit carried the bound (_"Everything
+link of its own: about a fifth of the archive. The parent commit carried the bound (_"Everything
 between this heading and `[0.0.1]` has already SHIPPED"_) and the draft deleted it while keeping the
 claim. **This ships inside the tarball and is permanent once published.**
 
@@ -871,8 +880,8 @@ added after the `0.0.9` version commit and shipped in `0.0.10`; everything below
 `## [0.0.1]` shipped across `0.0.2` through `0.0.9`. It is retitled `## Released in 0.0.2 through
 0.0.9` rather than removed. **Only the note under it was scaffolding; the heading was not.**
 
-**One entry in the older block was amended during the `0.0.10` cycle** — the `[Superseded]`
-annotation on the `--staged` rename entry — so its annotation shipped later than the entry it
+**One entry in the older block was amended during the `0.0.10` cycle** (the `[Superseded]`
+annotation on the `--staged` rename entry), so its annotation shipped later than the entry it
 annotates, and it refers to "the `[Unreleased]` entry above", a heading that no longer exists. **Both
 facts are disclosed in the file rather than edited away**, because editing them would rewrite
 published text.
@@ -924,12 +933,12 @@ the real tool:
 **▶ AND THE HONEST QUALIFIER, WHICH IS WHERE THIS REPO DIVERGES FROM THE TWO NEAREST SIBLINGS. The
 "otherwise every Version PR opens red" argument is FALSE here.** This repo's `version` script runs
 its own `prettier --write` over `CHANGELOG.md` as a later link in the chain, so with the pass off
-that second pass repairs the raw output and the Version PR would **not** open red — measured, and
+that second pass repairs the raw output and the Version PR would **not** open red: measured, and
 pinned in the control case. The reason to leave the pass **on** here is narrower: with it off, a
 canonical published changelog rests entirely on `CHANGELOG.md` staying inside that one
 `prettier --write` argument list, which nothing pins and which two of the nearest siblings do not
 even have; and with it on it costs nothing, because the archive is byte identical either way.
-**A sibling whose `.prettierignore` lists `*.md` needs the opposite value** — leaving the pass on
+**A sibling whose `.prettierignore` lists `*.md` needs the opposite value**: leaving the pass on
 there rewrote ~1,240 lines of already-published text and ate the spaces around a backticked literal
 inside a bold span. Text corruption inside a permanent tarball is not a formatting preference.
 **Do not resync this value between repos, and re-measure both arms if the `version` script changes.**
@@ -948,7 +957,7 @@ open, and a refuter on a sibling reproduced two bypasses of a column-0-only firs
 on real generator output: **a single leading space** (CommonMark admits up to three, and the Prettier
 pass normalises the line back to the bullet's content column) and **a setext underline** carrying no
 `#` at all (Prettier rewrites it into an ATX heading). Both are closed by `headingLikeLines`, and
-both branches are probed, alongside four shapes that must NOT be reported — four leading spaces (an
+both branches are probed, alongside four shapes that must NOT be reported: four leading spaces (an
 indented code block), a thematic break after a blank line, a list, and a hash inside prose.
 
 ### A publish with an unchanged changelog is a swallowed write failure
@@ -962,8 +971,8 @@ any repo; it belongs in the shared release pipeline, not here.
 
 **`TERMINOLOGY` IS a registered `PROJECT_PREFIXES` entry** (`.github/scripts/release-notes.mjs`), and
 that was **measured rather than assumed**, on a simulated version commit: a summary led with
-`TERMINOLOGY-CHANGELOG-GAP: ` rendered a public body **byte identical** to the one without it — 316
-bytes either way — so the whole id was stripped, not leaked. **Do not port a sibling's "the id leaks"
+`TERMINOLOGY-CHANGELOG-GAP: ` rendered a public body **byte identical** to the one without it (316
+bytes either way), so the whole id was stripped, not leaked. **Do not port a sibling's "the id leaks"
 reading into this repo**; the leak class is an item named after its **defect** rather than after a
 repo, whose prefix nobody registered. The changeset shipping this change still carries no item id at
 all, which is the safer habit and costs nothing.
@@ -971,3 +980,93 @@ all, which is the safer habit and costs nothing.
 **Run the real renderer, do not reason about it.** Simulate the version commit in a clone, run
 `node .github/scripts/release-notes.mjs prepare --repo <dir> --package @cosyte/terminology --out
 <file>`, then `assert` the file, and **read what it renders**.
+
+## No em dash, anywhere
+
+**The rule.** Founder directive 2026-07-24, stated canonically in the knowledgebase brand voice
+document: cosyte never uses the em dash, and the ban names commit messages explicitly, so it reaches
+the tree they describe. Rewrite with a period, a colon, a comma or parentheses. **Never re-encode it**
+(the named HTML entity, both numeric character references, the percent-encoding and both JavaScript
+escapes are banned on the same footing as the literal, and each has its own arm in the gate).
+
+**The sweep and the gate landed in ONE commit, and that ordering is the rule rather than a
+preference.** A gate arriving before its sweep reds `main` on arrival; a sweep arriving before its
+gate grows the character back on the next session. Measured on this tree at the base commit, in
+Python over raw bytes: **1,327 occurrences across 98 of the 127 tracked files**. After the sweep,
+**181 remain and all 181 sit in one place**, the `CHANGELOG.md` archive, which is an exemption with a
+written reason rather than a remainder. **Zero occurrences of every other spelling, before and
+after**, so the literal character is the only form this repository has ever carried.
+
+**COUNT THE BYTES IN PYTHON, NEVER WITH `grep`.** The census that scoped this work org-wide was taken
+with a broken scanner and was low everywhere. In these containers `grep` is a shell function forcing
+`-I` and `--ignore-files`, and under `xargs` it is bypassed for `/usr/bin/grep`, which in the
+container's empty locale **fails at exit 2 and prints nothing** for a `\x{...}` codepoint pattern.
+Piped to `wc -l` that reads `0`, and a failing scanner and a clean tree are indistinguishable at the
+end of a pipe. Re-derive any figure in this section before acting on it.
+
+**THE ONE EXEMPTION IS A BOUNDARY, NOT A FILE.** `CHANGELOG.md` is scanned above
+`## Released before this file was generated` and not below it. Above the heading is generated output
+composed by the release from a changeset summary, and a changeset summary becomes the published
+release body **and** a line in the tarball's changelog, so an em dash there is a public-surface
+instance. Below it is the hand-maintained history preserved verbatim when changelog generation was
+turned on, every entry byte identical to its copy inside a published tarball; rewriting punctuation
+inside a shipped release entry edits the evidence a changelog exists to hold, and
+`test/scripts/changelog-generation.test.ts` measures that the archive comes through a release byte
+identical. **The exemption fails closed**: with the boundary heading gone, the whole file is in scope
+and the gate reds. **The archive is also the gate's on-disk canary** (it is known to hold occurrences,
+so a scan reporting it clean has gone blind); if it is ever legitimately rewritten, replace that
+canary rather than deleting it.
+
+**THE GATE IS NODE AND EXCLUDES NOTHING BY PATH, AND BOTH ARE DELIBERATE.**
+`scripts/check-no-emdash.mjs` shells out for nothing except `git ls-files` and `git check-attr`, both
+status-checked, because the sibling shell gates have to defend themselves against the container's
+interposed `grep` with `unset -f grep xargs sed awk` plus a probe, and that only works for the names
+someone remembered to list. And every banned spelling is **assembled at runtime from the codepoint**,
+so the file contains none of them as text and needs no self-exclusion. That closes a demonstrated
+false green: a sibling gate excludes itself from the encoded arms, and an em dash appended to that
+script scanned OK because the gate was the one file nobody checked. **If you add an arm, assemble it;
+never paste a literal in, and never answer a red on this file by adding an exclusion.**
+
+**The binary partition is a DECLARATION** (`git check-attr binary`, refused outside `vendor/`), not a
+NUL test and not `grep -I`'s heuristic. This repository tracks **zero** files containing a NUL byte
+today, so nothing is excluded, but the partition exists anyway: a DEFLATE stream can carry
+`E2 80 94` by coincidence and no edit removes a byte from a compressed stream, so a gate that reds on
+a raster forever is a gate someone switches off. Partitioning on NUL instead would be the wrong
+mechanism in the other direction: a sibling tracks a genuine UTF-8 TypeScript source carrying a
+literal NUL that held 14 em dashes, and a NUL partition skips a prose-bearing source file in silence.
+
+**TWO JOBS, AND THE SPLIT IS THE DESIGN.** `no-emdash` scans tracked files and tracked filenames, and
+**is safe to make a required context**: nothing outside this repository can put an em dash in a
+tracked file (Dependabot writes version specifiers and lockfile records, never prose).
+`no-emdash-messages` scans the PR title, body and commit messages and **must never be required**,
+because Dependabot pastes the dependency's upstream release notes into the PR body, em dashes
+included, and requiring it blocks a bump on prose nobody here wrote. **Honour that exemption and its
+written reason.** A sibling shipped both halves as one job and had to exempt the lot, which
+un-required the tracked-file half as well, and names this split as its deferred fix. Do not "fix" the
+Dependabot case with an actor `if:` on a required context: that leaves the check permanently
+**pending**, which is worse than red because nothing says why. **Neither context is required yet**, on
+purpose, because a context may not be required before its workflow has completed on `main`.
+
+**THE MESSAGES HALF IS THE ONE NO LOCAL HOOK CAN SEE, AND TWO SLICES ELSEWHERE LOST A PASS TO IT.** A
+**new** file is untracked, so a scan of the index does not see it, and nothing local sees a PR body at
+all. This repo squash-merges, so the PR title and body **are** the commit message that lands. Check
+your own before you push.
+
+**A MECHANICAL REWRITE PRODUCES DEFECTS AT A RATE WORTH PLANNING FOR, AND THE PAIRED ASIDE IS WHERE
+THEY LIVE.** Two things were measured on this sweep and both cost a full re-run. **A dash pair that
+scopes an aside is not two independent marks**, and a per-line detector misses the pairs that span a
+line break: 93 sentences here carried a pair, most of them across two lines, and treating each dash on
+its own produced grammatical nonsense (`X: aside: Y`, and one sentence whose verb ended up stranded
+behind a colon). Every one was excluded from the automatic pass and **edited by hand**, which is the
+same conclusion a sibling reached after hardening its rewriter twice. **And a dash inside a code span
+or a string literal is DATA, not punctuation**: the scanner's own output string
+(`[phi-scan] OK: no hits`), the `invertGem` refusal messages and a `ParseFailure.reason` all carry
+one, each quoted in prose and pinned by a test, so both sides had to move together. One bulk pass
+rewrote thirteen `toMatch(/.../)` assertions to a **different** mark than the string they assert on;
+the suite would have caught it, but the general rule is to convert semantic and quoted occurrences by
+hand **before** any bulk pass, never after.
+
+**No `| dash |` table cells and no lone-dash values were found here**, checked explicitly before the
+bulk pass rather than assumed. That is the defect class that turned a sibling's support matrix from
+"support absent" into "support unstated" on the page whose whole job is honest capability disclosure,
+and nothing in CI could have caught it.

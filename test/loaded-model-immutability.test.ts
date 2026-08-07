@@ -6,7 +6,7 @@
  * it unless each one is frozen in turn. Before this suite, `loadGems`, `loadComplexMap` and
  * `loadRxNormGraph` all froze the wrapper and handed out plain `Map`s inside it, so a holder could
  * empty a medication graph's ingredient edges, delete an ICD-9 → ICD-10 mapping, or push a target
- * the steward's file never authored — measured on `dd8465b`, on a package whose stated invariant is
+ * the steward's file never authored: measured on `dd8465b`, on a package whose stated invariant is
  * that it never fabricates.
  *
  * Two things this file is deliberate about, both learned the expensive way in `src/ucum/`:
@@ -91,7 +91,7 @@ function mutableObjectsIn(root: unknown): string[] {
   return found;
 }
 
-describe("mutableObjectsIn — the sweep's own negative controls", () => {
+describe("mutableObjectsIn: the sweep's own negative controls", () => {
   it("finds a planted mutable object nested inside an otherwise frozen model", () => {
     const clean = Object.freeze({ rows: Object.freeze([Object.freeze({ code: "A" })]) });
     expect(mutableObjectsIn(clean)).toEqual([]);
@@ -100,7 +100,7 @@ describe("mutableObjectsIn — the sweep's own negative controls", () => {
     expect(mutableObjectsIn(planted)).toEqual(["$.rows[0]: not frozen"]);
   });
 
-  it("flags a raw Map even when the wrapper around it is frozen — the defect's exact shape", () => {
+  it("flags a raw Map even when the wrapper around it is frozen: the defect's exact shape", () => {
     const wrapper = Object.freeze({ entries: new Map([["0010", Object.freeze({ t: "A000" })]]) });
     expect(mutableObjectsIn(wrapper)).toEqual([
       "$.entries: a raw Map (its entries can be rewritten)",
@@ -156,7 +156,7 @@ function graph() {
   });
 }
 
-/** A loaded CodeSystem — the model whose concepts map used to be sealed rather than replaced. */
+/** A loaded CodeSystem: the model whose concepts map used to be sealed rather than replaced. */
 function codeSystem() {
   return loadCodeSystem({
     format: "fhir",
@@ -168,7 +168,7 @@ function codeSystem() {
   });
 }
 
-/** A loaded ConceptMap — the `$translate` model. */
+/** A loaded ConceptMap: the `$translate` model. */
 function conceptMap() {
   return loadConceptMap({
     resourceType: "ConceptMap",
@@ -183,7 +183,7 @@ function conceptMap() {
   });
 }
 
-/** A loaded ValueSet — compose plus a filter, so the model is not trivially shallow. */
+/** A loaded ValueSet: compose plus a filter, so the model is not trivially shallow. */
 function valueSet() {
   return loadValueSet({
     resourceType: "ValueSet",
@@ -205,7 +205,7 @@ function valueSet() {
  * **Every `load*` this package exports, so the sweep cannot be true of the models it happens to
  * name.** `loadUcumEssence` is the one exception and is pinned as one rather than skipped: its two
  * lookup maps are real `Map`s whose `set` / `delete` / `clear` are replaced by a refusal, which
- * `Map.prototype.set.call` still reaches. That residual is deliberate and **bounded** — nothing in
+ * `Map.prototype.set.call` still reaches. That residual is deliberate and **bounded**: nothing in
  * `src/` outside `essence.ts` reads either map (`parseUcum` resolves an atom by scanning the frozen
  * `atoms` array), so a forced entry changes no validation, reduction or comparison, only what the
  * caller's own `get` hands back. Both halves are pinned in `test/ucum/essence-immutable.test.ts`.
@@ -230,7 +230,7 @@ describe("a loaded model has nothing writable reachable from it", () => {
   it("loadValueSet", () => {
     expect(mutableObjectsIn(valueSet())).toEqual([]);
   });
-  it("loadUcumEssence — the named exception, its two lookup maps and nothing else", () => {
+  it("loadUcumEssence: the named exception, its two lookup maps and nothing else", () => {
     expect(mutableObjectsIn(loadUcumEssence())).toEqual([
       "$.atomByCode: a raw Map (its entries can be rewritten)",
       "$.prefixByCode: a raw Map (its entries can be rewritten)",
@@ -255,7 +255,7 @@ function asWritableMap(v: unknown): Map<string, unknown> {
   return v as Map<string, unknown>;
 }
 
-describe("GemMap — a mapping cannot be deleted, and a target cannot be added", () => {
+describe("GemMap: a mapping cannot be deleted, and a target cannot be added", () => {
   it("refuses set/delete/clear by name, and applyGem still answers from the file", () => {
     const g = gems();
     const view = asWritableMap(g.entries);
@@ -272,7 +272,7 @@ describe("GemMap — a mapping cannot be deleted, and a target cannot be added",
     expect(r.mapped && r.entries.map((e) => e.target)).toEqual(["A000"]);
   });
 
-  it("refuses the prototype route — Map.prototype.set.call, which sealing the map does not", () => {
+  it("refuses the prototype route: Map.prototype.set.call, which sealing the map does not", () => {
     const g = gems();
     const forged = [{ source: "0010", target: "Z99", flags: { raw: "00000" } }];
     for (const err of [
@@ -316,7 +316,7 @@ describe("GemMap — a mapping cannot be deleted, and a target cannot be added",
   });
 });
 
-describe("ComplexMap — a source's rules cannot be replaced", () => {
+describe("ComplexMap: a source's rules cannot be replaced", () => {
   it("refuses both routes, and applyComplexMap still resolves from the caller's refset", () => {
     const m = complexMap();
     const before = applyComplexMap(m, "195967001", { gender: "female" });
@@ -349,7 +349,7 @@ describe("ComplexMap — a source's rules cannot be replaced", () => {
   });
 });
 
-describe("RxNormGraph — a medication's edges cannot be emptied, a concept cannot be forged", () => {
+describe("RxNormGraph: a medication's edges cannot be emptied, a concept cannot be forged", () => {
   it("refuses clearing the edges, and ingredientsOf still answers the authored edge", () => {
     const g = graph();
     const before = ingredientsOf(g, "2");
@@ -407,7 +407,7 @@ describe("RxNormGraph — a medication's edges cannot be emptied, a concept cann
   });
 });
 
-describe("CodeSystem — a fabricated concept cannot be injected past never-fabricate", () => {
+describe("CodeSystem: a fabricated concept cannot be injected past never-fabricate", () => {
   it("refuses both routes, and lookup still reports the code unknown", () => {
     const cs = codeSystem();
     const forged = { code: "EVIL", display: "Fabricated", properties: [] };
@@ -459,10 +459,10 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
 
   it("is NOT a Map, and refuses a structured clone loudly rather than cloning to an empty one", () => {
     // The one place a view is not a drop-in for the `Map` it replaced. A loaded model can no longer
-    // cross a `structuredClone` / `v8.serialize` / `worker.postMessage` boundary — and that refusal
+    // cross a `structuredClone` / `v8.serialize` / `worker.postMessage` boundary, and that refusal
     // is the point: the view's methods are enumerable so the clone raises on one of them. Were they
     // hidden, the clone would SUCCEED and hand back a model with empty indexes whose `conceptCount`
-    // still reported the loaded figure — this defect's own shape, arriving silently.
+    // still reported the loaded figure: this defect's own shape, arriving silently.
     const g = graph();
     expect(g.concepts).not.toBeInstanceOf(Map);
 
@@ -487,7 +487,7 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
     expect(err?.message).toContain("could not be cloned");
     const viaV8 = attempt(() => v8.deserialize(v8.serialize(g)));
     expect(viaV8).toBeInstanceOf(Error);
-    expect(viaV8?.name).toBe("Error"); // NOT a DataCloneError — v8.serialize raises a plain Error
+    expect(viaV8?.name).toBe("Error"); // NOT a DataCloneError: v8.serialize raises a plain Error
     expect(viaV8?.message).toContain("could not be cloned");
 
     const channel = new MessageChannel();
@@ -512,7 +512,7 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
   });
 
   it("leaves a model with no view cloning exactly as it did", () => {
-    // The refusal above is a property of carrying a view, not of being a loaded model — so the
+    // The refusal above is a property of carrying a view, not of being a loaded model, so the
     // sentence in the docs that says so is checked rather than assumed.
     expect(structuredClone(conceptMap()).group).toHaveLength(1);
     expect(structuredClone(valueSet()).compose?.include).toHaveLength(1);

@@ -41,7 +41,7 @@ function codes(result: { contains: readonly { code: string }[] }): string[] {
   return result.contains.map((c) => c.code).sort();
 }
 
-describe("expand — extensional", () => {
+describe("expand: extensional", () => {
   it("expands an explicit concept list, carrying display verbatim", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
@@ -85,7 +85,7 @@ describe("expand — extensional", () => {
   });
 });
 
-describe("expand — intensional", () => {
+describe("expand: intensional", () => {
   it("expands a whole-system include", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
@@ -126,7 +126,7 @@ describe("expand — intensional", () => {
   });
 });
 
-describe("expand — never fabricate / surfaced incompleteness", () => {
+describe("expand: never fabricate / surfaced incompleteness", () => {
   it("a missing code system for an intensional include is cannot-expand, never empty-complete", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
@@ -157,7 +157,7 @@ describe("expand — never fabricate / surfaced incompleteness", () => {
     expect(nth(r.diagnostics, 0).detail).toContain("unsupported filter operator");
   });
 
-  it("locates a diagnostic by index path — include, exclude, reference, and expansion", () => {
+  it("locates a diagnostic by index path: include, exclude, reference, and expansion", () => {
     // include[1] (not [0]) is the one that cannot expand: an index path distinguishes them, which a
     // system URI could not when two components name the same system.
     const byIndex = expand(
@@ -265,7 +265,7 @@ describe("expand — never fabricate / surfaced incompleteness", () => {
   });
 });
 
-describe("expand — pre-computed expansion", () => {
+describe("expand: pre-computed expansion", () => {
   it("passes through a complete expansion", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
@@ -308,7 +308,7 @@ describe("expand — pre-computed expansion", () => {
   });
 });
 
-describe("expand — referenced value sets", () => {
+describe("expand: referenced value sets", () => {
   const base = animalCs();
 
   function refCtx(valueSets: Map<string, ValueSet>): {
@@ -320,7 +320,7 @@ describe("expand — referenced value sets", () => {
 
   it("a {system, valueSet} component intersects on system (never fabricates a cross-system member)", () => {
     // The referenced value set mixes two systems; naming `system: CS_URL` alongside it must keep only
-    // the CS_URL members — a cross-system code is never admitted, and expand agrees with validate.
+    // the CS_URL members: a cross-system code is never admitted, and expand agrees with validate.
     const mixed = loadValueSet({
       resourceType: "ValueSet",
       url: "http://example.org/vs/mixed",
@@ -410,7 +410,7 @@ describe("expand — referenced value sets", () => {
   });
 });
 
-describe("expand — empty value set", () => {
+describe("expand: empty value set", () => {
   it("a value set with neither compose nor expansion is empty + complete", () => {
     const vs = loadValueSet({ resourceType: "ValueSet", url: "http://x/empty" });
     const r = expand(vs);

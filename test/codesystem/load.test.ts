@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadCodeSystem } from "../../src/index.js";
 
-describe("loadCodeSystem — dispatch + metadata", () => {
+describe("loadCodeSystem: dispatch + metadata", () => {
   it("carries url/version/name for an RRF source", () => {
     const cs = loadCodeSystem({
       format: "rrf",

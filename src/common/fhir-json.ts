@@ -5,7 +5,7 @@
  * The engine never trusts the shape of its inputs: every accessor here narrows an `unknown`
  * to a concrete type or returns `undefined`, so a malformed resource degrades to a typed
  * diagnostic (see {@link ../conceptmap/load}) rather than a `TypeError` deep in a getter. This
- * is the terminology-engine analogue of a parser's lenient tokenizer — liberal on load.
+ * is the terminology-engine analogue of a parser's lenient tokenizer: liberal on load.
  *
  * These helpers are **value-free**: they read structure, never log or echo field *values*, so a
  * code-in-context (which can be PHI) never flows into a message.
@@ -51,7 +51,7 @@ export function getString(obj: unknown, key: string): string | undefined {
 /**
  * Read an **array** property from an untrusted object as a `readonly unknown[]`, or `undefined`.
  *
- * The elements are left as `unknown` — callers narrow each one. A non-array (including a missing
+ * The elements are left as `unknown`: callers narrow each one. A non-array (including a missing
  * key) yields `undefined`, which callers treat as "no entries" rather than an error.
  *
  * @param obj - The source object (may be any `unknown`).
@@ -73,7 +73,7 @@ export function getArray(obj: unknown, key: string): readonly unknown[] | undefi
 /**
  * Read a **boolean** property from an untrusted object, or `undefined` if absent/not a boolean.
  *
- * A non-boolean (including a missing key, or the strings `"true"`/`"false"`) yields `undefined` —
+ * A non-boolean (including a missing key, or the strings `"true"`/`"false"`) yields `undefined`:
  * the accessor never coerces, so a caller can distinguish "explicitly `false`" from "absent".
  *
  * @param obj - The source object (may be any `unknown`).
