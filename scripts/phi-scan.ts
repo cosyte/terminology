@@ -3,10 +3,12 @@
  * `@cosyte/terminology` PHI scanner: the CI / pre-commit half of the PHI commit-gate.
  *
  * Pure Node. Zero runtime deps. `git` is the only subprocess, always via
- * `execFileSync` with array args (never shell-form). Walks the synthetic test
- * fixtures (and a conservative text pass over `src/`) and REFUSES anything that
- * looks like real PHI, so a developer cannot commit a real-looking fixture by
- * accident.
+ * `execFileSync` with array args (never shell-form). Walks `src/` and `test/`,
+ * reads each `.ts` source as raw bytes AND through an escape-decoded view of it,
+ * and REFUSES anything that looks like real PHI, so a developer cannot commit a
+ * real-looking fixture by accident. That view is NOT a literal parser: see
+ * `decodeSourceLiterals` for the two ordinary spellings it misses and the false
+ * positives it adds.
  *
  * ===========================================================================
  * ██  STARTER: READ BEFORE YOU RELY ON THIS  ███████████████████████████████
@@ -55,6 +57,14 @@
  *
  * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error).
  *
+ * ▶ 1 IS RESERVED FOR HITS AND NOTHING ELSE REACHES IT. A directory the walk
+ * cannot list (`ENOTDIR` at a root, `EACCES` at any depth) and an absent or
+ * unreadable allow-list all used to escape as uncaught throws and exit 1: a v8
+ * stack trace under the code a caller reads as a verdict about PHI. Both are
+ * wrapped now and both are 2. THIS IS DERIVED FROM THE CONTRACT ON THE LINE
+ * ABOVE, NOT PORTED: siblings disagree with each other on this exact case, and
+ * copying one of their answers in is how the wrong one spreads.
+ *
  * ---------------------------------------------------------------------------
  * AN IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2). It is
  * never silently skipped, because BOTH enumerating routes are blind to it in a
@@ -80,11 +90,20 @@
  * file, so links do not get a second, stricter boundary of their own).
  *
  * `--staged` looks at `test/fixtures/**` and `src/**.ts` PLUS those two paths'
- * own names. THAT SET IS NOT `SCAN_ROOTS` AND IS DELIBERATELY LEFT WIDER THAN IT:
- * `test/fixtures` is no longer a walk root (it never existed here, see the
- * declaration), and it stays in this predicate rather than being "resynced",
- * because narrowing what the PRE-COMMIT route enumerates is the opposite of the
- * work this file keeps being asked to do. FOUR PLACES IT NOW ADMITS **MORE** THAN
+ * own names. THAT SET IS NOT `SCAN_ROOTS` AND MUST NOT BE "RESYNCED" TO IT, in
+ * either direction: narrowing what the PRE-COMMIT route enumerates is the
+ * opposite of the work this file keeps being asked to do.
+ *
+ * ▶ THE TWO SETS NOW OVERLAP DIFFERENTLY, AND `--staged` IS THE NARROWER ONE.
+ * `test` is a walk root as of `PHI-SCAN-WALK-ROOT-SCOPE`, so all-mode covers
+ * every `test/**` path while this predicate still admits only `test/fixtures/**`
+ * of them. A staged `test/foo.test.ts` is therefore scanned by CI and not by the
+ * pre-commit hook. That is a residual, recorded rather than fixed: widening this
+ * predicate changes what a developer's commit is blocked on, which is a decision
+ * about the hook and not about the walk, and it wants its own slice. Nothing
+ * regressed here, since that path was in neither route before.
+ *
+ * FOUR PLACES IT NOW ADMITS **MORE** THAN
  * IT ONCE DID, called out rather than folded into "narrowing", because all four
  * change what it enumerates: rename detection is OFF, so a rename or copy
  * destination arrives as an ordinary add instead of vanishing with its two-path
@@ -118,75 +137,68 @@
  * the list is RE-DERIVED here rather than inherited from the sibling this rule
  * was ported from, two entries that are closed there are open here:
  *
- *   - ITS GRANULARITY IS THE DECLARED ROOT, NOT A SUB-TREE, so a directory
- *     missing from INSIDE a root is still unobserved at exit 0. `mv src/ucum ..`
- *     then `pnpm phi-scan` prints `[phi-scan] OK: no hits` and exits 0 with 6
- *     source files unread: the same shape as the defect the per-root rule closed,
- *     one level down. Non-vacuous: a planted dashed-SSN shape in that directory
- *     exits 1 while it is present. Do NOT read the rule as "the scanner can no
- *     longer report clean over a directory it never opened"; it is a whole SCAN
- *     ROOT that can no longer go unobserved. Closing the sub-tree case needs a
- *     floor derived from what git tracks under each root, which is a second
- *     moving part and a separate decision.
- *   - A ROOT THAT IS ITSELF A SYMLINK TO A DIRECTORY IS FOLLOWED, and the rule is
- *     then satisfied by whatever is on the other side of it. `rm -rf src && ln -s
- *     <dir holding one file> src` prints `[phi-scan] OK: no hits` and exits 0
- *     with all 39 source files absent from disk, because `normalizePath` is purely
- *     lexical (`resolve`/`relative`, never `realpath`) so every entry behind the
- *     link is attributed to the root's prefix. "A root yielded a file" is not
- *     "that root's corpus was observed". Adversarial rather than accidental.
- *   - IT IS A FLOOR OF ONE. A `src` reduced to a single clean file prints
- *     `[phi-scan] OK: no hits` and exits 0. The rule asks whether a root was
- *     observed at all, never whether it was observed in full. AND THIS REPORTER
- *     PRINTS NO DENOMINATOR, so nothing on stdout distinguishes 1 file from 39:
- *     a weaker signal than a sibling that at least printed a plausible-looking
- *     count. Adding one would be a real improvement and IS NOT THIS RULE.
- *   - ANY DIRECTORY THE WALK CANNOT LIST EXITS 1 (THE CODE THIS CONTRACT
- *     RESERVES FOR HITS), NOT 2, AND THIS IS NOT ONLY ABOUT ROOTS. `walk()` does
- *     not wrap `readdirSync`, so the error escapes `buildTargetsForAll`, is not an
- *     `InvocationError`, and reaches node's default handler: a v8 stack trace in
- *     place of this scanner's own diagnostic. Measured three ways: `src` replaced
- *     by a regular file and `src` a symlink to one (both `ENOTDIR`), and
- *     `mkdir src/locked && chmod 000 src/locked` (`EACCES`, at depth, with the
- *     per-root rule satisfied by the other 39 files). THIS ENTRY IS OPEN HERE AND
- *     CLOSED IN THE SIBLING THIS RULE WAS PORTED FROM, whose `walk()` does wrap it,
- *     which is why this list is re-derived and not copied. Fail-closed rather
- *     than silent in every case, and it belongs to the separate exit-code work,
- *     along with a missing allow-list, which throws out of `loadAllowList()` the
- *     same way because that call sits outside every `try`.
- *   - THE RETIRED-ROOT REFUSAL SEES ONLY WHAT `existsSync` CAN RESOLVE. A DANGLING
- *     link at `test/fixtures` prints `[phi-scan] OK: no hits` and exits 0, which
- *     is deliberate: that guard exists to catch a CORPUS arriving where nothing is
- *     walked, and a dangling link holds none. BUT THAT REASON DOES NOT COVER THE
- *     OTHER WAY `existsSync` ANSWERS FALSE: with `test/fixtures/leak.txt` present
- *     and `chmod 000 test`, a real corpus is there and the guard is silent
- *     (measured; identical at `0fe4b84`, so not a narrowing, an unclosed edge).
- *   - AND ITS PRINTED REMEDY CLEARS IT IN EVERY STATE BUT TWO. `holdsUnwalkedContent`
- *     fires only where declaring the path would really put bytes under the scan, so
- *     an EMPTY `test/fixtures`, one holding only markdown the walk skips, and a
- *     GITIGNORED one are all left alone at exit 0: the states where an
- *     `existsSync`-only guard refused and then went on refusing after the remedy was
- *     followed. THE TWO EXCEPTIONS BOTH COUNT AS CONTENT, because a scan that cannot
- *     account for something must not report clean, and in both the remedy leads
- *     somewhere other than a clean sweep: a path the WALK CANNOT LIST (a regular
- *     file at `test/fixtures`, or a permission error) hits the unwrapped
- *     `readdirSync` above and exits 1; a path holding only a NON-REGULAR entry (a
- *     link, a FIFO) lands on `refuseUnscannable` at exit 2. Both measured, and both
- *     behave identically at `0fe4b84`, so neither is a regression: the second is
- *     also still actionable, since that refusal names the entry.
- *   - AND THE LARGEST BOUND, WHICH IS NOT ABOUT THIS RULE AT ALL AND IS STATED
- *     HERE SO NOTHING ABOVE READS AS COMPLETENESS: ALL-MODE WALKS `src` AND
- *     NOTHING ELSE. The repository's own `test/` tree is under no scan root, so
- *     the observation rule can be fully satisfied while every tracked file under
- *     `test/` goes unread: count them with `find test -type f | wc -l` rather
- *     than trusting a number here, which drifts with the suite. Measured on this
- *     checkout, back to back: `pnpm phi-scan` prints `[phi-scan] OK: no hits` at
- *     exit 0, while `pnpm phi-scan test/scripts/phi-scan.test.ts` returns hits at
- *     exit 1 over the same bytes. PRE-EXISTING (the superseded declaration was
- *     `test/fixtures` + `src` and `test/` was never in it), and WIDENING THE WALK
- *     IS A SEPARATE PIECE OF WORK with its own two-sided trap: this floor is
- *     SSN/email only, so admitting inline `.ts` fixtures buys that floor and
- *     nothing else. Do not read the per-root rule as coverage.
+ *   - ▶ THREE ENTRIES THAT USED TO SIT HERE ARE NOW CLOSED **FOR TRACKED FILES**,
+ *     and by a different rule rather than by this one: the `git ls-files`
+ *     reconciliation at the end of `main()`. They were: a directory missing from
+ *     INSIDE a root (`mv src/ucum ..`); a root that is ITSELF A SYMLINK to a
+ *     directory, which `normalizePath` attributes lexically so everything behind
+ *     the link counts toward the root's prefix; and the rule being A FLOOR OF ONE,
+ *     where a `src` reduced to one clean file satisfied it. All three printed
+ *     `[phi-scan] OK: no hits` at exit 0 on `d97a3de`; all three now exit 2 naming
+ *     the unread paths (39 in the second and third). THE PER-ROOT RULE ITSELF IS
+ *     UNCHANGED and is still only a floor of one: do not read these closures as
+ *     strengthening it, and do not delete it, because a root with zero tracked
+ *     files satisfies reconciliation vacuously and still has to starve.
+ *     WHAT IS STILL OPEN: an UNTRACKED file under a root. It is walked, read and
+ *     scanned, so it cannot hide PHI, but its ABSENCE is invisible to both rules.
+ *   - AND THIS REPORTER STILL PRINTS NO DENOMINATOR, deliberately. A count is
+ *     derived from the walk, so it agrees with the walk by construction and
+ *     cannot detect a file the walk never opened: that is why the remedy is an
+ *     INDEPENDENT enumeration and not a number. Do not add one under this rule.
+ *   - THE RETIRED-ROOT REFUSAL SEES ONLY WHAT `existsSync` CAN RESOLVE, and it is
+ *     now INERT for its only declared entry, because `test/fixtures` sits under
+ *     the `test` scan root and `buildTargetsForAll` drops any retired root that
+ *     `rootOf` covers. That is the outcome its own remedy promises, and it is
+ *     strictly stronger: a corpus arriving there is WALKED AND SCANNED rather than
+ *     refused as unaccountable, and a DANGLING link there is now refused by
+ *     `refuseUnscannable` (it is a `Dirent` under a walked root) where the
+ *     `existsSync` guard could not see it at all. The machinery is kept, not
+ *     deleted, and is exercised against a retired root outside every scan root in
+ *     `test/scripts/phi-scan.test.ts`, so it is not left as an untested claim.
+ *   - AND THE LARGEST REMAINING BOUND, STATED HERE SO NOTHING ABOVE READS AS
+ *     COMPLETENESS: THIS IS STILL AN SSN/EMAIL FLOOR. Widening the walk to `test`
+ *     admitted 50 more files (measured: `git ls-files test/ | wc -l`, all `.ts`)
+ *     and the source-literal view lets it read the documents their string literals
+ *     spell, but neither adds a NAME, DOB, MRN, ADDRESS or PHONE detector. The
+ *     fenced TODO in `scanTarget` is still open, and a green sweep still means
+ *     "no SSN/email shapes found", never "no PHI".
+ * ---------------------------------------------------------------------------
+ * THE WALK-ROOT SCOPE AND ITS TWO-SIDED OTHER HALF (`PHI-SCAN-WALK-ROOT-SCOPE`).
+ *
+ * ALL-MODE USED TO WALK `src` AND NOTHING ELSE. The repository's own `test/` tree
+ * was under no scan root, and `--staged`'s predicate admits only
+ * `test/fixtures/**` of it, a path that has never existed here, SO 50 TRACKED
+ * FILES WERE ENUMERATED BY NEITHER ROUTE. Measured on `d97a3de`, back to back: a
+ * dashed SSN written to `test/planted.ts` exited 0 `OK: no hits` in all-mode while
+ * `pnpm phi-scan test/planted.ts` exited 1 over the same bytes.
+ *
+ * THE SCOPE WAS RE-DERIVED HERE AND NOT PORTED, AND IT CAME OUT DIFFERENT. There
+ * is no `PID|` literal anywhere in this tree (siblings' residuals are counted in
+ * them), every one of the 50 files is a `.ts` source, and exactly ONE of them
+ * carries violator shapes: this scanner's own suite, which is why the exemption
+ * beside `SCAN_ROOTS` is a one-entry path list and not an extension rule.
+ *
+ * ▶ ENUMERATING THE FILES BUYS THE SSN/EMAIL FLOOR AND NOTHING ELSE, WHICH IS WHY
+ * THE WIDENING IS TWO-SIDED. Both recognisers assume THE FILE IS THE DOCUMENT and
+ * match raw bytes. Every fixture in this repository is an inline `.ts` string
+ * literal, so the bytes are the SPELLING of the fixture and not the fixture: a
+ * source that spells its separators as unicode or hex escapes holds a dashed SSN
+ * that no regex over the file text can see, because the file text has no dash
+ * characters in it at all. Admitting 50 more files without `decodeSourceLiterals`
+ * would have carried that blind spot into all of them instead of closing it, so
+ * the two halves ship together and each is "in addition to", never "instead of".
+ * Measured RED before and GREEN after, in `src/` as well as `test/`, so it is not
+ * merely a consequence of the new root.
  * ---------------------------------------------------------------------------
  */
 
@@ -217,7 +229,50 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 // A root added here is walked and is required to yield; it is not thereby in
 // scope for `--staged`, and every file under it still gets the SSN/email shape
 // pass ONLY, with no name, DOB or MRN detection.
-const SCAN_ROOTS: readonly string[] = ["src"];
+//
+// `test` WAS NOT A ROOT UNTIL THIS SLICE, AND ITS ABSENCE WAS THE LARGEST HOLE IN
+// THIS GATE. Measured on `d97a3de`: all-mode walked `src` alone (39 tracked
+// files) while 50 tracked files under `test/` were enumerated by NEITHER route,
+// because `--staged`'s predicate admits `test/fixtures/**` and that directory has
+// never existed here. Re-derived for this repository rather than ported: every
+// one of those 50 is a `.ts` source (`git ls-files test/ | sed 's/.*\.//' | sort
+// -u` is `ts` alone), there is no `PID|` literal anywhere in the tree, and the
+// only file carrying violator shapes is this scanner's own suite, listed below.
+// Back to back on that sha: a plain dashed SSN written to `test/planted.ts`
+// exited 0 "OK: no hits" in all-mode while `phi-scan test/planted.ts` exited 1
+// over the same bytes.
+const SCAN_ROOTS: readonly string[] = ["src", "test"];
+
+// Sources whose bytes are a DELIBERATE VIOLATOR CORPUS: they carry PHI-shaped
+// literals on purpose, because they are the positive half of this scanner's own
+// tests, and sweeping them would red the gate forever.
+//
+// THIS IS AN EXPLICIT PATH LIST AND MUST STAY ONE. An extension rule cannot tell
+// a file that carries violator literals ON PURPOSE from one that carries them BY
+// ACCIDENT, and that distinction is the whole reason this gate exists, so the
+// exemption is per-path and adding to it is a reviewed act, exactly like adding
+// an allow-list token. A blanket `.ts` exclusion would take all 50 files under
+// `test/` back out of the scan and close nothing.
+//
+// ALLOW-LISTING THE VALUES INSTEAD IS REFUSED, AND THE REASON IS THE EMAIL HALF.
+// `EMAILDOMAIN` is global, so declaring `hospital.org` to green this one file
+// would switch the email detector off for the whole corpus, and the suite's own
+// positive case asserts that exact address IS reported. `allow.ids` IS consulted
+// by the floor, so a token-level route does exist for the dashed SSN, but it does
+// not help here: this file needs its email literals exempted regardless.
+//
+// THE EXEMPTION IS APPLIED AT THE SCAN, NOT AT THE ENUMERATION, and that is
+// load-bearing: the file is still walked, still READ, and therefore still counts
+// as observed for the per-root rule and as reconciled against `git ls-files`.
+// Skipping it at enumeration would make it look like a file the walk never
+// reached, which is the shape both of those rules exist to refuse.
+//
+// THE RESIDUAL, stated rather than hidden: a real SSN or email committed into
+// this ONE path is not reported by this gate. It is bounded by the list being
+// explicit and one entry long, by the file being the scanner's own suite (read by
+// anyone changing the scanner), and by the value still having to survive review.
+// Widening the list is what would make it unbounded.
+const DELIBERATE_VIOLATOR_SOURCES: ReadonlySet<string> = new Set(["test/scripts/phi-scan.test.ts"]);
 
 // `test/fixtures` USED TO BE DECLARED HERE AND IS NOT A ROOT OF THIS REPOSITORY.
 // It has never existed in this repository's history (`git log -- test/fixtures`
@@ -234,6 +289,16 @@ const SCAN_ROOTS: readonly string[] = ["src"];
 // (exit 2) in `buildTargetsForAll`, naming this list. `--staged` still
 // enumerates `test/fixtures/**` and `test/fixtures` itself; that predicate is
 // deliberately untouched, so the pre-commit route is unchanged either way.
+//
+// ▶ THAT REFUSAL IS NOW INERT FOR THIS ENTRY, BY CONSTRUCTION AND BY DESIGN, AND
+// THE MACHINERY STAYS. `test` is a scan root as of this slice, so `rootOf`
+// answers `"test"` for `test/fixtures` and `buildTargetsForAll`'s filter drops
+// it. That is exactly the silencing its own comment promises a developer who
+// follows the printed remedy, and the outcome is strictly stronger than the
+// refusal it replaces: a corpus arriving at `test/fixtures` is now WALKED and
+// SCANNED rather than merely refused as unaccountable. The list is kept, not
+// emptied, because the guard is general: retire a future root and it fires again
+// without being rebuilt.
 const RETIRED_WALK_ROOTS: readonly string[] = ["test/fixtures"];
 
 /**
@@ -280,8 +345,10 @@ interface AllowList {
    */
   dobs: Set<string>;
   /**
-   * Synthetic id values (SSN / MRN / member-id shapes). UNUSED by the starter
-   * floor: your structured id detector consumes these.
+   * Synthetic id values (SSN / MRN / member-id shapes). Consulted by the floor's
+   * dashed-SSN check as a WHOLE-VALUE match, which is what makes the allow-list
+   * remedy this scanner prints a real one. A structured id detector added in the
+   * fenced TODO should consult the same set.
    */
   ids: Set<string>;
   /** Allowed email domains (anything else is a hit). Used by the starter floor. */
@@ -468,7 +535,34 @@ function direntKind(e: Dirent): string {
  */
 function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
   if (!existsSync(dir)) return;
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    // ▶ THIS USED TO EXIT 1, THE CODE THIS CONTRACT RESERVES FOR "HITS FOUND".
+    // `readdirSync` was unwrapped, so an `ENOTDIR` (a regular file or a link to
+    // one standing where a root should be) or an `EACCES` (an unreadable
+    // directory at any depth) escaped `buildTargetsForAll`, was not an
+    // `InvocationError`, and reached node's default handler: a v8 stack trace in
+    // place of this scanner's diagnostic, under an exit code a caller reads as a
+    // verdict about PHI. It is an INVOCATION ERROR, so it is 2.
+    //
+    // DERIVED FROM THIS FILE'S OWN CONTRACT, NOT FROM A SIBLING. The header says
+    // `0 (clean), 1 (hits found), 2 (invocation error)`, and "the walk cannot
+    // list a directory" is the second kind, not the first. Sibling scanners
+    // disagree with each other on this exact case, so porting one of their
+    // answers in would have been the bug.
+    //
+    // The message names the directory's repo-relative path and the errno only.
+    // Never the entry names it failed to list.
+    const code = (err as NodeJS.ErrnoException).code ?? "unknown";
+    throw new InvocationError(
+      `refusing the scan: cannot list ${normalizePath(dir)} (${code}). The walk cannot ` +
+        `account for what is there, and a scan that cannot account for something must not ` +
+        `report clean. Make the directory readable, or remove it.`,
+    );
+  }
+  for (const e of entries) {
     const full = join(dir, e.name);
     if (e.isDirectory()) {
       walk(full, out, unscannable);
@@ -557,6 +651,38 @@ function holdsUnwalkedContent(rel: string): boolean {
   if (candidates.length === 0) return false;
   const ignored = gitIgnored(candidates);
   return candidates.some((p) => !ignored.has(p));
+}
+
+/**
+ * Every tracked path under the scan roots, repo-relative and forward-slashed.
+ *
+ * THE FLOOR THE PER-ROOT RULE IS NOT. `#47`'s observation rule asks whether a
+ * root yielded ANY file; this asks whether it yielded the files git says are
+ * there. They are complementary and neither subsumes the other: a root with zero
+ * tracked files satisfies this vacuously and still starves, and an UNTRACKED file
+ * is invisible to this while still being read and scanned.
+ *
+ * A COUNT WOULD NOT HAVE DONE THIS, and that is why one is not printed. A
+ * denominator counts what the walk found, so it agrees with itself by
+ * construction and says nothing about what it never opened. Reconciling against
+ * an INDEPENDENT enumeration is the only version of this that can disagree.
+ *
+ * Returns an empty list when `git ls-files` cannot answer (not a repository).
+ * That is deliberately not a refusal: it degrades to exactly the guarantees this
+ * scanner made before the rule existed, and the per-root rule still applies.
+ */
+function trackedUnderScanRoots(): string[] {
+  try {
+    const out = execFileSync("git", ["ls-files", "-z", "--", ...SCAN_ROOTS], {
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return out
+      .toString("utf8")
+      .split("\0")
+      .filter((p) => p.length > 0);
+  } catch {
+    return [];
+  }
 }
 
 function buildTargetsForAll(): Target[] {
@@ -868,8 +994,15 @@ function buildTargetsForStaged(): Target[] {
 // ---------------------------------------------------------------------------
 
 function scanCommonShapes(path: string, content: string, allow: AllowList, hits: Hit[]): void {
-  // Dashed SSN anywhere (a dashed \d{3}-\d{2}-\d{4} is always a hit).
+  // Dashed SSN anywhere, unless the exact value is declared synthetic.
+  //
+  // `allow.ids` WAS DECLARED AND CONSULTED NOWHERE until the source-literal view
+  // landed. That made the allow-list remedy this scanner prints on every hit a
+  // dead letter for the SSN shape: the only way to clear one was to edit the
+  // source. It is a whole-value match against a reviewed, committed declaration,
+  // never a pattern, so it cannot widen into "SSNs starting with 123 are fine".
   for (const m of content.matchAll(/\b\d{3}-\d{2}-\d{4}\b/g)) {
+    if (allow.ids.has(m[0].toUpperCase())) continue;
     hits.push({ path, segment: "(ssn)", value: m[0], reason: "dashed SSN pattern" });
   }
   // Emails whose domain is not an allow-listed reserved / test domain.
@@ -882,10 +1015,138 @@ function scanCommonShapes(path: string, content: string, allow: AllowList, hits:
 }
 
 // ---------------------------------------------------------------------------
+// The source-literal view: the other half of the walk-root widening
+// ---------------------------------------------------------------------------
+
+/**
+ * Is this target a container of string literals rather than a document?
+ *
+ * EVERY FIXTURE IN THIS REPOSITORY IS ONE. `git ls-files test/` returns 50 paths
+ * and all 50 are `.ts`; there is no `test/fixtures/` corpus and never has been,
+ * so an RRF row, a CSV body, a fixed-width order line and a FHIR JSON resource
+ * all reach the scanner as TypeScript string literals, never as their own files.
+ */
+function isSourceLiteralContainer(relPath: string): boolean {
+  return /\.(?:[cm]?ts|[cm]?js)$/i.test(relPath);
+}
+
+/**
+ * Decode JavaScript/TypeScript string-literal escapes so the DOCUMENT is scanned,
+ * not merely the source bytes that spell it.
+ *
+ * WHY THIS IS REQUIRED AND NOT AN EXTRA. The floor's two recognisers assume THE
+ * FILE IS THE DOCUMENT: they match `\b\d{3}-\d{2}-\d{4}\b` and an email against
+ * raw file text. That assumption holds for a fixture that is its own file and
+ * breaks for a fixture that is a string literal, because a literal can spell any
+ * character as an escape. Measured on `d97a3de`, in `src/` (already a scan root,
+ * so this is NOT merely a consequence of widening the walk): a file whose only
+ * literal spells its two separators as unicode escapes exited 0 "OK: no hits"
+ * while the value the program loads from it is a dashed SSN. Widening the
+ * enumeration alone would have carried that blind spot to all 50 newly admitted
+ * files instead of closing it.
+ *
+ * IT IS A VIEW, NOT A PARSER, AND THAT IS DELIBERATE. Decoding runs over the whole
+ * text rather than over literals a TypeScript parse has delimited. It needs no
+ * TypeScript dependency in a zero-dep script, and it cannot be defeated by a
+ * literal whose quoting this file would have had to guess at.
+ *
+ * ▶ SO IT REPORTS ON TEXT THAT IS NOT AN ESCAPE AT ALL, AND THAT IS A REAL
+ * FALSE-POSITIVE CLASS, NOT A THEORETICAL ONE. Two spellings decode here and do
+ * NOT decode in JavaScript, so the value reported is one the document does not
+ * contain: a `String.raw` template (`String.raw` suppresses escape processing,
+ * this view does not), and any comment or prose quoting an escape sequence. Both
+ * were measured against this scanner. **DO NOT WRITE THE ANTI-FABRICATION
+ * GUARANTEE UNQUALIFIED**: the ordering rule below is exact, but it is a
+ * statement about the DECODER, not about the file, and an earlier draft of this
+ * docblock overstated it into a claim about hits.
+ *
+ * THE REMEDY IS THE ALLOW-LIST, AND IT HAD TO BE WIRED UP TO SAY SO. A false
+ * positive is cleared by declaring the value in `scripts/phi-allow-list.txt`
+ * (`ID <value>` for the SSN shape, which is a WHOLE-VALUE match and therefore
+ * cannot widen), which is the reviewed, committed, token-level declaration this
+ * file already documents as the mechanism. **`EMAILDOMAIN` is NOT the equivalent
+ * hatch for a fabricated address and must not be recommended as one: it is
+ * GLOBAL**, so clearing one false positive switches the email detector off for
+ * the whole corpus. A fabricated address wants the per-file bypass instead. `allow.ids` was declared and consulted NOWHERE when this view
+ * landed, so the printed remedy did not work and the only escape hatch was
+ * editing the source: a gate whose own remedy leaves it refusing, which this file
+ * refuses in four other places. `scanCommonShapes` now consults it.
+ * Do not "fix" this into a real literal parser without a case the allow-list
+ * cannot clear.
+ *
+ * ▶ AND IT MISSES TWO ORDINARY SPELLINGS, SO IT IS NOT COVERAGE OF LITERALS.
+ * String CONCATENATION (`"123-45-" + "6789"`) and a LINE CONTINUATION (a backslash
+ * at end of line, which JavaScript erases and this view turns into a newline) both
+ * evaluate to a dashed SSN and both scan clean. Recorded rather than guarded: the
+ * standing rule here is to correct the claim, not to grow the guard.
+ *
+ * AN ESCAPED BACKSLASH IS CONSUMED FIRST, ON PURPOSE. A doubled backslash in
+ * source is ONE literal backslash, so a doubled backslash followed by the text
+ * `u002D` decodes to a backslash and that text, and NOT to a dash. A naive global
+ * regex replace of the four-hex-digit escape gets that backwards. The loop below
+ * therefore scans left to right, emits the single backslash, and never rescans its
+ * own output.
+ */
+function decodeSourceLiterals(text: string): string {
+  let out = "";
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch !== "\\") {
+      out += ch;
+      i += 1;
+      continue;
+    }
+    const next = text[i + 1];
+    if (next === undefined) {
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (next === "u" && text[i + 2] === "{") {
+      const end = text.indexOf("}", i + 3);
+      const body = end < 0 ? "" : text.slice(i + 3, end);
+      if (end > 0 && /^[0-9a-fA-F]{1,6}$/.test(body)) {
+        const cp = Number.parseInt(body, 16);
+        if (cp <= 0x10ffff) {
+          out += String.fromCodePoint(cp);
+          i = end + 1;
+          continue;
+        }
+      }
+    }
+    if (next === "u" && /^[0-9a-fA-F]{4}$/.test(text.slice(i + 2, i + 6))) {
+      out += String.fromCharCode(Number.parseInt(text.slice(i + 2, i + 6), 16));
+      i += 6;
+      continue;
+    }
+    if (next === "x" && /^[0-9a-fA-F]{2}$/.test(text.slice(i + 2, i + 4))) {
+      out += String.fromCharCode(Number.parseInt(text.slice(i + 2, i + 4), 16));
+      i += 4;
+      continue;
+    }
+    // Single-character escapes. `\\` lands here and emits ONE backslash, which is
+    // never rescanned, so the sequence it introduces stays literal text.
+    const simple: Record<string, string> = {
+      n: "\n",
+      r: "\r",
+      t: "\t",
+      b: "\b",
+      f: "\f",
+      v: "\v",
+      "0": "\0",
+    };
+    out += simple[next] ?? next;
+    i += 2;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Dispatch
 // ---------------------------------------------------------------------------
 
-function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
+function scanTarget(target: Target, allow: AllowList, hits: Hit[], mode: Args["mode"]): void {
   let buf: Buffer;
   try {
     buf = target.read();
@@ -896,9 +1157,54 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
   }
   const text = buf.toString("utf8");
 
+  // The deliberate-violator exemption is applied HERE, after the read, so the
+  // file still counts as observed and as reconciled. See the declaration.
+  //
+  // ▶ IT IS SCOPED TO THE SWEEP, AND SCOPING IT IS NOT OPTIONAL. The exemption
+  // exists so the unattended all-mode gate is not red forever over the one file
+  // whose job is to carry violator literals. Applying it in `paths` mode as well
+  // DELETED A DETECTION THE BASE HAD: `phi-scan test/scripts/phi-scan.test.ts`
+  // reported hits at exit 1 on `d97a3de` and printed `OK: no hits` at exit 0 with
+  // the exemption unscoped, which is "instead of" where this work is only ever
+  // allowed to be "in addition to". Naming the file explicitly is a developer
+  // asking about that file, and the honest answer is what is in it.
+  if (mode === "all" && DELIBERATE_VIOLATOR_SOURCES.has(target.path)) return;
+
   // The format-agnostic floor: dashed SSN + non-test email. This runs on every
   // target and is all the starter detects.
-  scanCommonShapes(target.path, text, allow, hits);
+  const rawHits: Hit[] = [];
+  scanCommonShapes(target.path, text, allow, rawHits);
+  hits.push(...rawHits);
+
+  // THE SAME FLOOR OVER THE DECODED DOCUMENT, IN ADDITION AND NEVER INSTEAD. A
+  // `.ts` source is a container of literals, so the bytes above are the spelling
+  // of the fixture and not the fixture. See `decodeSourceLiterals`.
+  //
+  // ONLY VALUES THE RAW PASS DID NOT ITSELF REPORT ARE ADDED, and the comparison
+  // is against THAT PASS'S OWN HITS, never against the raw text.
+  //
+  // ▶ `text.includes(h.value)` WAS THE FIRST ATTEMPT AND IT DROPPED REAL HITS.
+  // Both recognisers are `\b`-anchored, so a value can be present as a SUBSTRING
+  // of the raw text while the raw pass correctly declines to report it: with
+  // `"A123-45-6789Z"` anywhere in the file (word characters on both sides defeat
+  // `\b`), an escape-spelled dashed SSN elsewhere in the same file was silently
+  // discarded and the sweep printed `OK: no hits`. "The bytes appear somewhere"
+  // is not "the raw pass reported them", and only the second is a reason for this
+  // view to stay quiet. Comparing hit to hit cannot drift from the recognisers,
+  // because it IS their output.
+  if (isSourceLiteralContainer(target.path)) {
+    const decoded = decodeSourceLiterals(text);
+    if (decoded !== text) {
+      const alreadyReported = new Set(rawHits.map((h) => JSON.stringify([h.segment, h.value])));
+      const fromLiterals: Hit[] = [];
+      scanCommonShapes(target.path, decoded, allow, fromLiterals);
+      for (const h of fromLiterals) {
+        if (!alreadyReported.has(JSON.stringify([h.segment, h.value]))) {
+          hits.push({ ...h, reason: `${h.reason}, escape-encoded in a source literal` });
+        }
+      }
+    }
+  }
 
   // ── TODO: add Terminology-specific structured field-level PHI detection here ──
   //
@@ -974,7 +1280,23 @@ function main(): number {
     throw err;
   }
 
-  const allow = loadAllowList();
+  // ▶ THIS CALL USED TO SIT OUTSIDE EVERY `try` AND EXIT 1. `loadAllowList`
+  // throws an `InvocationError` for a missing allow-list and lets `readFileSync`
+  // throw for an unreadable one, and neither was caught here, so both reached
+  // node's default handler and exited 1: "hits found", for a scan that never ran.
+  // Same class and same remedy as the `readdirSync` wrap in `walk`.
+  let allow: AllowList;
+  try {
+    allow = loadAllowList();
+  } catch (err) {
+    if (err instanceof InvocationError) {
+      process.stderr.write(`[phi-scan] ${err.message}\n`);
+      return 2;
+    }
+    const code = (err as NodeJS.ErrnoException).code ?? "unknown";
+    process.stderr.write(`[phi-scan] cannot read the allow-list (${code})\n`);
+    return 2;
+  }
   const allowed = new Set<string>(args.allowFixtures.map(normalizePath));
 
   let targets: Target[];
@@ -994,9 +1316,11 @@ function main(): number {
 
   const hits: Hit[] = [];
   const observedRoots = new Set<string>();
+  const observedPaths = new Set<string>();
   for (const t of targets) {
     try {
-      scanTarget(t, allow, hits);
+      scanTarget(t, allow, hits, args.mode);
+      observedPaths.add(t.path);
       // Reached only when `scanTarget` returned, i.e. the bytes were actually
       // READ: it throws an InvocationError on any read failure. Attributed
       // through the SAME predicate the roots are declared by, never a second copy
@@ -1071,6 +1395,62 @@ function main(): number {
           `root that yielded nothing, and a root that is absent, dangling, empty, or holding ` +
           `only entries this walk skips (markdown) or excludes (gitignored) yields nothing ` +
           `silently. Restore it, or change SCAN_ROOTS in scripts/phi-scan.ts.\n`,
+      );
+      return 2;
+    }
+  }
+
+  // Reconcile what was READ against what git TRACKS under the same roots.
+  //
+  // THIS IS THE RULE THAT MAKES WIDENING THE WALK MEAN SOMETHING. `#47`'s
+  // per-root rule is a floor of ONE file, so declaring `test` a root would
+  // otherwise be satisfied by any single file under it while the other 49 went
+  // unread, which is the same shape as the defect being closed here, one level
+  // down. It also closes the sub-tree bound the header recorded as open: a
+  // directory that goes missing from INSIDE a root now refuses instead of
+  // passing at exit 0.
+  //
+  // A DENOMINATOR WAS THE WRONG REMEDY AND IS NOT WHAT THIS IS. A printed count
+  // is derived from the walk, so it cannot disagree with the walk. `git ls-files`
+  // is an independent enumeration, which is the entire point.
+  //
+  // THREE THINGS IT DELIBERATELY DOES NOT CLAIM, so nothing above reads as
+  // completeness:
+  //   - an UNTRACKED file under a root is not reconciled (it is still walked,
+  //     read and scanned; it simply cannot be missed by this rule);
+  //   - the `.md` skip and the gitignore boundary are applied here exactly as the
+  //     walk applies them, so this rule cannot demand a file the walk would
+  //     refuse to read, which would be a gate its own remedy cannot clear;
+  //   - a tracked GITLINK under a root is demanded like any other tracked path,
+  //     and the printed remedy does not really fit it (the submodule is present;
+  //     only "change SCAN_ROOTS" would clear it). Fail-closed and unrealistic
+  //     here, since this repository has no submodule, but it is a real edge and
+  //     is recorded rather than guessed at.
+  //
+  // `--allow-fixture` IS NOT FILTERED OUT HERE AND MUST NOT PRETEND TO BE. A draft
+  // filtered on it and wrote that a logged bypass "is accounted for". That branch
+  // can never run: `parseArgs` makes `--allow-fixture` imply `paths` mode, so the
+  // bypass set is always empty when this rule is reached. The dead filter and its
+  // claim are gone rather than left as machinery that looks like a decision.
+  if (args.mode === "all") {
+    const tracked = trackedUnderScanRoots();
+    const ignored = gitIgnored(tracked);
+    const unread = tracked.filter(
+      (p) => !p.toLowerCase().endsWith(".md") && !ignored.has(p) && !observedPaths.has(p),
+    );
+    if (unread.length > 0) {
+      if (hits.length > 0) report(hits);
+      const shown = unread.slice(0, 20).map((p) => `  - ${p}`);
+      if (unread.length > shown.length) {
+        shown.push(`  ... and ${String(unread.length - shown.length)} more`);
+      }
+      process.stderr.write(
+        `[phi-scan] refusing: ${String(unread.length)} file(s) tracked under the scan ` +
+          `root(s) were never read by this sweep, so it proves nothing about them:\n` +
+          `${shown.join("\n")}\n` +
+          `The walk and the index disagree about what is under ${SCAN_ROOTS.join(", ")}. ` +
+          `A sweep that cannot account for a tracked file must not report clean. Restore ` +
+          `the paths, untrack them, or change SCAN_ROOTS in scripts/phi-scan.ts.\n`,
       );
       return 2;
     }

@@ -3,13 +3,13 @@
 **The long form of every trap in `CLAUDE.md`.** Relocated out of `CLAUDE.md` on 2026-08-04
 (`CLAUDE-MD-AUDIT`) because that file is always-read by every worker that `cd`s into this repo, and
 this narrative is read on demand. **Nothing was deleted**, and the relocation itself was
-*verbatim*: not a paragraph was reworded, reordered or summarised as it moved. `CLAUDE.md` keeps a
+_verbatim_: not a paragraph was reworded, reordered or summarised as it moved. `CLAUDE.md` keeps a
 one-line imperative for each and points at the heading here.
 
 **One later change edited these bytes, and it edited `CLAUDE.md`'s in the same commit: the em-dash
 sweep** (`EMDASH-CONFORMANCE`). It rewrote `U+2014` as a period, a colon, a comma or parentheses
 throughout, so a paragraph here is no longer byte-identical to the `CLAUDE.md` text it was relocated
-from, and the relocation's *"verbatim"* claim is recorded above as history rather than as a standing
+from, and the relocation's _"verbatim"_ claim is recorded above as history rather than as a standing
 property of these bytes. **No rule, measurement, count, sha or negative control was changed**, and
 this file is not prettier-formatted (it sits outside `format:check`'s globs, which are root-only) and
 must not become so. The long form is under "No em dash, anywhere".
@@ -1070,3 +1070,193 @@ hand **before** any bulk pass, never after.
 bulk pass rather than assumed. That is the defect class that turned a sibling's support matrix from
 "support absent" into "support unstated" on the page whose whole job is honest capability disclosure,
 and nothing in CI could have caught it.
+
+## The walk-root scope, and why widening it is two-sided
+
+`PHI-SCAN-WALK-ROOT-SCOPE`, landed 2026-08-07. Two changes that ship together, plus two
+`PRE-EXISTING` minors folded in and one measured **not open here**.
+
+### The defect: 50 tracked files under `test/`, scanned by neither route
+
+All-mode walked `src` and nothing else. `--staged`'s scope predicate admits `src/**.ts` and
+`test/fixtures/**`, and `test/fixtures` has never existed here, so **every tracked file under
+`test/` was enumerated by NEITHER route**. Measured on `d97a3de`: `git ls-files test/ | wc -l` is
+**50**, and `git ls-files test/ | sed 's/.*\.//' | sort -u` is `ts` alone. Back to back on that sha,
+a dashed SSN written to `test/planted.ts` exited **0** `OK: no hits` in all-mode while
+`pnpm phi-scan test/planted.ts` exited **1** over the same bytes.
+
+**THE SCOPE WAS RE-DERIVED HERE AND CAME OUT DIFFERENT FROM EVERY SIBLING'S.** There is **no `PID|`
+literal anywhere in this tree**, so the residual lists that drove `deid` (38 files, four with `PID|`),
+`ncpdp` (115 / 55) and `mllp` (72 of 76 / 12) describe those repos and not this one. Porting a
+sibling's list is the bug the item exists to warn about. Here the whole corpus is inline TypeScript
+and exactly **one** file carries violator shapes.
+
+### Enumerating the files buys the SSN/email floor and NOTHING else
+
+The two recognisers (`\b\d{3}-\d{2}-\d{4}\b` and a non-test-domain email) match **raw file text**.
+That assumes **the file IS the document**, which holds for a fixture that is its own file and breaks
+for one that is a string literal, because a literal can spell any character as an escape. Every
+fixture here is a `.ts` literal, so admitting 50 more files without the other half would have carried
+the blind spot into all of them.
+
+`decodeSourceLiterals` therefore scans **the decoded document in addition to the raw text**, never
+instead, for `.ts` / `.js` family targets only. Proved RED before and GREEN after **in `src/` as well
+as `test/`**, so it is not merely a consequence of the new root.
+
+**ONLY VALUES THE RAW PASS DID NOT ITSELF REPORT ARE ADDED**, deduped against **that pass's own
+hits**. Without a filter every plainly spelled violator doubles.
+
+**▶ DO NOT DEDUPE AGAINST THE RAW TEXT. `!text.includes(h.value)` WAS THE FIRST ATTEMPT AND IT DROPPED
+REAL HITS**, found by a refuter. Both recognisers are `\b`-anchored, so a value can sit in the file as
+a SUBSTRING the raw pass correctly declines to report: with `"A123-45-6789Z"` anywhere in the file
+(word characters on both sides defeat the anchor), an escape-spelled dashed SSN elsewhere in the same
+file was silently discarded and the sweep printed `OK: no hits`. "The bytes appear somewhere" is not
+"the raw pass reported them", and only the second is a reason for this view to stay quiet. Comparing
+hit to hit cannot drift from the recognisers, because it IS their output.
+
+**AN ESCAPED BACKSLASH IS CONSUMED FIRST.** A doubled backslash in source is one literal backslash,
+so a doubled backslash followed by `u002D` decodes to a backslash and that text, not to a dash; a
+naive global regex replace of the four-hex-digit escape gets that backwards. The decoder scans left
+to right, emits the single backslash, and never rescans its own output.
+
+**▶ THAT ORDERING RULE IS A STATEMENT ABOUT THE DECODER, NOT A GUARANTEE ABOUT HITS, AND AN EARLIER
+DRAFT OVERSTATED IT INTO ONE.** A refuter falsified the unqualified form. **Never write the
+anti-fabrication claim unqualified.**
+
+**IT IS A VIEW, NOT A TYPESCRIPT PARSER**, deliberately: it needs no TypeScript dependency in a
+zero-dep script and cannot be defeated by quoting this file would have had to guess at. **Both
+directions of that are real and both are recorded, because an earlier draft claimed it could "only
+report MORE, never less" and that was false in both halves:**
+
+- **IT FIRES ON TEXT THAT IS NOT AN ESCAPE**, so the value it names can be one the document does not
+  contain: a `String.raw` template (which suppresses escape processing, where this view does not) and
+  any comment or prose quoting an escape sequence. Both measured.
+- **AND IT MISSES TWO ORDINARY SPELLINGS** that do evaluate to a dashed SSN: string CONCATENATION
+  (`"123-45-" + "6789"`) and a LINE CONTINUATION (a backslash at end of line, which JavaScript erases
+  and this view turns into a newline). Both measured, both scan clean.
+
+**RECORDING A FALSE-POSITIVE CLASS IS ONLY HONEST IF THE PRINTED REMEDY WORKS, AND IT DID NOT.**
+`allow.ids` was declared and consulted **nowhere**, so the allow-list this scanner names on every hit
+was a dead letter for the SSN shape and the only way to clear one was to edit the source: the "gate
+whose own remedy leaves it refusing" shape this file refuses in four other places. `--allow-fixture`
+is not the hatch either, because `parseArgs` makes it imply `paths` mode. The floor's dashed-SSN
+check now consults `allow.ids`, as a **whole-value** match against a reviewed committed declaration,
+never a pattern. Do not "fix" the view into a literal parser without a case the allow-list cannot
+clear.
+
+### Reconciling against `git ls-files`, because a denominator cannot work
+
+The per-root rule from `#47` is a **floor of ONE**, so declaring `test` a root would otherwise be
+satisfied by any single file under it while the other 49 went unread: the same defect one level down.
+**A printed count is not the remedy** and was refuted as one: a count is derived from the walk, so it
+agrees with the walk by construction and can say nothing about a file the walk never opened. An
+**independent enumeration** is the only version that can disagree.
+
+**THREE LIMITS THE HEADER RECORDED AS OPEN ARE NOW CLOSED, FOR TRACKED FILES**, all measured at exit
+0 on `d97a3de` and exit 2 now: a directory missing from **inside** a root (`mv src/ucum ..`); a root
+that is **itself a symlink** to a directory, which `normalizePath` attributes lexically so everything
+behind the link counts toward the prefix (39 files unread); and the **floor of one** (`src` reduced to
+a single clean file, 39 unread).
+
+**BOTH RULES ARE KEPT AND NEITHER SUBSUMES THE OTHER.** A root with **zero** tracked files satisfies
+reconciliation vacuously and still has to starve. **Do not delete the per-root rule.**
+
+**WHAT IT DELIBERATELY DOES NOT CLAIM:** an **untracked** file under a root is walked, read and
+scanned, so it cannot hide PHI, but its **absence** is invisible to both rules. The `.md` skip and the
+gitignore filter are shared with the walk, so the rule can never demand a file the walk would refuse
+to read (a gate whose own remedy cannot clear it gets deleted). A tracked **gitlink** under a root is
+demanded like any other tracked path and the printed remedy does not really fit it (the submodule is
+present; only changing `SCAN_ROOTS` would clear it): recorded as an edge, not guarded.
+
+**▶ DO NOT FILTER `--allow-fixture` OUT OF THIS RULE.** A draft did, and wrote that a logged bypass
+"is accounted for". That branch can never run: `parseArgs` makes `--allow-fixture` imply `paths`
+mode, so the bypass set is always empty when this all-mode rule is reached. The dead filter and its
+claim were deleted rather than left as machinery that looks like a decision.
+
+**▶ A GITIGNORE PATTERN DOES NOT EXCUSE A TRACKED FILE, BECAUSE GIT DOES NOT EITHER.** `git
+check-ignore` reports **nothing** for a path in the index (measured, exit 1, no output), so a tracked
+file matching an ignore pattern is still walked, read and reconciled. The opposite is the intuitive
+guess, and guessing it would open a hole a one-line `.gitignore` could drive a fixture through.
+
+### The one deliberate-violator source
+
+`test/scripts/phi-scan.test.ts` carries a dashed SSN and two non-test-domain addresses **on purpose**:
+they are the positive half of this scanner's own tests, so sweeping it would red the gate forever.
+
+**▶ DO NOT WRITE THAT HIT COUNT DOWN, AND DO NOT "CORRECT" IT: DERIVE IT.** It read **25**, then
+**31**, then **37** across three drafts of this one slice, because it is a property of the suite and
+the suite grew each time. A refuter caught it stale twice, the second time inside the fix for the
+first. Derive it, never recall it:
+`pnpm phi-scan test/scripts/phi-scan.test.ts | tail -1`.
+
+**THE EXEMPTION IS A PATH LIST AND MUST STAY ONE.** An extension rule cannot tell a file that carries
+violator literals **on purpose** from one that carries them **by accident**, and that distinction is
+the whole reason the gate exists. A blanket `.ts` exclusion would take all 50 files back out.
+
+**ALLOW-LISTING THE VALUES INSTEAD IS REFUSED, AND THE REASON IS THE EMAIL HALF, NOT THE SSN HALF.**
+`EMAILDOMAIN` is global, so declaring `hospital.org` to green one file switches the email detector off
+for the whole corpus, and the suite's own positive case asserts that exact address IS reported. **The
+`ids` set IS now consulted by the floor** (it had to be, so the printed remedy for the decoded view's
+false positives would work), so a token-level route does exist for the SSN shape. It is still the
+wrong tool here: this file needs a whole-file exemption for its email literals regardless, and
+declaring one value would not give it one.
+
+**IT IS APPLIED AT THE SCAN, NOT AT THE ENUMERATION**, and that is load-bearing: the file is still
+walked, still READ, and therefore still counts as observed and as reconciled. Skipping it at
+enumeration would make it look like a file the walk never reached, which is the shape both of those
+rules exist to refuse.
+
+**▶ AND IT IS SCOPED TO THE SWEEP (`mode === "all"`). SCOPING IT IS NOT OPTIONAL.** A draft applied it
+in every mode and a refuter measured what that cost: `phi-scan test/scripts/phi-scan.test.ts` reported
+hits at exit 1 on `d97a3de` and `OK: no hits` at exit 0 after, so the exemption **deleted a detection
+the base had**, which is "instead of" where this work may only ever be "in addition to". Naming the
+file explicitly is a developer asking about that file, and the honest answer is what is in it. The
+anti-vacuity control scans **its exact bytes under another name** and gets a hit.
+
+**THE RESIDUAL, stated rather than hidden:** a real SSN or email committed into that ONE path is not
+reported. Bounded by the list being one entry long and by the file being the scanner's own suite.
+
+### The retired-root refusal is now inert, and is kept anyway
+
+`test/fixtures` sits under the `test` root, so `rootOf` covers it and `buildTargetsForAll` drops it:
+the refusal cannot fire from this repository's own configuration. That is exactly the silencing its
+own comment promises a developer who follows the printed remedy, and the outcome is **strictly
+stronger**: a corpus arriving there is now **walked and scanned** rather than refused as
+unaccountable, and a **dangling link** there is now refused by `refuseUnscannable` (it is a `Dirent`
+under a walked root) where the `existsSync` guard could not see it at all.
+
+**THE MACHINERY IS KEPT, NOT DELETED**, because it is general: retire a future root and it fires again
+without being rebuilt. To stop it becoming an untested claim, the suite runs a **copy** of the scanner
+with `corpus` retired, a path under no scan root. Every substitution is asserted to have applied.
+
+### The two `PRE-EXISTING` minors, and the one that is NOT open here
+
+**FOLDED IN: exit 1 where the contract reserves 1 for HITS.** `walk()` did not wrap `readdirSync` and
+the `loadAllowList()` call sat outside every `try`, so a non-directory root (`ENOTDIR`), an unreadable
+directory at any depth (`EACCES`) and an absent or unreadable allow-list all reached node's default
+handler: a v8 stack trace under the code a caller reads as a verdict about PHI. All are exit **2**
+now. **DERIVED FROM THIS SCANNER'S OWN STATED CONTRACT** (`0 clean, 1 hits, 2 invocation error`),
+**not ported**: siblings disagree with each other on this exact case, which is why `hl7` reads 2 where
+this repo read 1, and copying either answer across is how the wrong one spreads.
+
+**NOT OPEN HERE, MEASURED: the unmerged (`U`) residual.** The staged route already runs
+`--diff-filter=AMTU`, so `U` is enumerated and refused. The sibling residual describes repos on `AM`
+or `AMT`. **Do not let a port re-open it.**
+
+**ALSO FOLDED IN:** `test/crosswalk/gems.test.ts` pinned the two direction-specific `invertGem`
+messages with `toThrow("direction 9-to-10")`, a **substring** match, against this repo's own rule.
+Both messages contain **both** direction tokens (each names the file to load instead), so the pin was
+weak twice over, and it stays green over a message that has grown an echo of a caller-supplied value.
+Now whole-message equality plus the code, via a local helper. Non-vacuous: appending two characters to
+the source message reds the new pin and would **not** have red the old one.
+
+### What this slice deliberately did NOT do
+
+**The `--staged` predicate was not widened**, so a staged `test/foo.test.ts` is scanned by CI and not
+by the pre-commit hook. Nothing regressed (that path was in neither route before), but the two sets
+now overlap differently and `--staged` is the narrower one. Widening it changes what a developer's
+commit is blocked on, which is a decision about the hook rather than the walk, and wants its own
+slice. **Never "resync" the two predicates in either direction.**
+
+**No structured detector was added.** The fenced TODO in `scanTarget` is still open: a green sweep
+still means "no SSN/email shapes found", never "no PHI".
