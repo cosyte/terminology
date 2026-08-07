@@ -817,3 +817,157 @@ explicitly** — it scans the same tree twice, as a hit with the root present an
 starved. The absent- and dangling-root cases plant no payload and do not claim to: they assert an
 exit 2, which an empty corpus cannot satisfy the way it can satisfy an exit 0. **Do not write "every
 starvation case is paired with a hit"** — a refuter measured that false.
+
+---
+
+## The changelog generator
+
+**The defect.** `CHANGELOG.md` is in `package.json#files`, so it is inside every published tarball.
+`.changeset/config.json` set `"changelog": false` for this package's whole published history, which
+means no release ever wrote a version heading into it and nothing ever rolled `[Unreleased]` over.
+The file was hand-maintained under that one heading, so **released entries sat beside entries that
+had not gone out, with nothing to tell a reader which was which** — and the package published its
+way to `0.0.10` on top of them. A note further down the same file compounded it by stating that the
+changelog generator was off, which is a maintenance instruction pointing the wrong way inside a
+document a consumer reads. **Correcting the headings by hand was refused as the fix**: the prose is
+an output of the mechanism, so a hand fix leaves the mechanism and the file drifts again on the next
+release. The flag is the fix.
+
+**What changed.** `changelog` now names `@changesets/cli/changelog`, the hand-written history moved
+under `## Released before this file was generated`, and `test/scripts/changelog-generation.test.ts`
+holds both down against the real `changeset version` in throwaway git repos. **10 cases red on the
+parent tree, measured by running it there.** Quote the 10, not a fraction: the denominator moves with
+the number of pending changesets, because one case is generated per changeset — 26 on the bare parent
+(which has none pending), 27 with this slice's changeset dropped in, **and the red count is 10 either
+way**, so the numerator is the stable half. **A sibling derived its own count by reading another
+repo's run and was wrong** — run it on your parent.
+
+**The claim about installed copies, and how it was checked here.** The right comparison for a
+statement about installed copies is the **published tarball**, never the working tree: a sibling's
+draft claimed byte identity from git and was false, because an entry had landed after its version
+commit and never shipped (94,168 published bytes against 98,036 in the tree). **Checked here rather
+than assumed**: `npm pack @cosyte/terminology@0.0.10` yields a `CHANGELOG.md` of **110,316 bytes,
+byte identical to the file at the parent commit**, because the last commit before this one was the
+`0.0.10` version commit itself and nothing landed after it. So the preamble's claim holds _for this
+version_. **It is not a durable property** — the moment an entry lands after a version commit it
+stops being true, which is exactly the shape that caught the sibling. Re-measure against the
+registry before restating it.
+
+### The archive preamble is a SCOPED claim, and the first draft cut the qualifier
+
+**A refuter refused the first draft of this slice for exactly the failure `CLAUDE.md` names under
+"cut the claim, not the qualifier that bounds it".** The draft preamble said _"Everything below this
+heading was maintained by hand… the entries below went out across `0.0.2` through `0.0.10`, and the
+file never recorded which release each one belonged to."_ All three clauses are **false of
+`## [0.0.1] - 2026-07-21`**, which sits below the archive heading with a dated section and a release
+link of its own — about a fifth of the archive. The parent commit carried the bound (_"Everything
+between this heading and `[0.0.1]` has already SHIPPED"_) and the draft deleted it while keeping the
+claim. **This ships inside the tarball and is permanent once published.**
+
+**The second half of the same refusal: deleting the interim `Released, pending a per-version split`
+heading destroyed the file's only release-attribution boundary, and the preamble then asserted the
+boundary had never existed.** The boundary is real and is worth keeping: everything above it was
+added after the `0.0.9` version commit and shipped in `0.0.10`; everything below it down to
+`## [0.0.1]` shipped across `0.0.2` through `0.0.9`. It is retitled `## Released in 0.0.2 through
+0.0.9` rather than removed. **Only the note under it was scaffolding; the heading was not.**
+
+**One entry in the older block was amended during the `0.0.10` cycle** — the `[Superseded]`
+annotation on the `--staged` rename entry — so its annotation shipped later than the entry it
+annotates, and it refers to "the `[Unreleased]` entry above", a heading that no longer exists. **Both
+facts are disclosed in the file rather than edited away**, because editing them would rewrite
+published text.
+
+**`test/scripts/changelog-generation.test.ts` now pins the two boundary headings in document order
+and refuses the refuted sentence by name.** That is narrow on purpose: **nothing gates the TRUTH of
+the rest of the preamble**, only its length and a handful of forbidden phrases. Treat every sentence
+in that block as an unverified claim and check it against the file before changing it.
+
+### Only one line may sit above generated output
+
+Changesets prepends a release by **replacing the first newline in the document**. So exactly one
+line can sit above generated output, and the rule this repo asserts is **"nothing but the H1 sits
+above the first heading"**. A preamble on line 3, which is the shape this file used to have, means
+every future release is spliced **between the H1 and the preamble**, and the preamble then reads as
+part of that release. The negative control in the test reproduces exactly that on the old shape, so
+the rule is demonstrated rather than asserted.
+
+**Do not state the rule as "the archive heading comes second."** The first real release puts
+`## <version>` exactly there, so that assertion wedges the release it was written to enable. And
+`prepublishOnly` runs the suite under `changeset publish`, which means a Version PR merged without a
+green run fails the publish **after** the changeset has been consumed on `main`.
+
+### `## 0.0.1` is a substring of `## 0.0.10`, and this package is AT `0.0.10`
+
+The collision is live on the **very next release**, not hypothetical: any `indexOf` or substring
+`toContain` over a version heading answers TRUE for a heading the document does not have. **Compare
+whole headings.** The test proves the collision on real generator output rather than asserting it,
+and every version-heading comparison in the file is an exact match against a list of whole lines for
+that reason. The same reasoning applies to the archive heading: a changeset summary can quote it,
+and the quoted copy lands **above** the real one, so both helpers locate it as a whole line.
+
+### The Prettier pass stays ON here, and that is derived, not ported
+
+Changesets reformats the whole document it writes through Prettier unless `"prettier": false` turns
+the pass off, and **the right value differs per repo. It has gone four different ways across five
+repos.** The discriminator is the repo's own markdown-formatting scope. **This repo has no
+`.prettierignore` at all** and `format:check` globs `"*.{json,md,yml}"`, so `CHANGELOG.md` is inside
+its own formatting gate and the archived history is already Prettier-canonical
+(`prettier --check CHANGELOG.md` exits 0 on the committed file). Both arms were measured here, on
+the real tool:
+
+- **ON** (no `"prettier"` key, the default): `format:check` accepts the released document, and the
+  archived history comes through **byte identical**.
+- **OFF**: the document opens `## <version>` and `### Patch Changes` on **adjacent lines with no
+  blank line between them**, which this repo's Prettier config rejects. The archived history is byte
+  identical in this arm too.
+
+**▶ AND THE HONEST QUALIFIER, WHICH IS WHERE THIS REPO DIVERGES FROM THE TWO NEAREST SIBLINGS. The
+"otherwise every Version PR opens red" argument is FALSE here.** This repo's `version` script runs
+its own `prettier --write` over `CHANGELOG.md` as a later link in the chain, so with the pass off
+that second pass repairs the raw output and the Version PR would **not** open red — measured, and
+pinned in the control case. The reason to leave the pass **on** here is narrower: with it off, a
+canonical published changelog rests entirely on `CHANGELOG.md` staying inside that one
+`prettier --write` argument list, which nothing pins and which two of the nearest siblings do not
+even have; and with it on it costs nothing, because the archive is byte identical either way.
+**A sibling whose `.prettierignore` lists `*.md` needs the opposite value** — leaving the pass on
+there rewrote ~1,240 lines of already-published text and ate the spaces around a backticked literal
+inside a bold span. Text corruption inside a permanent tarball is not a formatting preference.
+**Do not resync this value between repos, and re-measure both arms if the `version` script changes.**
+
+### A changeset summary must not open a line with a heading
+
+`getReleaseLine` prefixes the first line of a summary with `- ` and indents **every later line by
+exactly two spaces, which is the `- ` bullet's own content column**. So a heading line inside a
+summary becomes a real heading nested in the list item, and it renders as an extra heading inside
+the release section of a tarball that is **permanent once published**. Neither Changesets nor the
+release-notes gate looks, so the check lives in this repo's suite, and it reads the changesets
+pending **right now** rather than what the last release consumed.
+
+**Name the check for what it checks, never "a changeset cannot smuggle a heading."** The class is
+open, and a refuter on a sibling reproduced two bypasses of a column-0-only first draft, end to end
+on real generator output: **a single leading space** (CommonMark admits up to three, and the Prettier
+pass normalises the line back to the bullet's content column) and **a setext underline** carrying no
+`#` at all (Prettier rewrites it into an ATX heading). Both are closed by `headingLikeLines`, and
+both branches are probed, alongside four shapes that must NOT be reported — four leading spaces (an
+indented code block), a thematic break after a blank line, a list, and a hash inside prose.
+
+### A publish with an unchanged changelog is a swallowed write failure
+
+Changesets wraps the changelog write in a try/catch that only `console.warn`s. A tree whose declared
+Prettier config cannot be resolved bumps the version, consumes the changeset, and writes **no
+changelog at all**. **Do not diagnose that as the flag having reverted.** There is no guard for it in
+any repo; it belongs in the shared release pipeline, not here.
+
+### What the release-notes renderer does with this repo's item ids
+
+**`TERMINOLOGY` IS a registered `PROJECT_PREFIXES` entry** (`.github/scripts/release-notes.mjs`), and
+that was **measured rather than assumed**, on a simulated version commit: a summary led with
+`TERMINOLOGY-CHANGELOG-GAP: ` rendered a public body **byte identical** to the one without it — 316
+bytes either way — so the whole id was stripped, not leaked. **Do not port a sibling's "the id leaks"
+reading into this repo**; the leak class is an item named after its **defect** rather than after a
+repo, whose prefix nobody registered. The changeset shipping this change still carries no item id at
+all, which is the safer habit and costs nothing.
+
+**Run the real renderer, do not reason about it.** Simulate the version commit in a clone, run
+`node .github/scripts/release-notes.mjs prepare --repo <dir> --package @cosyte/terminology --out
+<file>`, then `assert` the file, and **read what it renders**.

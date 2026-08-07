@@ -1,13 +1,48 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## Released before this file was generated
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Versions and publishing are managed with [Changesets](https://github.com/changesets/changesets);
-this file is maintained by hand (Changesets handles the version bump and publish only).
+Every release section above this heading is written by
+[Changesets](https://github.com/changesets/changesets) from the changesets in `.changeset/`, newest
+release first. The release writes its own version heading, so nothing above this line is maintained
+by hand: a change is recorded by adding a changeset, and that changeset's summary is the entry a
+reader sees here.
 
-## [Unreleased]
+Everything from here down to `## [0.0.1]` was maintained by hand, and all of it has shipped. It
+accumulated under a single `[Unreleased]` heading that no release ever rolled over, so the file mixed
+released work in with work that had not gone out and gave a reader no way to tell them apart, while
+the package published its way to `0.0.10` on top of it. What release attribution the file does have
+is carried by headings, and both of them are kept: the entries between here and the next heading went
+out in `0.0.10`, the entries under `Released in 0.0.2 through 0.0.9` went out across those versions
+without ever being split any finer, and `## [0.0.1]` below has a dated section and a release link of
+its own.
+
+The entries are left exactly as they were written rather than re-sorted into version sections:
+re-sorting would rewrite text that published tarballs already carry, and no version from `0.0.2` to
+`0.0.10` has a section of its own or a compare link. Measured against the registry rather than against
+this repository, because the registry is what an installed copy holds: every entry below is byte
+identical to its copy inside the published `0.0.10` tarball. Nothing below was reworded, re-ordered
+or re-wrapped; neither what was removed nor what was added is an entry.
+
+What was removed was scaffolding for the hand-written workflow that no longer runs, together with the
+prose that scaffolding belonged to: the `[Unreleased]` heading itself, its link definition at the foot
+of the file, the preamble that described this file as maintained by hand, and the note under the next
+heading, which described the generator as off and pointed at the work this change performs. That
+heading is kept and retitled to say which releases its entries went out in.
+
+One consequence is left standing rather than edited, because editing it would rewrite published text:
+an entry in the `0.0.2` through `0.0.9` block refers to "the `[Unreleased]` entry above", and no such
+heading exists any more.
+
+`0.0.3` never reaching npm is deliberate now, though it began as a consequence rather than a choice:
+a leftover changeset meant that release run only opened the next version PR, and the content shipped
+in `0.0.4`. It is not a hole to be filled, because publishing a `0.0.3` now would place it after
+`0.0.4` in registry order.
+
+The entries below follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the generated
+sections above use the format Changesets writes, which is a version heading and a list of the
+changes that release consumed. Versions follow the cosyte pre-alpha ladder, `0.0.x` until first
+alpha, rather than [Semantic Versioning](https://semver.org/spec/v2.0.0.html) alone.
 
 ### Fixed
 
@@ -248,26 +283,12 @@ test/fixtures/<name>` staged as `:120000 120000 <sha> <sha> R100` with **two** p
   file wins regardless of the argument allow-list and no argv-level pin can reach it. This change
   narrows nothing there, and the gate's docblock keeps stating it as the known limit it is.
 
-## Released, pending a per-version split
+## Released in 0.0.2 through 0.0.9
 
-> **Everything between this heading and `[0.0.1]` has already SHIPPED.** It accumulated under
-> `[Unreleased]` across the releases from `0.0.2` through `0.0.9`, because this file is maintained by
-> hand and the Changesets changelog generator is off (`"changelog": false` in
-> `.changeset/config.json`), so no release run ever moved an entry out of that section. Reading any
-> of it as work still awaiting a release was wrong, which is why the heading changed and the entries
-> did not.
->
-> **What is deliberately NOT done here, and is tracked as `TERMINOLOGY-CHANGELOG-GAP`:** splitting
-> this into one `## [x.y.z]` section per published version, and the founder-owned question of whether
-> to turn the generator on across the repos that share this layout. No version from `0.0.2` to
-> `0.0.9` has a section of its own below, and none has a compare link. The `[Unreleased]` link at the
-> foot of this file now spans `v0.0.9...HEAD`, which is what that section actually holds; it spanned
-> `v0.0.1...HEAD` while this block was mislabelled.
->
-> **`0.0.3` never reached npm, and LEAVING it that way is the deliberate part.** The gap itself was
-> a consequence, not a choice: a leftover changeset meant that release run only opened the next
-> version PR, and the content shipped in `0.0.4`. It is not a hole to be filled, because publishing a
-> `0.0.3` now would place it after `0.0.4` in registry order.
+These entries accumulated under `[Unreleased]` across those versions and were never split per
+version; none of them has a section of its own or a compare link. One entry below carries a
+`[Superseded]` annotation that was added during the `0.0.10` cycle, so that annotation shipped later
+than the entry it annotates.
 
 ### Changed
 
@@ -1322,5 +1343,4 @@ ladder (`0.0.x` until first alpha).
   `WARNING_CODES` entry, and the parse-oriented option/warning types). This package is an engine, not
   a parser; that placeholder surface never shipped.
 
-[Unreleased]: https://github.com/cosyte/terminology/compare/v0.0.9...HEAD
 [0.0.1]: https://github.com/cosyte/terminology/releases/tag/v0.0.1
