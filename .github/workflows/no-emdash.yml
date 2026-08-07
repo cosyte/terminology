@@ -49,14 +49,27 @@ name: Em-dash gate
 #   `if: github.actor != 'dependabot[bot]'` on a REQUIRED context leaves the check
 #   permanently PENDING on exactly those PRs, which is worse than red: nothing says why.
 #
-# ▶ NEITHER CONTEXT IS REQUIRED YET, AND THAT IS CORRECT ORDERING RATHER THAN AN OVERSIGHT.
-#   A context may not be required before its workflow has completed on `main`: every PR
-#   would sit pending and unmergeable with nothing saying why. Once this workflow has run
-#   on `main`, add `no-emdash` (the tracked-file job, NOT the messages one) to the
-#   `ci-required-checks` ruleset, pinned to the GitHub Actions app the way the four
-#   existing contexts are. Read the real context name off a live check run first, never off
-#   this file's `name:`: the workflow is titled "Em-dash gate" and the contexts are the bare
-#   job ids `no-emdash` and `no-emdash-messages`.
+# ▶ WHETHER EITHER CONTEXT IS REQUIRED TODAY IS NOT WRITTEN DOWN HERE, DELIBERATELY. THIS
+#   COMMENT USED TO SAY "NEITHER CONTEXT IS REQUIRED YET" AND THAT SENTENCE WAS FALSE
+#   WITHIN SIX MINUTES OF LANDING ON `main` (writing precedes landing and is not
+#   observable, so the interval from writing is longer than this and unmeasurable, which is
+#   itself the point). Measured, not recalled: it landed at
+#   2026-08-07T05:07:07Z, and ruleset version 45753942 added `no-emdash` at
+#   2026-08-07T05:12:55Z (`gh api repos/cosyte/terminology/rulesets/19860511/history`). Five
+#   minutes and forty-eight seconds is the useful number here, because it shows the problem
+#   is not that the state changed slowly enough to be worth writing down: a workflow file
+#   cannot observe the ruleset that consumes it AT ALL, so it must state the CONDITION and
+#   never the state. Read the live answer, never this file:
+#
+#     gh api repos/cosyte/terminology/rulesets
+#
+#   THE CONDITION, which does not go stale: `no-emdash` (the tracked-file job, NOT the
+#   messages one) SHOULD be a required context, pinned to the GitHub Actions app the way the
+#   other contexts are, and it becomes eligible only ONCE THIS WORKFLOW HAS COMPLETED ON
+#   `main`. Requiring it before that leaves every PR pending and unmergeable with nothing
+#   saying why. Read the real context name off a live check run first, never off this file's
+#   `name:`: the workflow is titled "Em-dash gate" and the contexts are the bare job ids
+#   `no-emdash` and `no-emdash-messages`.
 #
 #   A required job gates all of its STEPS, so splitting a step out of one silently
 #   un-requires it. Rename a job id and any ruleset entry naming it detaches without error.
