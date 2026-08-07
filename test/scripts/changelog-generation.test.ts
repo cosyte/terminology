@@ -553,6 +553,32 @@ describe("CHANGELOG.md carries no hand-maintained Unreleased section", () => {
     expect(changelog).not.toMatch(/"changelog": false/);
   });
 
+  it("keeps those two sentences out of PENDING changesets, where they enter the file", () => {
+    // THE HOLE THE TEST ABOVE LEFT, AND IT FIRED FOR REAL. The assertions above read
+    // CHANGELOG.md, which is generated: a changeset summary IS the entry, so the earliest
+    // point either sentence can enter the document is a pending changeset, and by the time
+    // the assertion above sees it the release has already been cut. That is exactly what
+    // happened on `0.0.11` -- the changeset describing this very fix quoted the old flag
+    // verbatim while explaining that it had been turned on, `changeset version` copied the
+    // quote into the generated section, and the Version PR red on the check its own slice
+    // had added. A true sentence about the past still trips a rule written about the
+    // present, so the fix is to say it without the literal rather than to widen the rule.
+    //
+    // Deliberately NOT a check on the archive text: that prose is historical and settled.
+    // This reads only what is queued to be appended next.
+    const dir = join(REPO_ROOT, ".changeset");
+    const pending = readdirSync(dir).filter((f) => f.endsWith(".md") && f !== "README.md");
+    for (const file of pending) {
+      const summary = readFileSync(join(dir, file), "utf8");
+      expect(summary, `${file} would put a banned sentence into CHANGELOG.md`).not.toMatch(
+        /changelog generator is off/i,
+      );
+      expect(summary, `${file} would put a banned sentence into CHANGELOG.md`).not.toMatch(
+        /"changelog": false/,
+      );
+    }
+  });
+
   it("keeps the release-attribution headings the preamble's claims are scoped to", () => {
     // WHY THIS EXISTS: a refuter caught the first draft of the preamble asserting that
     // EVERYTHING below the archive heading accumulated under `[Unreleased]` and went out
