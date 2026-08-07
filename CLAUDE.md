@@ -72,8 +72,8 @@ there: `agent-notes.md#shipped-phase-histories`
 ## Tech Stack (the shared `@cosyte/*` standard)
 
 This repo inherits the canonical toolchain by depending on the published `@cosyte/*` config packages,
-not by copying files. The source of truth is the meta-repo's `documentation/conventions.md`: this is
-a summary.
+not by copying files. Source of truth: the meta-repo's `documentation/conventions.md`; this is a
+summary.
 
 - **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
   `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`.
@@ -93,9 +93,10 @@ a summary.
 
 - **`main` is protected by a repository ruleset, `ci-required-checks`**: required contexts each
   pinned to the GitHub Actions app; no branch deletion, no force-push. **THIS FILE NAMES NO COUNT AND
-  NO LIST, DELIBERATELY. THE SET GROWS**: the count here named four, and `no-internal-refs`
-  (2026-07-28) then `no-emdash` (2026-08-07) made it wrong twice. **NOTHING IN THIS REPOSITORY CAN
-  OBSERVE ITS OWN RULESET**, so derive it, never recall it: `gh api repos/cosyte/terminology/rulesets`. **A
+  NO LIST, DELIBERATELY. THE SET GROWS**: the list that used to sit here was made wrong twice, by
+  `no-internal-refs` (2026-07-28) and again by `no-emdash` (2026-08-07). **NOTHING STATIC IN THIS
+  REPOSITORY CAN OBSERVE ITS OWN RULESET**, so derive it, never recall it:
+  `gh api repos/cosyte/terminology/rulesets`. **A
   context is requireable only once its workflow has completed on `main`**, never before: require it
   earlier and every PR sits pending and unmergeable with nothing saying why. **`scorecard` and the
   Advanced-Security `CodeQL` check are deliberately NOT required.** **Read
@@ -108,8 +109,7 @@ a summary.
   delete the ruleset to unstick it**; `bypass_actors` is empty on purpose. Commands and precedent:
   `agent-notes.md#the-ruleset-blocks-the-version-packages-pr`
 - **Fork PRs are UNPROVEN here and must be stated as unproven**: do not tell a contributor it is fine
-  until someone has watched a real fork PR go green. Why:
-  `agent-notes.md#fork-pull-requests-are-unproven`
+  until someone has watched one go green. Why: `agent-notes.md#fork-pull-requests-are-unproven`
 - **`.github/dependabot.yml`** watches `npm` + `github-actions`; it does **not** manage
   `pnpm.overrides`: remove a redundant override by hand. Why:
   `agent-notes.md#dependabot`
@@ -119,8 +119,8 @@ a summary.
 - No `any`, no unjustified `as` casts: use `unknown` and narrow. Immutable by default, mutation only
   via explicit methods. No `console.*` in library code: throw typed errors or return results. Short,
   testable functions over big parsing blobs.
-- JSDoc (with `@example`) on every public export: the lint rule is an **error** there, so this is
-  enforced rather than optional.
+- JSDoc (with `@example`) on every public export: the lint rule is an **error** there, so it is
+  enforced, not optional.
 - Postel's Law: liberal on load (lenient default + warnings), conservative on emit (always spec
   clean). **Fatal only for unrecoverable structural corruption** (Tier-3 codes); everything else is a
   warning with a stable code + positional context.

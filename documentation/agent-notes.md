@@ -1046,8 +1046,10 @@ un-required the tracked-file half as well, and names this split as its deferred 
 Dependabot case with an actor `if:` on a required context: that leaves the check permanently
 **pending**, which is worse than red because nothing says why. **Whether either context is required
 today is deliberately not written down**, here or in the workflow file: this paragraph used to say
-"neither context is required yet" and that sentence was false **within six minutes** of being
-written. Measured, not recalled: it landed at `2026-08-07T05:07:07Z` (`d97a3de`), and ruleset version
+"neither context is required yet" and that sentence was false **within six minutes** of landing on
+`main`. (Writing precedes landing and is not observable, so the interval from writing is longer than
+this and unmeasurable, which is itself the point.) Measured, not recalled: it landed at
+`2026-08-07T05:07:07Z` (`d97a3de`), and ruleset version
 `45753942` added `no-emdash` at `2026-08-07T05:12:55Z`
 (`gh api repos/cosyte/terminology/rulesets/19860511/history`). Five minutes and forty-eight seconds
 is the useful figure, because it shows the problem is not that the state changed faster than the

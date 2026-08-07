@@ -51,7 +51,9 @@ name: Em-dash gate
 #
 # ▶ WHETHER EITHER CONTEXT IS REQUIRED TODAY IS NOT WRITTEN DOWN HERE, DELIBERATELY. THIS
 #   COMMENT USED TO SAY "NEITHER CONTEXT IS REQUIRED YET" AND THAT SENTENCE WAS FALSE
-#   WITHIN SIX MINUTES OF BEING WRITTEN. Measured, not recalled: it landed at
+#   WITHIN SIX MINUTES OF LANDING ON `main` (writing precedes landing and is not
+#   observable, so the interval from writing is longer than this and unmeasurable, which is
+#   itself the point). Measured, not recalled: it landed at
 #   2026-08-07T05:07:07Z, and ruleset version 45753942 added `no-emdash` at
 #   2026-08-07T05:12:55Z (`gh api repos/cosyte/terminology/rulesets/19860511/history`). Five
 #   minutes and forty-eight seconds is the useful number here, because it shows the problem
