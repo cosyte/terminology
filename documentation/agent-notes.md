@@ -1444,9 +1444,9 @@ from its own contract precisely because 1 was taken here.
 
 ### What it costs, decided rather than stumbled into
 
-**`--allow-fixture` can no longer reach exit 0, in any mode.** A whole-file bypass withdraws a file
-(read on for the second rule that sentence needs, and what happened when it only had the first). A
-whole-file bypass withdraws a file
+**`--allow-fixture` can no longer reach exit 0, in any mode**, by two rules and not one: read on for
+the second rule that sentence needs, and for what happened when it had only the first. A whole-file
+bypass withdraws a file
 from the read set, and a scan that never read a file has no honest clean verdict to give about it.
 `#55`'s suite pinned the opposite ("the bypass still works as a SUBTRACTION when something else is
 genuinely scanned"); **that case is inverted here on purpose.** A subtraction from a scan is still a
@@ -1490,9 +1490,12 @@ each repo phrases and exits differently, and porting a residual is how the wrong
 ### The claim needed TWO rules, and with one it was false on the staged route
 
 **Found by this slice's refuter, pass 1, `INTRODUCED` major, and the remedy is in the same PR.** The
-first draft asserted in **nine** places (this file, `CLAUDE.md`, the scanner's docblock in three
-spots, `phi-scan-overrides.md`, the changeset, and the runtime hit footer) that a whole-file bypass
-could no longer reach exit 0 **in any mode**. It could:
+first draft asserted, across every surface that describes this flag, that a whole-file bypass could
+no longer reach exit 0 **in any mode**: this file, `CLAUDE.md`, the scanner's docblock in three
+spots, `phi-scan-overrides.md`, the changeset that ships to `CHANGELOG.md`, and the runtime hit
+footer. **The sites are named rather than counted, per this repository's own rule**: a draft of this
+paragraph quoted a total and enumerated one fewer, which is the same defect class one level down.
+It could:
 
 ```
 # phi-scan-overrides.md holds "### test/leak.ts"; test/leak.ts is staged and carries a dashed SSN

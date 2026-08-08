@@ -48,7 +48,9 @@
  *   (same approach every sibling uses). IT IS ALSO THE ONLY ONE LEFT THAT CAN
  *   REACH A CLEAN RUN: a whole-file `--allow-fixture <path>` bypass still needs
  *   its logged entry in `phi-scan-overrides.md` and now REFUSES (exit 2)
- *   regardless, because the file it withdraws goes unread.
+ *   regardless, by one of two rules. If the path is on the run's target list it
+ *   is withdrawn and goes unread; if it is on no target list it was never going
+ *   to be examined at all. Neither rule covers the other's case.
  * ===========================================================================
  *
  * Modes:
@@ -1496,47 +1498,10 @@ function main(): number {
   const enumerated = enumeratedPaths.length;
 
   // A BYPASS THAT MATCHES NO TARGET IS "ACCEPTED, LOGGED, IGNORED", AND THAT IS
-  // THE ONE THING THIS FLAG MUST NEVER MEAN.
-  //
-  // MEASURED ON THE FIRST DRAFT OF THIS SLICE, WHICH CLAIMED IN NINE PLACES THAT
-  // A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. It could, on the staged
-  // route: `parseArgs`'s unconditional seeding lands in `args.paths`, and
-  // `buildTargetsForStaged` never reads that field, so for any path the staged
-  // PREDICATE does not enumerate the flag was still validated, still checked
-  // against its committed audit entry, and then silently dropped. Both of these
-  // printed `[phi-scan] OK: no hits` at exit 0, byte-identical to a genuine clean
-  // run: a bypass of a staged file under `test/` (which the predicate does not
-  // admit outside `test/fixtures/`), and a bypass of a path that does not exist
-  // at all. The same argv in `paths` mode refused. A flag whose contract changes
-  // with the mode is exactly the shape the seeding fix above was written to
-  // remove, and it survived one scope over.
-  //
-  // THE REMEDY IS TO MAKE THE CLAIM TRUE, NOT TO WEAKEN IT TO MATCH, AND IT DOES
-  // NOT WIDEN ANY PREDICATE. The staged route's target list is what its own
-  // predicate enumerates, which is deliberately NOT `SCAN_ROOTS` and is not being
-  // resynced to it here. What changes is only what happens when a bypass names
-  // something outside that list: the run refuses and says so, instead of passing
-  // and saying nothing. Nothing about which files the pre-commit hook SCANS moves,
-  // so this is not the hook decision `#54`, `#55` and this slice each declined:
-  // an ordinary commit carries no `--allow-fixture` and is untouched.
-  //
-  // IT IS DELIBERATELY NOT SCOPED TO ONE MODE. In `paths` mode a nonexistent
-  // bypass already refuses earlier, in `buildTargetsForPaths`, with a better
-  // message; this catches the remainder wherever the run's target list comes
-  // from, so the flag has ONE meaning in every argv rather than one per route.
+  // THE ONE THING THIS FLAG MUST NEVER MEAN. The set is computed here, beside the
+  // enumeration it is about; the REFUSAL is below the scan loop, and the reason
+  // it sits there rather than here is written at the refusal.
   const unmatchedBypass = [...allowed].filter((p) => !enumeratedPaths.includes(p));
-  if (unmatchedBypass.length > 0) {
-    process.stderr.write(
-      `[phi-scan] refusing: --allow-fixture named path(s) this run does not enumerate:\n` +
-        `${unmatchedBypass.map((p) => `  - ${p}`).join("\n")}\n` +
-        `A bypass is a SUBTRACTION from this run's own target list, so a bypass that matches ` +
-        `no target would be accepted, logged and then ignored, and the run would report clean ` +
-        `without ever having been asked to look. Name a path this run actually enumerates, or ` +
-        `drop the flag. In --staged mode the target list is what the pre-commit predicate ` +
-        `enumerates, which is narrower than the sweep's scan roots on purpose.\n`,
-    );
-    return 2;
-  }
 
   targets = targets.filter((t) => !allowed.has(t.path));
 
@@ -1628,6 +1593,61 @@ function main(): number {
       );
       return 2;
     }
+  }
+
+  // Refuse a bypass that named a path this run does not enumerate.
+  //
+  // MEASURED ON THE FIRST DRAFT OF THIS SLICE, WHICH CLAIMED IN EIGHT PLACES THAT
+  // A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. It could, on the staged
+  // route: `parseArgs`'s unconditional seeding lands in `args.paths`, and
+  // `buildTargetsForStaged` never reads that field, so for any path the staged
+  // PREDICATE does not enumerate the flag was still validated, still checked
+  // against its committed audit entry, and then silently dropped. Three shapes
+  // printed `[phi-scan] OK: no hits` at exit 0, byte-identical to a genuine clean
+  // run: a bypass of a staged file under `test/` (which the predicate does not
+  // admit outside `test/fixtures/`), a bypass of a file that is not staged at
+  // all, and a bypass of a path that does not exist. The same argv in `paths`
+  // mode refused. A flag whose contract changes with the mode is exactly the
+  // shape the seeding fix above was written to remove, and it survived one route
+  // over.
+  //
+  // THE REMEDY IS TO MAKE THE CLAIM TRUE, NOT TO WEAKEN IT TO MATCH, AND IT DOES
+  // NOT WIDEN ANY PREDICATE. The staged route's target list is what its own
+  // predicate enumerates, which is deliberately NOT `SCAN_ROOTS` and is not being
+  // resynced to it here. What changes is only what happens when a bypass names
+  // something outside that list: the run refuses and says so, instead of passing
+  // and saying nothing. Nothing about which files the pre-commit hook SCANS moves,
+  // so this is not the hook decision `#54`, `#55` and this slice each declined:
+  // an ordinary commit carries no `--allow-fixture` and is untouched.
+  //
+  // IT IS DELIBERATELY NOT SCOPED TO ONE MODE. In `paths` mode a nonexistent
+  // bypass already refuses earlier, in `buildTargetsForPaths`, with a better
+  // message; this catches the remainder wherever the run's target list comes
+  // from, so the flag has ONE meaning in every argv rather than one per route.
+  //
+  // ▶ IT SITS BELOW THE SCAN LOOP SO IT CANNOT SWALLOW A REAL HIT, AND A DRAFT
+  // THAT PUT IT ABOVE DID EXACTLY THAT. With the check before the loop, a staged
+  // dashed SSN under a target this run WOULD have read went unreported the moment
+  // an unrelated bypass named something out of scope: the run refused at 2 and
+  // printed nothing about the file it had every intention of reading. Both codes
+  // are non-zero so no commit escaped, but the finding was lost from the output,
+  // and this file already says of its other refusals that they must not swallow a
+  // real hit. It is the same rule here: scan first, print whatever the readable
+  // targets turned up, then refuse. The exit code stays 2, because a run that
+  // could not account for a named path is not a verdict whatever it found on the
+  // way.
+  if (unmatchedBypass.length > 0) {
+    if (hits.length > 0) report(hits);
+    process.stderr.write(
+      `[phi-scan] refusing: --allow-fixture named path(s) this run does not enumerate:\n` +
+        `${unmatchedBypass.map((p) => `  - ${p}`).join("\n")}\n` +
+        `A bypass is a SUBTRACTION from this run's own target list, so a bypass that matches ` +
+        `no target would be accepted, logged and then ignored, and the run would report clean ` +
+        `without ever having been asked to look. Name a path this run actually enumerates, or ` +
+        `drop the flag. In --staged mode the target list is what the pre-commit predicate ` +
+        `enumerates, which is narrower than the sweep's scan roots on purpose.\n`,
+    );
+    return 2;
   }
 
   // Refuse a sweep that observed NOTHING AT ALL, in any mode.

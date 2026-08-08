@@ -2183,3 +2183,49 @@ describe("phi-scan: a bypass that matches no target refuses instead of being ign
     expect(r.stdout).toMatch(/OK: no hits/);
   });
 });
+
+describe("phi-scan: the unmatched-bypass refusal must not swallow a real hit", () => {
+  // A DRAFT PUT THIS REFUSAL ABOVE THE SCAN LOOP AND IT DID EXACTLY THAT: a
+  // staged dashed SSN under a target the run WOULD have read went unreported the
+  // moment an unrelated bypass named something out of scope. Both codes are
+  // non-zero so no commit escaped, but the finding was lost from the output, and
+  // this scanner's other refusals all print what the readable targets turned up
+  // before refusing. Same rule here.
+
+  it("prints the hit from a READ target first, then refuses at exit 2", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    writeFileSync(join(root, "test", "unstaged.ts"), "export const u = 1;\n");
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+    logOverride(root, "test/unstaged.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/unstaged.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("123-45-6789");
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stderr).toContain("does not enumerate");
+  });
+
+  it("ANTI-VACUITY: the same index without the flag reports that hit at exit 1", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("with no hit to print, the refusal still stands alone at exit 2", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "unstaged.ts"), "export const u = 1;\n");
+    git(root, ["add", "src/ordinary.ts"]);
+    logOverride(root, "test/unstaged.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/unstaged.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("does not enumerate");
+    expect(r.stderr).not.toContain("HIT:");
+    expect(r.stdout).not.toMatch(/OK: no hits/);
+  });
+});
