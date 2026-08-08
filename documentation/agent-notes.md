@@ -1375,3 +1375,150 @@ is unreachable from this repository's own configuration", which stopped being tr
 was declared as a second root. The patched-copy case that pins it is **kept** rather than rewritten
 against the live roots, because what it pins is the behaviour **at the moment a root is added**, and
 that has to hold for the next root as well as the last one.
+
+## The observation rule at the scope of the target
+
+`PHI-SCAN-PATHS-MODE-FLOOR-OF-ONE`. The third and last door of the same class, `PRE-EXISTING` on
+`4e1582b` and left open by `#55` in writing. Same defect as both of its predecessors: **the gate
+reported clean over something it never looked at.** Every reading below was taken back to back in a
+throwaway repository laid out like this one, with the bypassed path logged in
+`phi-scan-overrides.md` exactly as the rejection gate instructs.
+
+### The two tiers that existed were each a floor of one at their own scope
+
+`#47` wrote the observation rule **per scan root**: a root satisfies it by yielding **one** file.
+`#55` wrote it for the **whole invocation**: a run satisfies it by reading **one** target. Neither
+says anything about the other targets on the list. So:
+
+| invocation | before | after |
+|---|---|---|
+| `<ordinary file> --allow-fixture <violator>` | **0**, `OK: no hits` | **2**, names the unread path |
+| `--staged --allow-fixture <violator>`, both staged | **0**, `OK: no hits` | **2**, names the unread path |
+| `--allow-fixture <violator>`, no positional | 2 (`#55`) | 2, **unchanged message** |
+| `<violator>` alone | 1 | 1 |
+| `<ordinary file>` alone | 0 | 0 |
+| this repository's own sweep | 0 | 0 |
+
+**The `paths` row is the item's own example and the `staged` row was re-derived here.** The backlog
+line named `paths` mode only. The identical floor sat in `--staged`, which is the route a developer's
+commit is actually blocked on, and no sibling's residual list would have found it: **a census by text
+search is not a census.**
+
+### The `paths` case was not a subtraction at all, which is the sharper half
+
+`parseArgs` read `paths.length > 0 ? paths : [...allowFixtures]`, so the flag seeded the target list
+**only when no positional path was given** and was a **silent no-op** the moment one was. The
+violator was not withdrawn from the run so much as never admitted to it: the scanner validated the
+bypass, checked its committed audit entry, opened nothing, and printed `[phi-scan] OK: no hits` at
+exit 0. **A flag must not mean two different things depending on whether another argument is
+present, and the one it must never mean is "accepted, logged, ignored."** The seeding is
+unconditional now, deduped by normalized path, and a bypass naming a path that does not exist is an
+error rather than a silent pass.
+
+**AND THE FALSE GREEN WAS REACHED BY FOLLOWING THE PRINTED REMEDY, FOR THE SECOND TIME IN THIS
+CLASS.** The whole-invocation tier's own message says "name the paths to scan as well". Doing exactly
+that is what turned its exit 2 into this exit 0.
+
+### Fixed with `#47`'s rule at the scope of the target, not with a new mechanism
+
+`all` mode declares scan roots, so its unit is the root. A `paths` or `staged` run declares no root
+at all, so the only scope it ever states is its own target list, and the unit there has to be the
+**target**. The tier refuses (exit 2) when a target the run **enumerated** was never **read**, and
+names those paths.
+
+**IT COMPARES SETS AND NEVER COUNTS.** `enumeratedPaths` is the enumeration's own answer about what
+there was to read, `observedPaths` holds only paths `scanTarget` returned on, and the refusal prints
+the **difference**. `ncpdp` refuted the denominator remedy on measurement: a count counts the targets
+that **did** get read, and "M of N" would still not say **which** went unread.
+
+**ORDER IS LOAD-BEARING.** The whole-invocation tier's refusal set (a run with targets that read
+**none** of them) is a strict **subset** of this one's (a run that read fewer than **all** of them),
+so it runs **first** to keep its sharper message reachable. Both are pinned, including the ordering.
+
+**HITS UNDER THE TARGETS THAT WERE READ ARE PRINTED FIRST AND THE EXIT CODE IS STILL 2**, exactly as
+the per-root and reconciliation refusals do it. An incomplete scan is not a verdict whatever it found
+on the way, and the refusal must not be downgraded to 1. **`terminology`'s exit contract is its own:
+0 clean, 1 hits and nothing else, 2 for every state where the scan cannot account for something.
+Never port a sibling's codes**: a regular-file root exits 2 in `hl7` and 1 here, and `cli` picked 2
+from its own contract precisely because 1 was taken here.
+
+### What it costs, decided rather than stumbled into
+
+**`--allow-fixture` can no longer reach exit 0, in any mode**, by two rules and not one: read on for
+the second rule that sentence needs, and for what happened when it had only the first. A whole-file
+bypass withdraws a file
+from the read set, and a scan that never read a file has no honest clean verdict to give about it.
+`#55`'s suite pinned the opposite ("the bypass still works as a SUBTRACTION when something else is
+genuinely scanned"); **that case is inverted here on purpose.** A subtraction from a scan is still a
+file the scan proved nothing about, and the clean line did not say which file it skipped.
+
+The flag, its override log and its rejection gate all **stay**: they still name the path and still
+demand a committed audit entry, and the run now ends in a refusal that names it. **The mechanism that
+survives is the token-level allow-list** (`scripts/phi-allow-list.txt`), which declares a **value**
+synthetic while the file is still read and reconciled, and which `phi-scan-overrides.md` already told
+developers to prefer over a whole-file bypass.
+
+**THE HIT FOOTER WAS FIXED IN THE SAME COMMIT AND THAT IS NOT COSMETIC.** It offered
+`--allow-fixture <path>` beside the allow-list. `#55` closed a false green reachable by following
+this scanner's printed remedy; leaving a remedy that now leads to exit 2 is the same defect wearing
+the other sign. That half is gone rather than reworded, and the footer is pinned by a test.
+
+### Why `--staged` was declined a third time, with the cost measured
+
+Widening the predicate to admit `test/**` and `scripts/**` was **tried**, on a patched copy of the
+scanner against an index holding only this repository's own `test/scripts/phi-scan.test.ts`:
+`--staged` went from **exit 0 to exit 1 with 39 hits**.
+
+**The cause is not the predicate.** `DELIBERATE_VIOLATOR_SOURCES` is applied **only in `all` mode**,
+deliberately, for a reason that was itself measured (unscoping it **deleted** a detection `paths`
+mode had). So the one file in this tree whose job is to carry violator literals has **no exemption on
+the pre-commit route**, and widening **red-locks every commit that touches the scanner's own suite**
+until a third scoping decision is taken on that exemption. That decision is about the hook and about
+the exemption, not about the walk. It stays its own slice: taking it here would put two unrelated
+claims in front of one reviewer. **The residual is unchanged, and CI's all-mode sweep still reads
+every one of these paths**, so the gap is when a leak is caught, not whether.
+
+### What this slice deliberately did NOT do
+
+**No denominator.** **No structured detector**, so a green sweep still means "no SSN/email shapes
+found", never "no PHI". **The `--staged` predicate was not widened.** **The bytes-versus-names escape
+is untouched** and no repo has closed it: the reconciliation compares path **sets**, not the bytes
+git carries at those paths, so a root swapped for a directory mirroring the tracked **names** still
+exits 0 over decoy contents, and it is vacuous on an empty index. **Nothing was ported to a sibling**:
+each repo phrases and exits differently, and porting a residual is how the wrong answer spreads.
+
+### The claim needed TWO rules, and with one it was false on the staged route
+
+**Found by this slice's refuter, pass 1, `INTRODUCED` major, and the remedy is in the same PR.** The
+first draft asserted, across every surface that describes this flag, that a whole-file bypass could
+no longer reach exit 0 **in any mode**. It could:
+
+```
+# phi-scan-overrides.md holds "### test/leak.ts"; test/leak.ts is staged and carries a dashed SSN
+phi-scan --staged --allow-fixture test/leak.ts     ->  OK: no hits, exit 0
+phi-scan --staged --allow-fixture does/not/exist.ts ->  OK: no hits, exit 0
+phi-scan test/leak.ts                               ->  exit 1, both shapes reported
+```
+
+**The cause is that the seeding fix only reaches the routes that read `args.paths`.**
+`buildTargetsForStaged` never reads that field: its target list is what its **own predicate**
+enumerates. So for any path that predicate does not admit (all of `test/**` outside
+`test/fixtures/`, all of `scripts/**`, anything unstaged, anything nonexistent) the bypass landed on
+nothing and was **accepted, logged and then ignored**, which is exactly the meaning the seeding fix
+was written to abolish, surviving one route over.
+
+**THE REMEDY MAKES THE CLAIM TRUE RATHER THAN WEAKENING IT TO MATCH, AND IT WIDENS NO PREDICATE.** A
+bypass naming a path the run does not enumerate now refuses (exit 2) and names it. What the
+pre-commit hook **scans** is untouched, and an ordinary commit carries no such flag, so this is not
+the hook decision declined above. **The sentence now rests on TWO rules and neither alone is enough:
+delete the unmatched-bypass refusal and the staged route silently starts passing again.** The
+boundary is pinned in the suite from both sides, including an anti-vacuity case proving the same
+index without the flag still exits 0 and a sweep case proving the payload is genuinely detectable.
+
+**A SECOND, SMALLER CORRECTION FROM THE SAME PASS.** The first commit's message said "nothing that
+exited 1 or 0 before changes". That is false in one row: `phi-scan <violator> --allow-fixture
+<second>` went from **1 to 2**, because a hit found under a read target is now printed first and the
+run still refuses. The direction is fail-safe and the behaviour is pinned, but the claim was too
+broad and is corrected here rather than left in the history. **The accurate statement is that no
+invocation became MORE permissive**: every changed row moved toward a refusal, and none moved away
+from one.

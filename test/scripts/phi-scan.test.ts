@@ -1855,14 +1855,23 @@ describe("phi-scan: a run that observed NOTHING refuses, whatever collapsed it t
     expectNoPhi(r.stderr);
   });
 
-  it("the bypass still works as a SUBTRACTION when something else is genuinely scanned", () => {
+  it("a bypass beside a genuinely scanned file refuses too, where it used to exit 0", () => {
+    // THIS CASE USED TO ASSERT EXIT 0 UNDER THE TITLE "the bypass still works as
+    // a SUBTRACTION when something else is genuinely scanned", and inverting it
+    // is the point of the per-target tier. `src/ordinary.ts` was read,
+    // `src/violator.ts` was not, and one read target vouching for an unread one
+    // is the floor of one this closes. The stronger statement is the one below
+    // it: nothing about the violator was ever proved, so no clean line may
+    // mention the run at all.
     const root = makeRepo();
     writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
     logOverride(root, "src/violator.ts");
 
     const r = runIn(root, ["--allow-fixture", "src/violator.ts", "src/ordinary.ts"]);
-    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK: no hits/);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("enumerated target(s) it never read");
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stdout).not.toMatch(/OK: no hits/);
   });
 
   it("ANTI-VACUITY: without the bypass that same pair is a hit, so it really did subtract", () => {
@@ -1911,5 +1920,314 @@ describe("phi-scan: a run that observed NOTHING refuses, whatever collapsed it t
     expect(r.code, `stderr: ${r.stderr}`).toBe(2);
     expect(r.stderr).toContain("observed no files under");
     expect(r.stderr).not.toContain("read none of them");
+  });
+});
+
+describe("phi-scan: a run must read EVERY target it enumerated, not just one of them", () => {
+  // THE FLOOR OF ONE, ONE SCOPE DOWN. `#47` wrote the observation rule per SCAN
+  // ROOT and `#55` wrote it for the WHOLE INVOCATION, and both are floors of one
+  // at their own scope: one file satisfies a root, one read target satisfied a
+  // run. Measured on `4e1582b`, with the bypassed path logged exactly as the
+  // rejection gate instructs, both of the cases below printed
+  // `[phi-scan] OK: no hits` at exit 0 over a violator the scanner never opened.
+  //
+  // THE `paths` CASE WAS NOT EVEN A SUBTRACTION. `parseArgs` seeded the target
+  // list from `--allow-fixture` ONLY when no positional path was given, so with
+  // one present the flag was a silent no-op: validated, audit-checked, ignored.
+
+  it("PATHS: an ordinary file beside a bypassed violator refuses (exit 2)", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    logOverride(root, "src/violator.ts");
+
+    const r = runIn(root, ["src/ordinary.ts", "--allow-fixture", "src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("enumerated target(s) it never read");
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stdout).not.toMatch(/OK: no hits/);
+  });
+
+  it("ANTI-VACUITY: that same pair without the flag is a HIT, so the bypass really did hide it", () => {
+    // Pins the other polarity. Without this, the case above could pass over a
+    // violator the floor never detected in the first place.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+
+    const r = runIn(root, ["src/ordinary.ts", "src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("STAGED: the same floor of one was in the pre-commit route, and refuses there too", () => {
+    // The backlog item named `paths` mode. Re-derived here from this repository's
+    // own files, the identical floor sat in `--staged`, which is the route a
+    // developer's commit is actually blocked on.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+    logOverride(root, "src/violator.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("enumerated target(s) it never read");
+    expect(r.stderr).toContain("src/violator.ts");
+  });
+
+  it("ANTI-VACUITY: that same index without the flag is a HIT on the staged route", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("ANTI-FABRICATION: the refusal is not a hit, and echoes nothing from the unread file", () => {
+    // A refusal must never become a detector: the scanner did not read those
+    // bytes, so it must not report anything about them. Exit 2, not 1.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    logOverride(root, "src/violator.ts");
+
+    const r = runIn(root, ["src/ordinary.ts", "--allow-fixture", "src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expectNoPhi(r.stderr);
+  });
+
+  it("a real hit under a READ target is printed first, and the exit code is still 2", () => {
+    // An incomplete scan is not a verdict whatever it found on the way, exactly
+    // as the per-root and reconciliation refusals have it. The finding must not
+    // be swallowed by the refusal, and the refusal must not be downgraded to 1.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    writeFileSync(join(root, "src", "second.ts"), "export const s = 2;\n");
+    logOverride(root, "src/second.ts");
+
+    const r = runIn(root, ["src/violator.ts", "--allow-fixture", "src/second.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("123-45-6789");
+    expect(r.stderr).toContain("enumerated target(s) it never read");
+    expect(r.stderr).toContain("src/second.ts");
+  });
+
+  it("ORDERING: reading NONE of the targets still gets the whole-invocation tier's message", () => {
+    // The whole-invocation tier's refusal set is a strict SUBSET of this one's,
+    // so it only stays reachable by running first. Pinned so a later reorder
+    // cannot silently swallow it.
+    const root = makeRepo();
+    logOverride(root, "src/ordinary.ts");
+
+    const r = runIn(root, ["--allow-fixture", "src/ordinary.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("read none of them");
+    expect(r.stderr).not.toContain("enumerated target(s) it never read");
+  });
+
+  it("naming a path positionally AND bypassing it enumerates it ONCE", () => {
+    // The seeding is a union now, so a path given both ways must not be counted
+    // twice and inflate the number the whole-invocation tier prints.
+    const root = makeRepo();
+    logOverride(root, "src/ordinary.ts");
+
+    const r = runIn(root, ["src/ordinary.ts", "--allow-fixture", "./src/ordinary.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("had 1 target(s) and read none of them");
+  });
+
+  it("a bypass naming a path that does not exist is an error, not a silent pass", () => {
+    // It reaches `buildTargetsForPaths` now, where it used to be dropped
+    // unexamined whenever a positional path was also given.
+    const root = makeRepo();
+    logOverride(root, "src/nope.ts");
+
+    const r = runIn(root, ["src/ordinary.ts", "--allow-fixture", "src/nope.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("File not found");
+  });
+
+  it("NOTHING WAS LOST: an ordinary paths run with no flag is still clean at exit 0", () => {
+    const root = makeRepo();
+
+    const r = runIn(root, ["src/ordinary.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK: no hits/);
+  });
+
+  it("NOTHING WAS LOST: this repository's own sweep is still green", () => {
+    const sweep = runScanner([]);
+    expect(sweep.code, `stderr: ${sweep.stderr}`).toBe(0);
+    expect(sweep.stdout).toMatch(/OK: no hits/);
+  });
+
+  it("the hit report no longer offers a whole-file bypass as a remedy", () => {
+    // `#55` closed a false green reachable by FOLLOWING this scanner's printed
+    // remedy. A remedy that now leads to exit 2 is the same defect with the sign
+    // flipped, so the hit footer points at the token-level allow-list only.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+
+    const r = runIn(root, ["src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("scripts/phi-allow-list.txt");
+    expect(r.stderr).toContain("cannot reach a clean verdict");
+    expect(r.stderr).not.toContain("AND log it in phi-scan-overrides.md");
+  });
+});
+
+describe("phi-scan: a bypass that matches no target refuses instead of being ignored", () => {
+  // THE FIRST DRAFT OF THE PER-TARGET TIER CLAIMED, ON EVERY SURFACE THAT
+  // DESCRIBES THIS FLAG (the places are named in `documentation/agent-notes.md`,
+  // and no tally is written: two drafts quoted one and both were wrong), THAT A
+  // BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. IT COULD. `parseArgs`
+  // seeds `args.paths`, and `buildTargetsForStaged` never reads that field, so
+  // on the staged route a bypass naming anything the pre-commit PREDICATE does
+  // not enumerate was still validated, still checked against its committed
+  // audit entry, and then silently dropped: `[phi-scan] OK: no hits` at exit 0,
+  // byte-identical to a genuine clean run. The remedy makes the claim true
+  // rather than weakening it, and it widens no predicate: what a commit is
+  // SCANNED for is unchanged, and an ordinary commit carries no such flag.
+
+  it("STAGED: a bypass of a staged path the predicate does not enumerate refuses (exit 2)", () => {
+    // `test/leak.ts` is staged and is under a scan root, but `--staged` admits
+    // only `test/fixtures/**` of `test/`, so the bypass lands on nothing.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "test/leak.ts"]);
+    logOverride(root, "test/leak.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/leak.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("does not enumerate");
+    expect(r.stderr).toContain("test/leak.ts");
+    expect(r.stdout).not.toMatch(/OK: no hits/);
+  });
+
+  it("ANTI-VACUITY: that same index WITHOUT the flag still exits 0, so the flag caused the refusal", () => {
+    // This is also the honest record of the residual this slice declined: the
+    // pre-commit predicate does not admit `test/**` outside `test/fixtures/`,
+    // so the staged route is green over that file either way. The all-mode
+    // sweep is the backstop and the case below pins that it really does catch it.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "test/leak.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK: no hits/);
+  });
+
+  it("ANTI-VACUITY: the sweep DOES catch that same file, so the payload is genuinely detectable", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/leak.ts");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("STAGED: a bypass of a path that does not exist refuses too", () => {
+    // The sharpest form: nothing to withdraw, nothing to read, and the run used
+    // to print its clean line anyway.
+    const root = makeRepo();
+    git(root, ["add", "src/ordinary.ts"]);
+    logOverride(root, "does/not/exist.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "does/not/exist.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("does not enumerate");
+  });
+
+  it("ANTI-FABRICATION: the refusal echoes nothing from the file it did not read", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "test/leak.ts"]);
+    logOverride(root, "test/leak.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/leak.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expectNoPhi(r.stderr);
+  });
+
+  it("a bypass that DOES match a staged target still reaches the per-target tier", () => {
+    // Ordering pin: the unmatched rule must not swallow the case the per-target
+    // tier owns, and its message is the more specific one there.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+    logOverride(root, "src/violator.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("enumerated target(s) it never read");
+    expect(r.stderr).not.toContain("does not enumerate");
+  });
+
+  it("PATHS: a nonexistent bypass still refuses on its own earlier channel", () => {
+    // `buildTargetsForPaths` answers first there and its message is better.
+    const root = makeRepo();
+    logOverride(root, "src/nope.ts");
+
+    const r = runIn(root, ["src/ordinary.ts", "--allow-fixture", "src/nope.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("File not found");
+    expect(r.stderr).not.toContain("does not enumerate");
+  });
+
+  it("NOTHING WAS LOST: an ordinary --staged commit with no flag is untouched", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "clean.ts"), "export const c = 1;\n");
+    git(root, ["add", "src/clean.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK: no hits/);
+  });
+});
+
+describe("phi-scan: the unmatched-bypass refusal must not swallow a real hit", () => {
+  // A DRAFT PUT THIS REFUSAL ABOVE THE SCAN LOOP AND IT DID EXACTLY THAT: a
+  // staged dashed SSN under a target the run WOULD have read went unreported the
+  // moment an unrelated bypass named something out of scope. Both codes are
+  // non-zero so no commit escaped, but the finding was lost from the output, and
+  // this scanner's other refusals all print what the readable targets turned up
+  // before refusing. Same rule here.
+
+  it("prints the hit from a READ target first, then refuses at exit 2", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    writeFileSync(join(root, "test", "unstaged.ts"), "export const u = 1;\n");
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+    logOverride(root, "test/unstaged.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/unstaged.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("123-45-6789");
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stderr).toContain("does not enumerate");
+  });
+
+  it("ANTI-VACUITY: the same index without the flag reports that hit at exit 1", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("with no hit to print, the refusal still stands alone at exit 2", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "unstaged.ts"), "export const u = 1;\n");
+    git(root, ["add", "src/ordinary.ts"]);
+    logOverride(root, "test/unstaged.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/unstaged.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("does not enumerate");
+    expect(r.stderr).not.toContain("HIT:");
+    expect(r.stdout).not.toMatch(/OK: no hits/);
   });
 });
