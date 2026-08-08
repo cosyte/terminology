@@ -193,9 +193,9 @@ summary.
   **`git ls-files`**: every tracked file under a root must have been read. **Whole-invocation (EVERY
   mode): a run that had targets and read NONE of them refuses**, one legitimate zero excepted, a
   `--staged` commit with nothing in scope. **Per-target (EVERY mode): a target ENUMERATED but never
-  READ refuses**, naming it; KEEP IT AFTER whole-invocation. **`--allow-fixture` never exits 0;
-  never print it as a remedy.** **No denominator ever; compare SETS**: a count agrees with the walk
-  by construction (`ncpdp` refuted it). **Existence is not observation.** **Never "resync"
+  READ refuses**, naming it; KEEP IT AFTER whole-invocation. **`--allow-fixture` never exits 0,
+  withdrawn OR unmatched: BOTH, or staged passes.** **No denominator; compare SETS**: a count
+  agrees with the walk (`ncpdp` refuted it). **Existence is not observation.** **Never "resync"
   `--staged`'s predicate to `SCAN_ROOTS`.** **Exit 1 is for HITS**: an unlistable directory and a
   missing allow-list exit **2**.
 - **▶ ROOTS ARE `src`, `test` AND `scripts`, SO THE SCANNER IS UNDER ITS OWN SCAN; WIDENING IS

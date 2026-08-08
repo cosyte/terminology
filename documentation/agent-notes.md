@@ -1445,6 +1445,8 @@ from its own contract precisely because 1 was taken here.
 ### What it costs, decided rather than stumbled into
 
 **`--allow-fixture` can no longer reach exit 0, in any mode.** A whole-file bypass withdraws a file
+(read on for the second rule that sentence needs, and what happened when it only had the first). A
+whole-file bypass withdraws a file
 from the read set, and a scan that never read a file has no honest clean verdict to give about it.
 `#55`'s suite pinned the opposite ("the bypass still works as a SUBTRACTION when something else is
 genuinely scanned"); **that case is inverted here on purpose.** A subtraction from a scan is still a
@@ -1484,3 +1486,40 @@ is untouched** and no repo has closed it: the reconciliation compares path **set
 git carries at those paths, so a root swapped for a directory mirroring the tracked **names** still
 exits 0 over decoy contents, and it is vacuous on an empty index. **Nothing was ported to a sibling**:
 each repo phrases and exits differently, and porting a residual is how the wrong answer spreads.
+
+### The claim needed TWO rules, and with one it was false on the staged route
+
+**Found by this slice's refuter, pass 1, `INTRODUCED` major, and the remedy is in the same PR.** The
+first draft asserted in **nine** places (this file, `CLAUDE.md`, the scanner's docblock in three
+spots, `phi-scan-overrides.md`, the changeset, and the runtime hit footer) that a whole-file bypass
+could no longer reach exit 0 **in any mode**. It could:
+
+```
+# phi-scan-overrides.md holds "### test/leak.ts"; test/leak.ts is staged and carries a dashed SSN
+phi-scan --staged --allow-fixture test/leak.ts     ->  OK: no hits, exit 0
+phi-scan --staged --allow-fixture does/not/exist.ts ->  OK: no hits, exit 0
+phi-scan test/leak.ts                               ->  exit 1, both shapes reported
+```
+
+**The cause is that the seeding fix only reaches the routes that read `args.paths`.**
+`buildTargetsForStaged` never reads that field: its target list is what its **own predicate**
+enumerates. So for any path that predicate does not admit (all of `test/**` outside
+`test/fixtures/`, all of `scripts/**`, anything unstaged, anything nonexistent) the bypass landed on
+nothing and was **accepted, logged and then ignored**, which is exactly the meaning the seeding fix
+was written to abolish, surviving one route over.
+
+**THE REMEDY MAKES THE CLAIM TRUE RATHER THAN WEAKENING IT TO MATCH, AND IT WIDENS NO PREDICATE.** A
+bypass naming a path the run does not enumerate now refuses (exit 2) and names it. What the
+pre-commit hook **scans** is untouched, and an ordinary commit carries no such flag, so this is not
+the hook decision declined above. **The sentence now rests on TWO rules and neither alone is enough:
+delete the unmatched-bypass refusal and the staged route silently starts passing again.** The
+boundary is pinned in the suite from both sides, including an anti-vacuity case proving the same
+index without the flag still exits 0 and a sweep case proving the payload is genuinely detectable.
+
+**A SECOND, SMALLER CORRECTION FROM THE SAME PASS.** The first commit's message said "nothing that
+exited 1 or 0 before changes". That is false in one row: `phi-scan <violator> --allow-fixture
+<second>` went from **1 to 2**, because a hit found under a read target is now printed first and the
+run still refuses. The direction is fail-safe and the behaviour is pinned, but the claim was too
+broad and is corrected here rather than left in the history. **The accurate statement is that no
+invocation became MORE permissive**: every changed row moved toward a refusal, and none moved away
+from one.

@@ -55,10 +55,13 @@
  *   --staged                 - scan only files staged in `git diff --cached`
  *   --allow-fixture <path>   - withdraw one path from the read set; rejected
  *                              unless logged in phi-scan-overrides.md, and
- *                              REFUSED (exit 2) whichever way it is used, because
- *                              a file this scan did not read is a file it cannot
- *                              report clean about. Prefer the token-level
- *                              allow-list; see the per-target tier in `main()`
+ *                              REFUSED (exit 2) whichever way it is used, by one
+ *                              of TWO rules and never only the first: withdrawn
+ *                              from a target list it was on (the per-target
+ *                              tier), or naming nothing that list holds (the
+ *                              unmatched-bypass refusal, which is what makes the
+ *                              staged route obey this too). Prefer the
+ *                              token-level allow-list; both live in `main()`
  *   <path> [<path>...]       - scan specific paths
  *   (no args)                - scan all in-scope working-tree files
  *
@@ -165,7 +168,12 @@
  * tier is that same rule at the only scope a `paths` or `staged` run ever
  * declares, since neither enumerates a root and neither can make a per-root
  * promise. ITS PRICE IS NAMED RATHER THAN HIDDEN: `--allow-fixture` no longer
- * reaches exit 0 in any mode. See the tier itself in `main()`.
+ * reaches exit 0 in any mode. THAT TAKES TWO RULES AND NOT JUST THIS TIER, which
+ * only sees a bypass that landed on a target list: on the staged route a bypass
+ * naming anything the pre-commit predicate does not enumerate landed on nothing
+ * and was accepted, logged and ignored under a clean line. The unmatched-bypass
+ * refusal beside it closes that, without widening the predicate. Both are in
+ * `main()`; delete either and the sentence above stops being true.
  *
  * ORDER IS LOAD-BEARING BETWEEN THE LAST TWO: the whole-invocation tier's refusal
  * set is a strict SUBSET of the per-target tier's, so it runs FIRST to keep its
@@ -1486,6 +1494,50 @@ function main(): number {
   // `ncpdp` refuted, since it counts the targets that DID get read.
   const enumeratedPaths = targets.map((t) => t.path);
   const enumerated = enumeratedPaths.length;
+
+  // A BYPASS THAT MATCHES NO TARGET IS "ACCEPTED, LOGGED, IGNORED", AND THAT IS
+  // THE ONE THING THIS FLAG MUST NEVER MEAN.
+  //
+  // MEASURED ON THE FIRST DRAFT OF THIS SLICE, WHICH CLAIMED IN NINE PLACES THAT
+  // A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. It could, on the staged
+  // route: `parseArgs`'s unconditional seeding lands in `args.paths`, and
+  // `buildTargetsForStaged` never reads that field, so for any path the staged
+  // PREDICATE does not enumerate the flag was still validated, still checked
+  // against its committed audit entry, and then silently dropped. Both of these
+  // printed `[phi-scan] OK: no hits` at exit 0, byte-identical to a genuine clean
+  // run: a bypass of a staged file under `test/` (which the predicate does not
+  // admit outside `test/fixtures/`), and a bypass of a path that does not exist
+  // at all. The same argv in `paths` mode refused. A flag whose contract changes
+  // with the mode is exactly the shape the seeding fix above was written to
+  // remove, and it survived one scope over.
+  //
+  // THE REMEDY IS TO MAKE THE CLAIM TRUE, NOT TO WEAKEN IT TO MATCH, AND IT DOES
+  // NOT WIDEN ANY PREDICATE. The staged route's target list is what its own
+  // predicate enumerates, which is deliberately NOT `SCAN_ROOTS` and is not being
+  // resynced to it here. What changes is only what happens when a bypass names
+  // something outside that list: the run refuses and says so, instead of passing
+  // and saying nothing. Nothing about which files the pre-commit hook SCANS moves,
+  // so this is not the hook decision `#54`, `#55` and this slice each declined:
+  // an ordinary commit carries no `--allow-fixture` and is untouched.
+  //
+  // IT IS DELIBERATELY NOT SCOPED TO ONE MODE. In `paths` mode a nonexistent
+  // bypass already refuses earlier, in `buildTargetsForPaths`, with a better
+  // message; this catches the remainder wherever the run's target list comes
+  // from, so the flag has ONE meaning in every argv rather than one per route.
+  const unmatchedBypass = [...allowed].filter((p) => !enumeratedPaths.includes(p));
+  if (unmatchedBypass.length > 0) {
+    process.stderr.write(
+      `[phi-scan] refusing: --allow-fixture named path(s) this run does not enumerate:\n` +
+        `${unmatchedBypass.map((p) => `  - ${p}`).join("\n")}\n` +
+        `A bypass is a SUBTRACTION from this run's own target list, so a bypass that matches ` +
+        `no target would be accepted, logged and then ignored, and the run would report clean ` +
+        `without ever having been asked to look. Name a path this run actually enumerates, or ` +
+        `drop the flag. In --staged mode the target list is what the pre-commit predicate ` +
+        `enumerates, which is narrower than the sweep's scan roots on purpose.\n`,
+    );
+    return 2;
+  }
+
   targets = targets.filter((t) => !allowed.has(t.path));
 
   const hits: Hit[] = [];
@@ -1666,7 +1718,11 @@ function main(): number {
   // would still not say WHICH went unread.
   //
   // WHAT IT COSTS, DECIDED RATHER THAN STUMBLED INTO: `--allow-fixture` can no
-  // longer reach exit 0, in any mode. A whole-file bypass withdraws a file from
+  // longer reach exit 0, in any mode, THIS TIER AND THE UNMATCHED-BYPASS REFUSAL
+  // ABOVE TOGETHER AND NEITHER ALONE. This one judges a bypass that landed on the
+  // target list; that one judges a bypass that landed on nothing, which is every
+  // bypass on the staged route naming a path its predicate does not enumerate.
+  // A whole-file bypass withdraws a file from
   // the read set, and a scan that never read a file has no honest clean verdict
   // to give about it, so there is nothing left for that flag to produce but a
   // refusal. `#55`'s suite pinned the opposite ("the bypass still works as a

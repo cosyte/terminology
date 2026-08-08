@@ -2074,3 +2074,112 @@ describe("phi-scan: a run must read EVERY target it enumerated, not just one of 
     expect(r.stderr).not.toContain("AND log it in phi-scan-overrides.md");
   });
 });
+
+describe("phi-scan: a bypass that matches no target refuses instead of being ignored", () => {
+  // THE FIRST DRAFT OF THE PER-TARGET TIER CLAIMED, IN NINE PLACES, THAT A
+  // BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. IT COULD. `parseArgs`
+  // seeds `args.paths`, and `buildTargetsForStaged` never reads that field, so
+  // on the staged route a bypass naming anything the pre-commit PREDICATE does
+  // not enumerate was still validated, still checked against its committed
+  // audit entry, and then silently dropped: `[phi-scan] OK: no hits` at exit 0,
+  // byte-identical to a genuine clean run. The remedy makes the claim true
+  // rather than weakening it, and it widens no predicate: what a commit is
+  // SCANNED for is unchanged, and an ordinary commit carries no such flag.
+
+  it("STAGED: a bypass of a staged path the predicate does not enumerate refuses (exit 2)", () => {
+    // `test/leak.ts` is staged and is under a scan root, but `--staged` admits
+    // only `test/fixtures/**` of `test/`, so the bypass lands on nothing.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "test/leak.ts"]);
+    logOverride(root, "test/leak.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/leak.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("does not enumerate");
+    expect(r.stderr).toContain("test/leak.ts");
+    expect(r.stdout).not.toMatch(/OK: no hits/);
+  });
+
+  it("ANTI-VACUITY: that same index WITHOUT the flag still exits 0, so the flag caused the refusal", () => {
+    // This is also the honest record of the residual this slice declined: the
+    // pre-commit predicate does not admit `test/**` outside `test/fixtures/`,
+    // so the staged route is green over that file either way. The all-mode
+    // sweep is the backstop and the case below pins that it really does catch it.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "test/leak.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK: no hits/);
+  });
+
+  it("ANTI-VACUITY: the sweep DOES catch that same file, so the payload is genuinely detectable", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/leak.ts");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("STAGED: a bypass of a path that does not exist refuses too", () => {
+    // The sharpest form: nothing to withdraw, nothing to read, and the run used
+    // to print its clean line anyway.
+    const root = makeRepo();
+    git(root, ["add", "src/ordinary.ts"]);
+    logOverride(root, "does/not/exist.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "does/not/exist.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("does not enumerate");
+  });
+
+  it("ANTI-FABRICATION: the refusal echoes nothing from the file it did not read", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "leak.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "test/leak.ts"]);
+    logOverride(root, "test/leak.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "test/leak.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expectNoPhi(r.stderr);
+  });
+
+  it("a bypass that DOES match a staged target still reaches the per-target tier", () => {
+    // Ordering pin: the unmatched rule must not swallow the case the per-target
+    // tier owns, and its message is the more specific one there.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
+    logOverride(root, "src/violator.ts");
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("enumerated target(s) it never read");
+    expect(r.stderr).not.toContain("does not enumerate");
+  });
+
+  it("PATHS: a nonexistent bypass still refuses on its own earlier channel", () => {
+    // `buildTargetsForPaths` answers first there and its message is better.
+    const root = makeRepo();
+    logOverride(root, "src/nope.ts");
+
+    const r = runIn(root, ["src/ordinary.ts", "--allow-fixture", "src/nope.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("File not found");
+    expect(r.stderr).not.toContain("does not enumerate");
+  });
+
+  it("NOTHING WAS LOST: an ordinary --staged commit with no flag is untouched", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "clean.ts"), "export const c = 1;\n");
+    git(root, ["add", "src/clean.ts"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK: no hits/);
+  });
+});
