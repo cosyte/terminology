@@ -127,7 +127,7 @@
  * typeof VERSION; // => "string"
  * ```
  */
-export const VERSION: string = "0.0.12";
+export const VERSION: string = "0.0.13";
 
 // ── Value types ──────────────────────────────────────────────────────────────────────────────
 export { coding, codeableConcept, type Coding, type CodeableConcept } from "./common/coding.js";
