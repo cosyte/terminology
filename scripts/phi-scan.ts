@@ -1597,8 +1597,12 @@ function main(): number {
 
   // Refuse a bypass that named a path this run does not enumerate.
   //
-  // MEASURED ON THE FIRST DRAFT OF THIS SLICE, WHICH CLAIMED IN EIGHT PLACES THAT
-  // A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. It could, on the staged
+  // MEASURED ON THE FIRST DRAFT OF THIS SLICE, WHICH CLAIMED ON EVERY SURFACE
+  // DESCRIBING THIS FLAG THAT A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE.
+  // (The places are named in `agent-notes.md` and a tally is deliberately not
+  // written here or there: two drafts of this comment quoted one and both were
+  // wrong, which is this repository's standing rule arriving as a defect in the
+  // commentary of the slice that cites it.) It could, on the staged
   // route: `parseArgs`'s unconditional seeding lands in `args.paths`, and
   // `buildTargetsForStaged` never reads that field, so for any path the staged
   // PREDICATE does not enumerate the flag was still validated, still checked

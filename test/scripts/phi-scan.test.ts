@@ -2076,7 +2076,9 @@ describe("phi-scan: a run must read EVERY target it enumerated, not just one of 
 });
 
 describe("phi-scan: a bypass that matches no target refuses instead of being ignored", () => {
-  // THE FIRST DRAFT OF THE PER-TARGET TIER CLAIMED, IN NINE PLACES, THAT A
+  // THE FIRST DRAFT OF THE PER-TARGET TIER CLAIMED, ON EVERY SURFACE THAT
+  // DESCRIBES THIS FLAG (the places are named in `documentation/agent-notes.md`,
+  // and no tally is written: two drafts quoted one and both were wrong), THAT A
   // BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. IT COULD. `parseArgs`
   // seeds `args.paths`, and `buildTargetsForStaged` never reads that field, so
   // on the staged route a bypass naming anything the pre-commit PREDICATE does

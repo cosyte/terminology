@@ -1491,11 +1491,7 @@ each repo phrases and exits differently, and porting a residual is how the wrong
 
 **Found by this slice's refuter, pass 1, `INTRODUCED` major, and the remedy is in the same PR.** The
 first draft asserted, across every surface that describes this flag, that a whole-file bypass could
-no longer reach exit 0 **in any mode**: this file, `CLAUDE.md`, the scanner's docblock in three
-spots, `phi-scan-overrides.md`, the changeset that ships to `CHANGELOG.md`, and the runtime hit
-footer. **The sites are named rather than counted, per this repository's own rule**: a draft of this
-paragraph quoted a total and enumerated one fewer, which is the same defect class one level down.
-It could:
+no longer reach exit 0 **in any mode**. It could:
 
 ```
 # phi-scan-overrides.md holds "### test/leak.ts"; test/leak.ts is staged and carries a dashed SSN
