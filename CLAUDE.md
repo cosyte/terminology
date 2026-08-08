@@ -1,12 +1,10 @@
 # @cosyte/terminology: Project Guide for Claude
 
 **▶ `documentation/agent-notes.md` HOLDS THE LONG FORM OF EVERY TRAP BELOW.** This file is
-always-read; that one is read on demand. Each line here is the imperative; the pointer after it is
-the incident, the measurement and the reasoning that produced it. **Read the pointed-at section
-before you weaken, "improve", restore an earlier wording of, or delete any rule here.** Every pointer
-below is a heading in that file, written `agent-notes.md#…`; keep the prefix short. Nothing was
-deleted when the narrative moved out: if a rule here looks unmotivated, the motive is in that file,
-not absent.
+always-read; that one is read on demand. Each line here is the imperative; the pointer after it, a
+heading in that file written `agent-notes.md#…`, is the incident and the measurement behind it.
+**Read it before you weaken, "improve", restore an earlier wording of, or delete any rule here.**
+Nothing was deleted when the narrative moved out: an unmotivated-looking rule's motive is there.
 
 ## Project
 
@@ -190,14 +188,16 @@ summary.
   EQUAL when nothing is renamed or copied.** **No test here may run `git merge`**: it resolves the
   committer identity up front and exits 128, green locally and red on CI on its own premise. Why:
   `agent-notes.md#the-phi-scan-staged-route-states-its-own-enumeration`
-- **▶ THREE COMPLETENESS RULES; NO ONE SUBSUMES ANOTHER, KEEP ALL THREE, ALL EXIT 2.** Per-root
+- **▶ FOUR COMPLETENESS RULES; NO ONE SUBSUMES ANOTHER, KEEP ALL FOUR, ALL EXIT 2.** Per-root
   (sweep): every `SCAN_ROOTS` member must yield a file actually READ. Reconciliation against
   **`git ls-files`**: every tracked file under a root must have been read. **Whole-invocation (EVERY
   mode): a run that had targets and read NONE of them refuses**, one legitimate zero excepted, a
-  `--staged` commit with nothing in scope. **Never answer any of them with a denominator**: a count
-  derives from the walk so it agrees with the walk, and `ncpdp` refuted that remedy. The distinction
-  is **existence vs observation**. **Never "resync" `--staged`'s predicate to `SCAN_ROOTS`.** **Exit
-  1 is for HITS**: an unlistable directory and a missing allow-list exit **2**.
+  `--staged` commit with nothing in scope. **Per-target (EVERY mode): a target ENUMERATED but never
+  READ refuses**, naming it; KEEP IT AFTER whole-invocation. **`--allow-fixture` never exits 0;
+  never print it as a remedy.** **No denominator ever; compare SETS**: a count agrees with the walk
+  by construction (`ncpdp` refuted it). **Existence is not observation.** **Never "resync"
+  `--staged`'s predicate to `SCAN_ROOTS`.** **Exit 1 is for HITS**: an unlistable directory and a
+  missing allow-list exit **2**.
 - **▶ ROOTS ARE `src`, `test` AND `scripts`, SO THE SCANNER IS UNDER ITS OWN SCAN; WIDENING IS
   TWO-SIDED.** Enumerating buys the SSN/email floor and **nothing else**: recognisers assume **the
   file IS the document**, so a source container is also read through an escape-decoded view. **That
