@@ -6,6 +6,12 @@ heading in that file written `agent-notes.md#…`, is the incident and the measu
 **Read it before you weaken, "improve", restore an earlier wording of, or delete any rule here.**
 Nothing was deleted when the narrative moved out: an unmotivated-looking rule's motive is there.
 
+**▶ THE POINTERS ARE GATED FROM THE TEST SUITE, SO IT BLOCKS** (`pnpm check:agent-notes`): corpus is
+`git ls-files`, **no exclusion list, no skip**. It **REFUSES (exit 2) rather than reporting green**
+over a corpus it could not open, over zero pointers, or over zero in the **bare** form, the only
+spelling here. **THIS repo's promise, never a fleet universal.** Why:
+`agent-notes.md#the-agent-notes-contract-gate`
+
 ## Project
 
 **`@cosyte/terminology`**: a developer-focused **terminology engine** for US healthcare code systems,
@@ -99,8 +105,7 @@ summary.
   earlier and every PR sits pending and unmergeable with nothing saying why. **`scorecard` and the
   Advanced-Security `CodeQL` check are deliberately NOT required.** **Read
   `.github/workflows/ci.yml`'s job-name banner before renaming a job or splitting a step out of
-  `verify`**: a required job gates all of its steps, so promoting one to its own job silently
-  un-requires it. Why: `agent-notes.md#branch-protection-the-ruleset`, then
+  `verify`**. Why: `agent-notes.md#branch-protection-the-ruleset`, then
   `agent-notes.md#nothing-here-can-observe-its-own-ruleset`
 - **▶ THE RULESET BLOCKS THE "Version Packages" PR, AND THAT IS EXPECTED. IT NEEDS ONE PUSH**: an
   empty commit onto `changeset-release/main`, done **last**, immediately before merging. **Do not
@@ -321,13 +326,10 @@ Mirrors the meta-repo's `documentation/conventions.md`, and they bind here too:
    title and the PR body**. Rewrite with a period, a colon, a comma or parentheses; **never
    re-encode it**. Gated by `pnpm check:no-emdash` and `.github/workflows/no-emdash.yml`: two jobs,
    covering tracked files and filenames, and the PR title, body and commit messages.
-   Landed with its sweep in ONE commit: a gate without the sweep reds `main` on arrival, a sweep
-   without the gate grows the character back. **The census and the sweep are different numbers, this
+   **The census and the sweep are different numbers, this
    file quotes neither, and you must not add one.** Every trap below is measured in full at
    `agent-notes.md#no-em-dash-anywhere`; read it before you touch the gate.
-   - **▶ COUNT THE BYTES IN PYTHON, NEVER WITH `grep`.** A broken scanner and a clean tree are
-     indistinguishable at the end of a pipe, and the org-wide census that scoped this read low
-     everywhere for exactly that reason. Re-derive every figure.
+   - **▶ COUNT THE BYTES IN PYTHON, NEVER WITH `grep`.** Re-derive every figure.
    - **▶ THE GATE EXCLUDES NOTHING BY PATH, AND THAT IS THE POINT**: every banned spelling is
      assembled from the codepoint at runtime, so the script holds itself to its own rule. A sibling's
      self-exclusion let an em dash appended to the gate scan green. **Assemble a new arm; never paste

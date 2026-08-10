@@ -22,6 +22,138 @@ a fabricated target can harm someone: treat all of it as clinical-safety content
 
 ---
 
+## The agent-notes contract gate
+
+**Nothing checked the contract until 2026-08-10.** Both halves of the split state the same promise in
+their own words: `CLAUDE.md` says each line is an imperative and the pointer after it is the incident
+and the measurement behind it, and this file's preamble says `CLAUDE.md` keeps a one-line imperative
+for each and points at the heading here. A heading reworded here strands every pointer at it, and
+neither file gets a compile error. The worker who follows a stranded pointer gets the imperative and
+none of the reasoning, which is the exact failure the split was supposed to be safe against: the
+imperatives here are clinical-safety lessons about a terminology engine (an inverted crosswalk, a
+concept typed from a synonym atom, a unit memo keyed on a string), and the preamble above says a
+summary of one is not a substitute for it.
+
+`scripts/check-agent-notes.mjs` checks it. `pnpm check:agent-notes` runs it by hand.
+
+**WHERE THE TEETH ARE, AND WHY IT IS NOT A FOURTH WORKFLOW.** The blocking path is
+`test/scripts/agent-notes.test.ts`, which runs the script as a subprocess. **A required job gates all
+of its steps**, so a check placed inside the `ci / verify` matrix blocks a merge for as long as that
+matrix is required, on the day it lands and with no ruleset change of its own. A new workflow would
+have been a new context, and a context is requireable only once its workflow has completed on `main`:
+that is a ruleset change, made somewhere nothing in this repository can observe (see "Nothing here can
+observe its own ruleset"), and until it is made the check reports and gates nothing, which is
+reporting dressed as gating. **Whether any given context is required today is deliberately not written
+down here**, for the reason the em-dash section records: a sentence about that ruleset's contents was
+false within six minutes of landing, and nothing static in this repository can observe it. The
+condition is what is durable, and the live answer comes
+from `gh api repos/cosyte/terminology/rulesets`. Running from the suite also means the gate costs the
+meta-repo's capped automation plane nothing: it lives in this submodule's own CI.
+
+**THE MATCHER WAS DERIVED AGAINST THIS TREE, AND THAT IS THE WHOLE POINT.** A sibling's copy of this
+gate matches the PATH-QUALIFIED spelling: the record's full path, then the anchor. Ported verbatim
+into a repo whose dominant spelling was the bare one, that matcher printed "all resolving" while
+covering a small minority of that repo's pointers. **A gate that reports success over a corpus its
+matcher never covered is worse than no gate**, so the forms here were counted before a line was
+written:
+
+- **The live form in this tree is the BARE one**: the record's basename, then a `#`, then the anchor,
+  with no `documentation/` in front of it, inside backticks after a `Why:`. Every pointer in this
+  repository is written that way, in `CLAUDE.md`, today.
+- **The path-qualified form has zero occurrences here.** It is matched anyway, so a pointer
+  copy-pasted in from a sibling repo is checked from its first day instead of being invisible until
+  someone notices.
+
+No count is written in the script, in the test or here: the gate prints the tally on every run, and a
+numeral in prose is the staleness class this repo keeps paying for. **Re-derive the forms if you touch
+the matcher.** The two patterns are built from the path constants at run time, so the script contains
+no pointer of its own and needs no self-exemption, the same discipline the em-dash gate keeps.
+
+**WHAT IT REFUSES TO GUESS.** Every one of these exits 2 and prints CANNOT CHECK, and none of them can
+read as a clean run:
+
+- **A corpus it did not fully open.** The corpus is `git ls-files` and it is RECONCILED as sets: read
+  count equals tracked count, or the run refuses. A count of the files that DID open cannot detect a
+  file that silently went missing. Existence is not observation.
+- **A missing half of the contract.** Both `CLAUDE.md` and this file must be among the files actually
+  read. A phantom path cannot yield green, because green requires having read them.
+- **Zero pointers found**, which is indistinguishable from a clean run by any count. Same net
+  `scripts/attw.mjs` carries for a tool that exits 0 having printed nothing.
+- **Zero pointers found IN THE BARE FORM**, even when path-qualified ones still match. That is the
+  tripwire for the ported-matcher defect above: this tree's pointers are bare, so a run matching none
+  of them is either a scanner that stopped matching or a migration nobody told the gate about. The
+  converse is deliberately NOT a refusal: zero path-qualified pointers is the normal state here, and
+  that asymmetry is measured rather than assumed.
+- **A heading carrying a non-ASCII character**, whose GitHub anchor the slugifier would have to guess.
+  A wrong anchor reads as a broken pointer or, worse, resolves to the wrong section.
+
+**THERE IS NO EXCLUSION LIST, NO BINARY SKIP AND NO NUL SKIP. DO NOT ADD ONE.** A sibling's gate skips
+NUL-bearing files and has to disclose the miss; the first cut of another sibling's skipped exactly the
+one source file an em-dash sweep had already silently skipped, and a pointer planted there passed
+green byte-identically to a clean run. That skip was DELETED rather than documented. This repository
+tracks zero files containing a NUL today, which is measured and not a reason to add the skip back: the
+em-dash gate's own notes record that a NUL partition skips a prose-bearing UTF-8 source in silence.
+The cost of no skip is a false RED on a genuinely binary file, which is cheap and loud.
+
+**THE ENCODING LIMIT, PINNED IN BOTH DIRECTIONS.** Every tracked file is decoded as UTF-8. UTF-8
+decoding replaces only INVALID sequences and resyncs at the next valid byte, so an ASCII pointer
+inside an otherwise undecodable file survives: **a pointer in a Windows-1252 file IS matched**, pinned
+by test. The other direction is one sentence and **must not be restated as a list of encodings**: **a
+pointer is matched if and only if the file spells the anchor in its ASCII bytes.** A UTF-16 file does
+not, and that miss is pinned too. An encoding that happens to is matched, and UTF-7 is exactly that
+case: RFC 2152 permits `#` to be encoded directly and a conformant encoder that does so produces a
+file this gate reads, which is how the first draft of this paragraph came to name UTF-7 among the
+misses and be wrong about it. The miss is disclosed rather than closed, and it can only ever hide a
+pointer, never invent one.
+
+**WHAT A GREEN RUN DOES NOT SAY.** Not that any other repo has an `agent-notes.md`: several carry
+none at all, so **a gate asserting a fleet universal would be an overclaim that repos already break**.
+**No list of them is written here and none should be**, in this file or in the script: the set moves
+as repos gain the record, a copy of it cannot self-correct, and the first draft of this section
+carried a re-dated copy of a list that was already wrong by one repo when it was pasted. Derive it
+from the meta-repo checkout, never from prose:
+
+```bash
+for d in $(git submodule status | awk '{print $2}'); do
+  [ -e "$d/documentation/agent-notes.md" ] || echo "$d"; done
+```
+
+Not that every trap in `CLAUDE.md` has a pointer: recognising "a trap" is a judgement about prose, and
+the class no mechanical check can see is the trap phrased as a deliberate omission ("is deliberately
+left alone", "is never the default"), which carries no identifier to grep for. Not that a section's
+prose is accurate or that the trap it describes is closed: **a pointer is not a closure**. Not that
+every heading is pointed at: an unreferenced section is legitimate. **Not that a heading it counted
+renders as one**: a heading inside an HTML comment is counted here and produces no anchor on GitHub,
+so a pointer at it resolves here and goes nowhere there. This record carries no HTML comment today, so
+that is a latent limit, disclosed rather than guarded, because the guard would be a second markdown
+implementation and the disclosure is what was missing. Not any other link target in the repo; this is
+not a link checker.
+
+**DO NOT WRITE A POINTER INTO A CHANGESET SUMMARY.** The summary becomes the `CHANGELOG.md` entry
+above the archive boundary, that file is tracked, and a pointer frozen there names a heading nobody
+may then rename, because `CHANGELOG.md` is generated output that must not be hand-edited. Reference a
+section by title in a changeset, never by anchor. The same hazard closed differently in a sibling: it
+shipped three prose disclosures of a skip that had already been deleted, one of them inside a
+changeset, which is how a stale claim reaches a published tarball. **Sweep your own prose when you
+change this gate.**
+
+**THE CONTROLS, RUN AT AUTHORING RATHER THAN ASSUMED.** A detector that reports zero may be a detector
+that is broken, so the green run on this tree was measured beside four mutations OF THE REAL TREE, run
+by hand at authoring and each restored by file copy afterwards (the suite mutates fixtures, never this
+tree, and that distinction is the reason this sentence says which): a heading reworded here reds and
+names the stranded pointer in
+`CLAUDE.md`; a broken pointer planted in `src/ucum/reduce.ts` reds and names that file, which is what
+proves the corpus is not a declared root; every pointer stripped from `CLAUDE.md` refuses; and every
+pointer rewritten into the path-qualified spelling refuses on the bare-form tripwire rather than
+reporting green over the survivors. The test file adds the same shapes as fixtures, plus the heading
+recogniser in both directions (an indented ATX heading and a setext underline are real headings a
+`/^#{1,6} /` test misses, a `#` inside a fenced block is not one, and this record contains both), the
+empty-section rule with its negative control, GitHub's duplicate-anchor suffixing, and five refusal
+controls. **Every pointer-shaped string in the test is built by concatenation**, because the gate
+scans every tracked file including that one, and the real-tree case is what proves it worked.
+
+**Do not promote this to an umbrella script.** It asserts what this repo promises, in this repo's CI.
+
 ## The downstream is cli, not transform
 
 It is a sibling engine consumed the way the parsers are: **`@cosyte/cli` is the only package in the
