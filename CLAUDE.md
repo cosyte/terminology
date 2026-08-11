@@ -1,10 +1,10 @@
 # @cosyte/terminology: Project Guide for Claude
 
 **▶ `documentation/agent-notes.md` HOLDS THE LONG FORM OF EVERY TRAP BELOW.** This file is
-always-read; that one is read on demand. Each line here is the imperative; the pointer after it, a
-heading in that file written `agent-notes.md#…`, is the incident and the measurement behind it.
-**Read it before you weaken, "improve", restore an earlier wording of, or delete any rule here.**
-Nothing was deleted when the narrative moved out: an unmotivated-looking rule's motive is there.
+always-read; that one is read on demand. Each line here is the imperative; the `agent-notes.md#…`
+pointer after it is the incident and the measurement. **Read it before you weaken, "improve",
+restore an earlier wording of, or delete any rule here.** Nothing was deleted when the narrative
+moved out: an unmotivated-looking rule's motive is there.
 
 **▶ THE POINTERS ARE GATED FROM THE TEST SUITE, SO IT BLOCKS** (`pnpm check:agent-notes`): corpus is
 `git ls-files`, **no exclusion list, no skip**. It **REFUSES (exit 2) rather than reporting green**
@@ -51,15 +51,14 @@ Why: `agent-notes.md#north-star-and-the-engine-posture`
 
 Pre-alpha `0.0.x`, **published on npm** from a public repo. Zero runtime deps throughout.
 
-The shipped layers, each extending never-fabricate with its own typed codes: identity + canonical-URI
-resolver and ConceptMap `$translate` (`src/common/`, `src/systems/`, `src/conceptmap/`); CodeSystem
-load + `$lookup` / `$validate-code` (`src/codesystem/`, four hand-rolled readers: RRF, RFC-4180 CSV,
-fixed-width order files, FHIR JSON); ValueSet binding (`src/valueset/`); UCUM units (`src/ucum/`,
-**recognition/validation/canonicalization only, no magnitude conversion**, gated on the official
-`UcumFunctionalTests.xml`); crosswalks (`src/crosswalk/`, CMS GEMs in their
-authored `direction`, NLM SNOMED to ICD-10-CM complex map BYO, `invertGem` throws
-`TERM_MAP_NOT_INVERTIBLE`); RxNorm drug relationship graph (`src/rxnorm/`, caller-supplied RRF,
-**authored edges only, never a synthesized inverse**).
+The shipped layers, each extending never-fabricate with its own typed codes: `src/common/` +
+`src/systems/` + `src/conceptmap/` (identity + canonical-URI resolver, `$translate`);
+`src/codesystem/` (load + `$lookup` / `$validate-code`, four hand-rolled readers); `src/valueset/`
+(binding); `src/ucum/` (**recognition/validation/canonicalization only, no magnitude conversion**,
+gated on the official `UcumFunctionalTests.xml`); `src/crosswalk/` (CMS GEMs in their authored
+`direction`, NLM SNOMED to ICD-10-CM complex map BYO, `invertGem` throws
+`TERM_MAP_NOT_INVERTIBLE`); `src/rxnorm/` (caller-supplied RRF, **authored edges only, never a
+synthesized inverse**).
 
 - **Deferred:** content packs (RxNorm Prescribable Content, ICD-10-CM, LOINC, a GEM pack).
 
@@ -75,32 +74,24 @@ there: `agent-notes.md#shipped-phase-histories`
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
-This repo inherits the canonical toolchain by depending on the published `@cosyte/*` config packages,
-not by copying files. Source of truth: the meta-repo's `documentation/conventions.md`; this is a
-summary.
-
-- **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
-  `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`.
-- **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
-  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
-  **`scripts/attw.mjs`, not the bare CLI**: see the guardrail below.
-- **Node:** **>= 22** (CI matrix 22 + 24). **Package manager:** `pnpm@10`. **License:** MIT.
-- **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
-  `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.
-- **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90 gates; the
-  property-based conformance invariants come from `@cosyte/test-utils`, and the format-specific
-  arbitraries stay in this repo.
-- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows. **Runtime deps: ZERO**, Node
-  stdlib only.
+Inherited by depending on the published `@cosyte/*` config packages, never by copying files. Source
+of truth: the meta-repo's `documentation/conventions.md`. **TypeScript** strict (full rigor set incl.
+`noUncheckedIndexedAccess`) via `@cosyte/tsconfig`, **ES2023** + `NodeNext`; dual **ESM + CJS +
+`.d.ts`** via `tsup` (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`); **Node 22
+or newer** (CI matrix 22 + 24); **pnpm@10**; **ESLint 10** + unified `typescript-eslint`
+(type-checked) and Prettier, lint at `--max-warnings=0`; **Vitest 4** + v8 coverage, per-directory
+90 or better, the property-based conformance invariants from `@cosyte/test-utils` with the
+format-specific arbitraries here; CI/CD are thin callers of the reusable `cosyte/.github` workflows;
+**runtime deps ZERO**, Node stdlib only; MIT. **`attw` is a publish gate and the script is
+`scripts/attw.mjs`, not the bare CLI**: see the guardrail below.
 
 ### Branch protection and Dependabot
 
 - **`main` is protected by a repository ruleset, `ci-required-checks`**: required contexts each
   pinned to the GitHub Actions app; no branch deletion, no force-push. **THIS FILE NAMES NO COUNT AND
   NO LIST, DELIBERATELY. THE SET GROWS**: the list that used to sit here was made wrong twice, by
-  `no-internal-refs` (2026-07-28) and again by `no-emdash` (2026-08-07). **NOTHING STATIC IN THIS
-  REPOSITORY CAN OBSERVE ITS OWN RULESET**, so derive it, never recall it:
-  `gh api repos/cosyte/terminology/rulesets`. **A
+  `no-internal-refs` and again by `no-emdash`. **NOTHING STATIC IN THIS REPOSITORY CAN OBSERVE ITS
+  OWN RULESET**, so derive it, never recall it: `gh api repos/cosyte/terminology/rulesets`. **A
   context is requireable only once its workflow has completed on `main`**, never before: require it
   earlier and every PR sits pending and unmergeable with nothing saying why. **`scorecard` and the
   Advanced-Security `CodeQL` check are deliberately NOT required.** **Read
@@ -195,14 +186,20 @@ summary.
   `agent-notes.md#the-phi-scan-staged-route-states-its-own-enumeration`
 - **▶ FOUR COMPLETENESS RULES; NO ONE SUBSUMES ANOTHER, KEEP ALL FOUR, ALL EXIT 2.** Per-root
   (sweep): every `SCAN_ROOTS` member must yield a file actually READ. Reconciliation against
-  **`git ls-files`**: every tracked file under a root must have been read. **Whole-invocation (EVERY
-  mode): a run that had targets and read NONE of them refuses**, one legitimate zero excepted, a
-  `--staged` commit with nothing in scope. **Per-target (EVERY mode): a target ENUMERATED but never
+  **`git ls-files`**: every tracked file under a root must have been read; **now UNREACHABLE (the
+  union reads them), KEPT anyway**. **Whole-invocation (EVERY mode): a run that had targets and read
+  NONE refuses**, one legitimate zero excepted (a `--staged` commit with nothing in scope). **Per-target (EVERY mode): a target ENUMERATED but never
   READ refuses**, naming it; KEEP IT AFTER whole-invocation. **`--allow-fixture` never exits 0,
   withdrawn OR unmatched: BOTH, or staged passes.** **No denominator; compare SETS**: a count
   agrees with the walk (`ncpdp` refuted it). **Existence is not observation.** **Never "resync"
   `--staged`'s predicate to `SCAN_ROOTS`.** **Exit 1 is for HITS**: an unlistable directory and a
   missing allow-list exit **2**.
+- **▶ THE SWEEP IS THE WALK UNION THE INDEX** (`ls-files -s -z` + `cat-file blob`), **deduped BY
+  CONTENT** under git's `blob` framing, **both** copies scanned where they differ, a hit labelled
+  `(as git carries it)`: LOCUS only, never scope. **KEYED ON THE ABSENCE OF STAGE 0, NEVER PORTED
+  FROM `--staged`.** **`ls-files` FATALS at 128 for a non-repo, never empty**: the `catch`
+  is load-bearing (node's exit 1 is the HITS code); an EMPTY index refuses too. **It does not vouch for
+  a root.** Why: `agent-notes.md#the-union-half-reads-the-bytes-git-carries`
 - **▶ ROOTS ARE `src`, `test` AND `scripts`, SO THE SCANNER IS UNDER ITS OWN SCAN; WIDENING IS
   TWO-SIDED.** Enumerating buys the SSN/email floor and **nothing else**: recognisers assume **the
   file IS the document**, so a source container is also read through an escape-decoded view. **That
@@ -227,13 +224,13 @@ summary.
 - **Coverage that rests on a fast-check draw is not coverage**: no seed is pinned, so an arm reached
   only by a generated input is covered by chance. Check with
   `vitest run --coverage --exclude 'test/property/**'` before trusting a per-directory number, and
-  **do not pin the fast-check seed** to hold a figure still: cover the arm. Why:
+  **never pin the seed** to hold a figure still: cover the arm. Why:
   `agent-notes.md#coverage-that-rests-on-a-fast-check-draw-is-not-coverage`
 
 ### RxNorm (medication safety)
 
-Four traps, every one clinical and every one measured. **Read the pointed-at section before you touch
-any of them, and never re-derive one from the shape of the code.**
+Four traps, every one clinical and measured. **Read the pointed-at section first, and never re-derive
+one from the shape of the code.**
 
 - **The edge-direction convention is pinned per relation family, forward _and_ reverse**, in
   `test/rxnorm/direction.test.ts` (`RELA` is what `RXCUI2` is to `RXCUI1`; normalized
@@ -265,8 +262,8 @@ any of them, and never re-derive one from the shape of the code.**
   only supplies the condition** (reproduced with zero concurrency), so the answer is **not** a lock,
   a lease or a build queue.
 - **▶ THE GATE'S RULES ARE IN `scripts/attw.mjs`'s DOCBLOCK, AND ONLY THERE: DO NOT RESTATE THEM
-  HERE.** This paragraph used to carry a copy and the copy went stale first. Every claim there is
-  measured and pinned in `test/scripts/attw-gate.test.ts`.
+  HERE.** A copy here went stale first. Every claim there is measured and pinned in
+  `test/scripts/attw-gate.test.ts`.
 - **This is a per-repo script; a fix here is not a fix in a sibling**, and
   `config/scripts/parser-template/` re-mints its copy into every future parser. **Do not write the
   repo count down**; derive it with `grep -l '"attw":'` over every non-vendored `package.json`.
@@ -306,8 +303,8 @@ Mirrors the meta-repo's `documentation/conventions.md`, and they bind here too:
      this package cites the normative source for the edge-direction convention. Reopening it has to
      be deliberate. Why: `agent-notes.md#the-bare-section-sign-non-catch`
    - **▶ THE GATE CATCHES IDENTIFIERS, NOT ENGLISH ABOUT OUR PROCESS. A ZERO FROM A RULE SET IS NOT A
-     ZERO.** Clause-terminal `phase` is deliberately uncaught (it collides with clinical vocabulary
-     such as `luteal phase`) and is cleared by hand. **Record the places, not a tally.** Why:
+     ZERO.** Clause-terminal `phase` is deliberately uncaught (it collides with clinical vocabulary,
+     `luteal phase`) and is cleared by hand. **Record the places, not a tally.** Why:
      `agent-notes.md#the-gate-catches-identifiers-not-english-about-our-process`
    - **▶ CUT THE CLAIM, NOT THE QUALIFIER THAT BOUNDS IT.** Almost every doc sentence here is a
      **scoped** claim one deleted qualifier away from a guarantee the code does not provide, and that
@@ -325,25 +322,25 @@ Mirrors the meta-repo's `documentation/conventions.md`, and they bind here too:
 5. **No em dash, anywhere** (founder directive, 2026-07-24), **including commit messages, the PR
    title and the PR body**. Rewrite with a period, a colon, a comma or parentheses; **never
    re-encode it**. Gated by `pnpm check:no-emdash` and `.github/workflows/no-emdash.yml`: two jobs,
-   covering tracked files and filenames, and the PR title, body and commit messages.
-   **The census and the sweep are different numbers, this
-   file quotes neither, and you must not add one.** Every trap below is measured in full at
-   `agent-notes.md#no-em-dash-anywhere`; read it before you touch the gate.
+   covering tracked files and filenames, and the PR title, body and commit messages. **The census
+   and the sweep are different numbers, this file quotes neither, and you must not add one.** Every
+   trap below is measured in full at `agent-notes.md#no-em-dash-anywhere`; read it before you touch
+   the gate.
    - **▶ COUNT THE BYTES IN PYTHON, NEVER WITH `grep`.** Re-derive every figure.
    - **▶ THE GATE EXCLUDES NOTHING BY PATH, AND THAT IS THE POINT**: every banned spelling is
      assembled from the codepoint at runtime, so the script holds itself to its own rule. A sibling's
      self-exclusion let an em dash appended to the gate scan green. **Assemble a new arm; never paste
      a literal in, and never answer a red by adding an exclusion.**
    - **▶ THE ONE EXEMPTION IS A BOUNDARY, NOT A FILE.** `CHANGELOG.md` is scanned **above**
-     `## Released before this file was generated`; the dated archive below it is out of scope, is
-     byte-identical to published tarballs, and is the gate's **on-disk canary**. It **fails closed**
+     `## Released before this file was generated`; the dated archive below is out of scope, is
+     byte-identical to published tarballs, and is the gate's **on-disk canary**, failing **closed**
      if the heading goes. Do not exempt the file, and do not read it as a local narrowing of the
      directive: it is a precedented exemption CLASS.
    - **▶ `no-emdash-messages` MUST NEVER BE A REQUIRED CONTEXT** (Dependabot pastes upstream release
      notes into a PR body). **Keep the exemption and its written reason**, and never answer it with
      an actor `if:` on a required context: that leaves the check **pending**, not red.
    - **▶ A PAIRED ASIDE IS ONE MARK, NOT TWO, AND THE PAIR OFTEN SPANS A LINE BREAK.** A per-line
-     rewriter mangled every cross-line pair. **Edit them by hand.** And a
-     dash inside a code span or a string literal is **data**: the `phi-scan` output string, the
-     `invertGem` messages and a `ParseFailure.reason` are each quoted in prose and pinned by a test,
-     so both sides move together, **by hand, before any bulk pass**.
+     rewriter mangled every cross-line pair. And a dash inside a code span or a string literal is
+     **data**: the `phi-scan` output string, the `invertGem` messages and a `ParseFailure.reason`
+     are each quoted in prose and pinned by a test, so both sides move together, **by hand, before
+     any bulk pass**.
