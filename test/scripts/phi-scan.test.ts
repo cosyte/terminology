@@ -1625,14 +1625,24 @@ describe("phi-scan: a tracked file the walk did not read is READ, not merely ref
     expect(r.code, `stderr: ${r.stderr}`).toBe(1);
     expect(r.stderr).toContain("[phi-scan] HIT: src/carried.ts\n");
     expect(r.stderr).toContain("[phi-scan] HIT: src/carried.ts (as git carries it)\n");
+    // `report` groups by the decorated LOCUS, so ONE path reads as two "file(s)"
+    // here. That is the honest count of what was scanned (two sets of bytes) and
+    // it is pinned deliberately, but the footer's number is loci, never paths.
     expect(r.stderr).toContain("4 hit(s) across 2 file(s)");
   });
 
-  it("does not demand a tracked MARKDOWN file, which the walk skips by design", () => {
+  it("does not read a tracked MARKDOWN file on EITHER route: a residual, stated as one", () => {
     // The union inherits the walk's read filter rather than growing a second one.
     // A markdown document may legitimately describe violator values, and a rule
     // that read it on one route and skipped it on the other would make the sweep
     // stricter than the gate it belongs to.
+    //
+    // ▶ THE PAYLOAD IS PLANTED AND THE EXPECTED CODE IS 0, SO THIS CASE PINS A
+    // RESIDUAL AND NOT A VIRTUE: a real SSN/email committed to a tracked `.md`
+    // under a scan root scans clean. That is PRE-EXISTING (the walk's `.md` skip)
+    // and unchanged here, and it is why "every in-scope tracked path" must never
+    // be read as "every tracked path". Closing it is a different decision about
+    // what documentation is allowed to quote, and it wants its own slice.
     const root = makeRepo();
     writeFileSync(join(root, "test", "NOTES.md"), `# notes\n\n${SYNTHETIC_PHI}`);
     git(root, ["add", "test/NOTES.md"]);
@@ -1642,11 +1652,17 @@ describe("phi-scan: a tracked file the walk did not read is READ, not merely ref
   });
 
   it("a gitignore PATTERN does not excuse a TRACKED file, because git does not either", () => {
-    // `git check-ignore` reports nothing for a path that is in the index
-    // (measured on this repository, exit 1 with no output), so a tracked file
-    // matching an ignore pattern is still carried by git and still read. Pinned
-    // because the opposite is the intuitive guess, and guessing it would open a
-    // hole a one-line `.gitignore` could drive a fixture through.
+    // `git check-ignore` is index-aware and reports nothing for a TRACKED path,
+    // so a tracked file matching an ignore pattern is still carried by git and
+    // still read. Pinned because the opposite is the intuitive guess, and
+    // guessing it would open a hole a one-line `.gitignore` could drive a fixture
+    // through.
+    //
+    // ▶ MEASURE IT WITH A PATH THAT IS BOTH TRACKED AND MATCHED, OR THE READING
+    // PROVES NOTHING. A first draft cited an ordinary tracked path matching no
+    // pattern, which exits 1 with no output whichever way the question is
+    // answered. The discriminating pair, on a throwaway repository: default,
+    // exit 1 and no output; `--no-index`, exit 0 and the path echoed.
     const root = makeRepo();
     writeFileSync(join(root, "test", "gen.test.ts"), SYNTHETIC_PHI);
     git(root, ["add", "test/gen.test.ts"]);
@@ -1738,6 +1754,25 @@ describe("phi-scan: the index union refuses what it cannot read, rather than pas
     expect(r.stderr).toContain("in-scope path is unmerged");
     // A refusal never echoes what it could not account for.
     expectNoPhi(r.stderr);
+  });
+
+  it("names the DECORATED locus when a union read fails, not the bare path", () => {
+    // `git cat-file` inherits `execFileSync`'s 1 MiB `maxBuffer`, so a tracked
+    // blob above that bound fails the read and REFUSES (exit 2) rather than being
+    // skipped: the same bound, and the same trade, as the `git show` call the
+    // `--staged` route makes. What this pins is the LOCUS. A draft computed the
+    // decoration after the read, so the failure named a bare path and pointed a
+    // developer at a working-tree file that reads fine, which is exactly the
+    // defect the label exists to prevent.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "big.ts"), `export const big = "${"x".repeat(1_200_000)}";\n`);
+    git(root, ["add", "src/big.ts"]);
+    writeFileSync(join(root, "src", "big.ts"), "export const big = 1;\n");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("could not read src/big.ts (as git carries it)");
+    expect(r.stdout).not.toMatch(/OK/);
   });
 
   it("ignores an unmerged path OUTSIDE every scan root: it is none of this scan's business", () => {

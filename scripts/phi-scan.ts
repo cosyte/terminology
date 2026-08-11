@@ -159,19 +159,34 @@
  * DISK. The walk answers "what is under the scan roots in the WORKING TREE",
  * which is not the question a commit gate is asked. What a commit carries is the
  * INDEX, and the two disagree in states that are ordinary rather than contrived.
- * Three of them were measured on a clone of this repository laid out like it,
- * each printing `[phi-scan] OK: no hits` at exit 0 over a TRACKED file whose
- * blob carries a live hit:
  *
- *   1. THE WORKING TREE IS SHORT OF A TRACKED FILE. `rm src/carried.ts` without
- *      `git rm` leaves the blob in the index and nothing on disk for the walk.
- *   2. THE PATH IS OCCUPIED BY A DIRECTORY. `git ls-files` still names the path,
- *      so a PATH-SET reconciliation cannot see this one: the walk descends into
- *      the directory and reads whatever is inside, and the tracked blob at that
- *      exact path is never opened. Only reading the OBJECT closes it.
+ * ▶ THE SIZE OF THAT GAP WAS RE-DERIVED ON THIS REPOSITORY AND IT IS NOT THE
+ * SIBLINGS' THREE. A first draft of this block, and of the notes and changeset
+ * beside it, said three states each printed `[phi-scan] OK: no hits` at exit 0
+ * over a TRACKED file whose blob carries a live hit. THAT WAS PORTED, AND IT IS
+ * FALSE HERE BY A FACTOR OF THREE: this repository ALREADY HAD the completeness
+ * half (the `git ls-files` reconciliation at the end of `main`), which the
+ * sibling the list came from does not, and it catches two of the three. Measured
+ * back to back on a clone at `c5f524b`, the base of the slice that added this:
+ *
+ *   1. THE WORKING TREE IS SHORT OF A TRACKED FILE (`rm src/carried.ts` without
+ *      `git rm`). BASE: exit 2, the reconciliation naming `src/carried.ts`.
+ *   2. THE PATH IS OCCUPIED BY A DIRECTORY (`rm` it, `mkdir` the same name, put
+ *      a file inside). BASE: exit 2, the same refusal. THE PORTED SENTENCE
+ *      CLAIMED A PATH-SET RULE "CANNOT SEE THIS ONE"; it sees it exactly, because
+ *      `observedPaths` holds `src/carried.ts/inner.ts` and never `src/carried.ts`.
  *   3. THE TWO COPIES SIMPLY DIFFER. Content staged and then scrubbed from the
  *      working tree is the everyday spelling: `git add` the payload, clean the
  *      file, sweep, commit. The walk reads the scrubbed copy and vouches for it.
+ *      BASE: `[phi-scan] OK: no hits`, exit 0. THIS ONE, AND ONLY THIS ONE, WAS
+ *      A FALSE GREEN HERE.
+ *
+ * SO THE UNION BUYS TWO DIFFERENT THINGS AND THE SMALLER ONE IS THE HEADLINE.
+ * It closes ONE exit-0 false green, and it UPGRADES the other two from "this
+ * sweep cannot account for a tracked file" to "here is what is in it". The
+ * second is a real improvement and is not a false-green fix, and writing it as
+ * one would manufacture the case for deleting the reconciliation tier that
+ * actually caught them. DO NOT RESTORE THE THREE-FALSE-GREENS READING.
  *
  * WHAT THE UNION IS. `git ls-files -s -z` is read for the WHOLE index, and every
  * in-scope tracked path whose STAGE-0 BLOB the walk did not already read verbatim
@@ -182,7 +197,12 @@
  * WHY `cat-file blob` AND NOT A RE-READ OF THE PATH. Re-reading the path is what
  * the walk already did, and in state 2 above the path does not even resolve to a
  * file. `cat-file blob` names the OBJECT, so the bytes read are the bytes git
- * carries whatever the working tree currently holds there.
+ * carries whatever the working tree currently holds there. ONE ASSUMPTION IT
+ * MAKES, STATED RATHER THAN LEFT IMPLICIT: the object is present locally. In a
+ * BLOBLESS PARTIAL CLONE (`--filter=blob:none`) a `cat-file` for a blob the walk
+ * did not already read would lazily fetch it, or fail and REFUSE. Nothing here
+ * detects that clone shape; on a clean checkout no `cat-file` runs at all, which
+ * is why it has never been paid, not a reason it cannot be.
  *
  * DEDUPLICATION IS BY CONTENT, under git's own `blob <len>\0` framing. A walk
  * target is skipped by the union only when the bytes it read hash to the index
@@ -199,6 +219,12 @@
  * decorates the REPORTED LOCUS ONLY: scope, the `.md` skip, the source-literal
  * view and the deliberate-violator exemption are all still decided on the
  * target's own path, so a labelled target is never a differently-scoped one.
+ *
+ * ▶ ONE CONSEQUENCE OF THE LABEL, NAMED BECAUSE THE FOOTER PRINTS A NUMBER.
+ * `report` groups by the LOCUS, so one path whose two copies both hit is counted
+ * as two "file(s)" in the summary line. That is the honest reading of what was
+ * scanned (two sets of bytes, two loci) and it is what the EOL case pins, but do
+ * not read that number as a count of distinct PATHS.
  *
  * IT REFUSES (exit 2) WHEN GIT CANNOT NAME THE INDEX, OR NAMES IT EMPTY. Without
  * an index the sweep is the walk's word alone, which is the state this whole
@@ -226,6 +252,13 @@
  *     `git show` call the `--staged` route already makes.
  *   - AN UNTRACKED FILE IS STILL INVISIBLE TO THE INDEX HALF. It is walked, read
  *     and scanned, so it cannot hide a hit; its ABSENCE is what nothing sees.
+ *   - ▶ A TRACKED `.md` UNDER A SCAN ROOT IS READ BY NEITHER ROUTE, so a payload
+ *     committed to one scans clean at exit 0. That is the walk's `.md` skip,
+ *     PRE-EXISTING and unchanged, and the union INHERITS it rather than closing
+ *     it (`isWalkReadable` is one predicate with three readers). It is stated
+ *     here so "every in-scope tracked path" is never read as "every tracked
+ *     path": the same is true of `DELIBERATE_VIOLATOR_SOURCES`, whose one entry
+ *     is exempted at the scan on both routes.
  *   - THE FLOOR IS STILL SSN/EMAIL. Reading more bytes is not reading for more
  *     shapes, and the fenced TODO in `scanTarget` is still open.
  * ---------------------------------------------------------------------------
@@ -1135,10 +1168,17 @@ function blobOid(algorithm: string, bytes: Buffer): string | null {
  *
  * IT INHERITS THE WALK'S FILTERS RATHER THAN GROWING ITS OWN. `rootOf` is the
  * scope rule the roots are declared by, and `isWalkReadable` is the `.md` skip.
- * The gitignore boundary is deliberately NOT applied: `git check-ignore` is
- * index-aware and does not report a TRACKED path as ignored (measured on this
- * repository: `git check-ignore --stdin -z` over `src/index.ts` exits 1 with no
- * output), so applying it here would buy a subprocess and change nothing.
+ * The gitignore boundary is deliberately NOT applied, because `git check-ignore`
+ * is index-aware and does not report a TRACKED path as ignored, so applying it
+ * here would buy a subprocess and change nothing.
+ *
+ * ▶ THAT MEASUREMENT HAS TO DISCRIMINATE, AND A FIRST DRAFT'S DID NOT. It cited
+ * a tracked path matching NO ignore pattern, which exits 1 with no output whether
+ * or not the command is index-aware: an observation consistent with both answers
+ * is not evidence for either. Re-measured on a throwaway repository against a
+ * path that is BOTH tracked AND matched by a `.gitignore` line: default, exit 1
+ * and no output; `--no-index`, exit 0 and the path echoed. That pair separates
+ * the hypotheses, and it is the one to re-run.
  *
  * IT IS COMPUTED BEFORE THE FIRST BYTE IS READ, AND THAT IS LOAD-BEARING rather
  * than a refactor: this set is part of what `all` mode ENUMERATES, so both the
@@ -1687,21 +1727,29 @@ function decodeSourceLiterals(text: string): string {
  * the index carries at this path; see `buildTargetsForGitIndex`.
  */
 function scanTarget(target: Target, allow: AllowList, hits: Hit[], mode: Args["mode"]): Buffer {
+  // EVERY SCOPE DECISION BELOW READS `target.path`, AND ONLY THE REPORTED LOCUS
+  // CARRIES THE ORIGIN. A union target is the same file to the exemption, to the
+  // source-literal view and to the allow-list; what differs is which copy of its
+  // bytes was read, and that belongs in the message, never in the predicates.
+  //
+  // ▶ IT IS COMPUTED BEFORE THE READ SO THE READ FAILURE CAN USE IT, AND A DRAFT
+  // THAT COMPUTED IT AFTER GOT THAT WRONG. `git cat-file` inherits `execFileSync`'s
+  // 1 MiB `maxBuffer`, so a large tracked blob whose working-tree copy is absent
+  // or clean fails HERE, and the message named the bare path: it pointed a
+  // developer at a file that reads fine, or is not there, which is the exact
+  // defect the origin label exists to prevent. Measured at exit 2 over a tracked
+  // blob above that bound.
+  const locus = target.origin === undefined ? target.path : `${target.path} (${target.origin})`;
+
   let buf: Buffer;
   try {
     buf = target.read();
   } catch (err) {
     throw new InvocationError(
-      `could not read ${target.path}: ${err instanceof Error ? err.message : String(err)}`,
+      `could not read ${locus}: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
   const text = buf.toString("utf8");
-
-  // EVERY SCOPE DECISION BELOW READS `target.path`, AND ONLY THE REPORTED LOCUS
-  // CARRIES THE ORIGIN. A union target is the same file to the exemption, to the
-  // source-literal view and to the allow-list; what differs is which copy of its
-  // bytes was read, and that belongs in the message, never in the predicates.
-  const locus = target.origin === undefined ? target.path : `${target.path} (${target.origin})`;
 
   // The deliberate-violator exemption is applied HERE, after the read, so the
   // file still counts as observed and as reconciled. See the declaration.
@@ -2286,17 +2334,24 @@ function main(): number {
   // bypass set is always empty when this rule is reached. The dead filter and its
   // claim are gone rather than left as machinery that looks like a decision.
   //
-  // ▶ THE UNION HALF HAS MADE THIS TIER A BACKSTOP RATHER THAN A LIVE GATE, AND
-  // SAYING SO IS THE HONEST DESCRIPTION, NOT A REASON TO DELETE IT. Every in-scope
-  // tracked regular blob is now READ by one route or the other, so the difference
-  // this computes is empty whenever the union ran to completion. It is kept
-  // because it does not depend on the union being right: it reads the index a
-  // SECOND time, through a DIFFERENT command (`ls-files -z`, no `-s`), and
-  // disagrees whenever the two enumerations do. `trackedUnderScanRoots` also
-  // degrades to an empty list where `gitIndexEntries` refuses, so the two have
-  // different failure modes on purpose and neither is derived from the other.
-  // Deleting a trap to make a claim tidier is what this file refuses everywhere
-  // else.
+  // ▶ THE UNION HALF HAS MADE THIS TIER UNREACHABLE FROM THIS REPOSITORY'S OWN
+  // CONFIGURATION, AND SAYING SO EXACTLY IS THE POINT. Every path it could demand
+  // is now read: a tracked in-scope path that is not a stage-0 REGULAR BLOB
+  // refuses earlier in `buildTargetsForAll`, and every one that is becomes a union
+  // candidate, so the difference computed here is empty whenever the run got this
+  // far. What it retains is INDEPENDENCE: it enumerates the index a SECOND time
+  // through a DIFFERENT command (`ls-files -z`, no `-s`, scoped to the roots) and
+  // disagrees whenever the two enumerations do, which is a check on the union's
+  // own filters rather than on the tree.
+  //
+  // A DRAFT JUSTIFIED KEEPING IT WITH A STATE THAT CANNOT HAPPEN: that
+  // `trackedUnderScanRoots` "degrades to an empty list where `gitIndexEntries`
+  // refuses". It cannot be reached, because that refusal returns 2 from
+  // `buildTargetsForAll` and this block only ever runs after it. The reason is
+  // corrected rather than the guard deleted: an unreachable JUSTIFICATION is a
+  // claim defect, and deleting a trap to make a claim tidier is a different and
+  // worse one. It is kept, and its unreachability is written down here so the
+  // next reader does not measure it as live.
   if (args.mode === "all") {
     const tracked = trackedUnderScanRoots();
     const ignored = gitIgnored(tracked);
