@@ -282,6 +282,24 @@ const repos: string[] = [];
  * A throwaway git repo laid out the way the scanner expects: an allow-list under
  * `scripts/`, a `src/` walk root, and one ordinary source file so the walk has
  * something legitimate to find.
+ *
+ * ▶ IT COMMITS ITS SCAFFOLD, AND THAT IS NOT COSMETIC. `all` mode reads the index
+ * as a UNION with the walk and REFUSES (exit 2) when git cannot name the index or
+ * names it EMPTY, which is exactly what `git init` alone leaves behind. Every
+ * sweeping case below would otherwise refuse on the helper's own state before
+ * reaching what it is measuring.
+ *
+ * IT COMMITS RATHER THAN ONLY STAGING, and the difference is the OTHER route.
+ * `git add` alone leaves the scaffold as staged `A` records, so every `--staged`
+ * case would suddenly enumerate `src/ordinary.ts` and the "nothing in scope
+ * staged" case would stop being a zero. Committing makes `git diff --cached`
+ * empty again, so the staged route sees exactly what it saw before this helper
+ * grew an index.
+ *
+ * ▶ EVERYTHING A CASE WRITES AFTER CALLING THIS IS UNTRACKED, deliberately. A
+ * case that wants the union half to see its payload has to `git add` it (or
+ * commit it) itself, which keeps "what the walk reads" and "what git carries"
+ * separable in every fixture below.
  */
 function makeRepo(): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "phi-scan-repo-")));
@@ -301,6 +319,11 @@ function makeRepo(): string {
   writeFileSync(join(root, "src", "ordinary.ts"), "export const answer = 42;\n");
   writeFileSync(join(root, "test", "ordinary.test.ts"), "export const covered = true;\n");
   git(root, ["init", "-q", "."]);
+  // `commit.gpgsign=false` because a developer box may sign globally and a
+  // throwaway repo has no key: the failure is an opaque exit 128 in a helper.
+  git(root, ["config", "commit.gpgsign", "false"]);
+  git(root, ["add", "-A"]);
+  commit(root, "scaffold");
   return root;
 }
 
@@ -431,9 +454,9 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     // Replacing a TRACKED file with a link is neither an add nor a modify: git
     // raises `:100644 120000 <sha> <sha> T`, and without `T` in the filter the
     // record never existed, so the pre-commit hook passed the link green.
+    // `makeRepo` already committed `src/ordinary.ts`, which is the tracked file
+    // this case replaces: staging it again here would be an empty commit.
     const root = makeRepo();
-    git(root, ["add", "src/ordinary.ts"]);
-    git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "base"]);
 
     writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
     rmSync(join(root, "src", "ordinary.ts"));
@@ -560,8 +583,20 @@ function filler(tag: string): string {
   );
 }
 
-/** Build a genuinely unmerged index entry at `path`: stages 1/2/3, no stage 0. */
-function makeUnmerged(root: string, path: string, stage2: string): void {
+/**
+ * Build a genuinely unmerged index entry at `path`: stages 1/2/3, no stage 0.
+ *
+ * `stage3` IS A PARAMETER BECAUSE THE STAGE A SCANNER PICKS IS THE THING UNDER
+ * TEST. A caller that plants its payload in stage 3 alone is asserting that no
+ * route silently reads stage 1 (the merge base) or stage 2 and calls the result
+ * "the bytes git carries".
+ */
+function makeUnmerged(
+  root: string,
+  path: string,
+  stage2: string,
+  stage3 = "export const a = 2;\n",
+): void {
   const hash = (content: string): string => {
     const r = spawnSync("git", ["hash-object", "-w", "--stdin"], {
       cwd: root,
@@ -573,7 +608,7 @@ function makeUnmerged(root: string, path: string, stage2: string): void {
     return (r.stdout ?? "").trim();
   };
   const base = hash("export const a = 0;\n");
-  const theirs = hash("export const a = 2;\n");
+  const theirs = hash(stage3);
   const ours = hash(stage2);
   git(root, ["rm", "-q", "--cached", path]);
   const r = spawnSync("git", ["update-index", "--index-info"], {
@@ -1216,6 +1251,16 @@ const SHIPPED_RETIRED_DECL = 'const RETIRED_WALK_ROOTS: readonly string[] = ["te
 const LIVE_RETIRED_DECL = 'const RETIRED_WALK_ROOTS: readonly string[] = ["corpus"];';
 
 /**
+ * The union half's target list, and a substitution that empties it while leaving
+ * everything else, `unionCandidatePaths` in the enumerated set included, in
+ * place. It is the ONLY way to reach the completeness tiers' answer about a
+ * tracked path, because the shipped scanner now reads those bytes instead.
+ */
+const SHIPPED_UNION_CALL =
+  "const unionFailure = sweep(buildTargetsForGitIndex(index, readOids), false);";
+const UNION_DISABLED_CALL = "const unionFailure = sweep([], false);";
+
+/**
  * Copy the real scanner into `root` with the named substitutions applied.
  *
  * WHY THE RETIRED-ROOT CASES NEED A PATCH AT ALL NOW. `test/fixtures` is the only
@@ -1473,87 +1518,269 @@ describe("phi-scan: the source-literal view, because a .ts file is not the docum
   });
 });
 
-describe("phi-scan: the sweep is reconciled against `git ls-files`, not against itself", () => {
-  // `#47`'s per-root rule is a floor of ONE file, so declaring `test` a root
-  // would otherwise be satisfied by any single file under it. A DENOMINATOR
-  // cannot close this: a count is derived from the walk, so it agrees with the
-  // walk by construction. An independent enumeration is the only version that
-  // can disagree.
-  it("refuses (exit 2) when a tracked file under a root was never read, naming it", () => {
+describe("phi-scan: a tracked file the walk did not read is READ, not merely refused", () => {
+  // These cases used to assert a REFUSAL from the `git ls-files` reconciliation:
+  // the sweep could tell that a tracked file had gone unread, and stopped. The
+  // union half supersedes that with the outcome the refusal was standing in for.
+  // The sweep now reads the BYTES GIT CARRIES at that path and reports what is in
+  // them, which is strictly stronger: a refusal says "something is unaccounted
+  // for", a hit says what it is.
+  //
+  // EVERY ONE PLANTS A PAYLOAD. A version of these cases that only asserted exit
+  // 0 would be green over a union that read nothing at all, which is the defect
+  // rather than the fix.
+  it("reads a tracked file that is GONE from the working tree, and reports it (exit 1)", () => {
     const root = makeRepo();
-    writeFileSync(join(root, "test", "second.test.ts"), "export const b = 2;\n");
-    git(root, ["add", "src/ordinary.ts", "test/ordinary.test.ts", "test/second.test.ts"]);
+    writeFileSync(join(root, "test", "second.test.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "test/second.test.ts"]);
     rmSync(join(root, "test", "second.test.ts"));
 
     const r = runIn(root, []);
-    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-    expect(r.stderr).toContain("test/second.test.ts");
-    expect(r.stderr).toContain("never read by this sweep");
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/second.test.ts (as git carries it)");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("reads a tracked file whose PATH is now a DIRECTORY: no path-set rule can see this", () => {
+    // The sharpest of the three, and the reason the union reads the OBJECT rather
+    // than re-reading the path. `git ls-files` still names `src/carried.ts`, and
+    // the walk descends into the directory standing there and reads its contents,
+    // so both enumerations agree the path is accounted for. Only the blob is not.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "carried.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/carried.ts"]);
+    rmSync(join(root, "src", "carried.ts"));
+    mkdirSync(join(root, "src", "carried.ts"));
+    writeFileSync(join(root, "src", "carried.ts", "inner.ts"), "export const inner = 1;\n");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/carried.ts (as git carries it)");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("reads a tracked file STAGED AND THEN SCRUBBED from the working tree (exit 1)", () => {
+    // The everyday spelling: stage the payload, clean the file, sweep, commit.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "carried.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/carried.ts"]);
+    writeFileSync(join(root, "src", "carried.ts"), "export const scrubbed = true;\n");
+
+    // ANTI-VACUITY: the walk really does see a clean file at that path.
+    expect(readFileSync(join(root, "src", "carried.ts"), "utf8")).not.toContain("123-45-6789");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/carried.ts (as git carries it)");
+    expect(r.stderr).toContain("123-45-6789");
   });
 
   it("closes the SUB-TREE hole the per-root rule leaves open, which used to exit 0", () => {
     const root = makeRepo();
     mkdirSync(join(root, "src", "deep"));
-    writeFileSync(join(root, "src", "deep", "mod.ts"), "export const c = 3;\n");
-    git(root, ["add", "src/ordinary.ts", "test/ordinary.test.ts", "src/deep/mod.ts"]);
+    writeFileSync(join(root, "src", "deep", "mod.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/deep/mod.ts"]);
 
-    // Present: clean.
-    expect(runIn(root, []).code).toBe(0);
+    // Present: the walk finds it. The union deduplicates it away, so this is also
+    // the control proving the two copies are not double-reported.
+    const present = runIn(root, []);
+    expect(present.code).toBe(1);
+    expect(present.stderr).toContain("2 hit(s) across 1 file(s)");
+    expect(present.stderr).not.toContain("as git carries it");
 
     // The whole sub-directory disappears. The per-root rule is still satisfied by
-    // `src/ordinary.ts`, so nothing else notices.
+    // `src/ordinary.ts`, so nothing else notices, and the union reads the blob.
     rmSync(join(root, "src", "deep"), { recursive: true, force: true });
     const r = runIn(root, []);
-    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-    expect(r.stderr).toContain("src/deep/mod.ts");
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/deep/mod.ts (as git carries it)");
+  });
+
+  it("DEDUPLICATION IS BY CONTENT: an identical pair is reported ONCE, not twice", () => {
+    // The clean-checkout case. The walk reads the file, its bytes hash to the
+    // index entry's own object id under git's `blob <len>\0` framing, and the
+    // union skips it: zero extra reads and no `git cat-file` at all.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "carried.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/carried.ts"]);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("2 hit(s) across 1 file(s)");
+    expect(r.stderr).not.toContain("as git carries it");
+  });
+
+  it("EOL AXIS: where the two copies differ only in line endings, BOTH are scanned", () => {
+    // The index carries LF and the working tree CRLF, which is what a `text`
+    // attribute or `core.autocrlf` produces. The object ids differ, so neither
+    // copy is assumed to stand for the other and the payload is reported against
+    // both loci. This repository ships no `.gitattributes`, so the state is built
+    // here rather than drawn from the corpus.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "carried.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/carried.ts"]);
+    writeFileSync(join(root, "src", "carried.ts"), SYNTHETIC_PHI.replace(/\n/g, "\r\n"));
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("[phi-scan] HIT: src/carried.ts\n");
+    expect(r.stderr).toContain("[phi-scan] HIT: src/carried.ts (as git carries it)\n");
+    expect(r.stderr).toContain("4 hit(s) across 2 file(s)");
   });
 
   it("does not demand a tracked MARKDOWN file, which the walk skips by design", () => {
-    // A rule that demanded a file the walk refuses to read would be a gate whose
-    // own remedy cannot clear it.
+    // The union inherits the walk's read filter rather than growing a second one.
+    // A markdown document may legitimately describe violator values, and a rule
+    // that read it on one route and skipped it on the other would make the sweep
+    // stricter than the gate it belongs to.
     const root = makeRepo();
-    writeFileSync(join(root, "test", "NOTES.md"), "# notes\n");
-    git(root, ["add", "src/ordinary.ts", "test/ordinary.test.ts", "test/NOTES.md"]);
+    writeFileSync(join(root, "test", "NOTES.md"), `# notes\n\n${SYNTHETIC_PHI}`);
+    git(root, ["add", "test/NOTES.md"]);
+    rmSync(join(root, "test", "NOTES.md"));
 
     expect(runIn(root, []).code).toBe(0);
   });
 
   it("a gitignore PATTERN does not excuse a TRACKED file, because git does not either", () => {
-    // The gitignore filter is shared with the walk so the rule can never demand a
-    // file the walk would refuse to read. It turns out not to reach this case at
-    // all: `git check-ignore` reports nothing for a path that is in the index
-    // (measured, exit 1, no output), so a tracked file matching an ignore pattern
-    // is still walked, still read, and still reconciled. Pinned because the
-    // opposite is the intuitive guess, and guessing it would open a hole a
-    // one-line `.gitignore` could drive a fixture through.
+    // `git check-ignore` reports nothing for a path that is in the index
+    // (measured on this repository, exit 1 with no output), so a tracked file
+    // matching an ignore pattern is still carried by git and still read. Pinned
+    // because the opposite is the intuitive guess, and guessing it would open a
+    // hole a one-line `.gitignore` could drive a fixture through.
     const root = makeRepo();
-    writeFileSync(join(root, "test", "gen.test.ts"), "export const d = 4;\n");
-    git(root, ["add", "src/ordinary.ts", "test/ordinary.test.ts", "test/gen.test.ts"]);
+    writeFileSync(join(root, "test", "gen.test.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "test/gen.test.ts"]);
     writeFileSync(join(root, ".gitignore"), "test/gen.test.ts\n");
     rmSync(join(root, "test", "gen.test.ts"));
 
     const r = runIn(root, []);
-    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-    expect(r.stderr).toContain("test/gen.test.ts");
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/gen.test.ts (as git carries it)");
   });
 
-  it("an UNTRACKED file is not reconciled, but IS still walked, read and scanned", () => {
-    // Stated so the rule above does not read as completeness.
+  it("an UNTRACKED file is invisible to the index half, but IS still walked and scanned", () => {
+    // Stated so nothing above reads as completeness: what the union cannot see is
+    // an untracked file's ABSENCE, never its content.
     const root = makeRepo();
-    git(root, ["add", "src/ordinary.ts", "test/ordinary.test.ts"]);
     writeFileSync(join(root, "test", "untracked.test.ts"), SYNTHETIC_PHI);
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(1);
     expect(r.stderr).toContain("test/untracked.test.ts");
+    expect(r.stderr).not.toContain("as git carries it");
   });
 
-  it("degrades to the old guarantees outside a git repository rather than refusing", () => {
+  it("REFUSES (exit 2) outside a git repository, and never on the HITS code", () => {
+    // ▶ THE EXIT CODE IS THE WHOLE POINT AND `1` WOULD BE A LIE. `git ls-files`
+    // FATALS at 128 outside a repository rather than answering empty, so without
+    // the `catch` in `gitIndexEntries` the throw reaches node's default handler
+    // and takes ITS exit 1, which this scanner's contract reserves for HITS
+    // FOUND. A caller cannot tell that apart from a real finding.
     const root = makeRepo();
     rmSync(join(root, ".git"), { recursive: true, force: true });
 
     const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("could not name this repository's index");
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+
+  it("REFUSES (exit 2) over an index git names EMPTY: an empty answer is no answer", () => {
+    // `git init` and nothing else. `git ls-files` exits 0 printing nothing, which
+    // would make every file untracked and delete the union without saying so.
+    const root = makeRepo();
+    rmSync(join(root, ".git"), { recursive: true, force: true });
+    git(root, ["init", "-q", "."]);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("or named it empty");
+  });
+});
+
+describe("phi-scan: the index union refuses what it cannot read, rather than passing over it", () => {
+  it("refuses (exit 2) a tracked GITLINK under a scan root, naming it as one", () => {
+    // Git records a gitlink by reference: there are no bytes at that path for the
+    // sweep to read, so scanning it would prove nothing about what it stands for.
+    // Built with `update-index` because a real submodule needs a second repo and
+    // a network-free clone, and what this route reads is an INDEX STATE.
+    const root = makeRepo();
+    git(root, [
+      "update-index",
+      "--add",
+      "--cacheinfo",
+      `160000,${"0".repeat(39)}1,src/nested`,
+    ]);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/nested");
+    expect(r.stderr).toContain("a gitlink (a nested repository)");
+    expect(r.stderr).toContain("index entry is not a regular blob");
+  });
+
+  it("refuses (exit 2) an UNMERGED path, and does NOT scan the merge base instead", () => {
+    // 🛑 THE AXIS THAT MUST NOT BE PORTED FROM `--staged`. `ls-files -s` reports
+    // an unmerged path only at stages 1/2/3, with ORDINARY blob modes, so the
+    // mode rule cannot see it and nothing here looks like the `U` status and the
+    // `000000` destination mode the staged route keys on. A draft that took the
+    // FIRST record per path scanned STAGE 1, THE MERGE BASE, and printed a clean
+    // line over a marker living only in stage 3. This fixture puts the payload
+    // there and nowhere else, so taking any other stage reports clean.
+    const root = makeRepo();
+    makeUnmerged(root, "src/ordinary.ts", "export const ours = 1;\n", SYNTHETIC_PHI);
+
+    // The premise: git really does record this at stages 1/2/3 and never at 0.
+    const staged = gitOut(root, ["ls-files", "--stage", "src/ordinary.ts"]);
+    expect(staged).toMatch(/ 1\tsrc\/ordinary\.ts/);
+    expect(staged).toMatch(/ 3\tsrc\/ordinary\.ts/);
+    expect(staged).not.toMatch(/ 0\tsrc\/ordinary\.ts/);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/ordinary.ts");
+    expect(r.stderr).toContain("no stage-0 blob");
+    expect(r.stderr).toContain("in-scope path is unmerged");
+    // A refusal never echoes what it could not account for.
+    expectNoPhi(r.stderr);
+  });
+
+  it("ignores an unmerged path OUTSIDE every scan root: it is none of this scan's business", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "notes.txt"), "export const a = 1;\n");
+    git(root, ["add", "notes.txt"]);
+    commit(root, "outside");
+    makeUnmerged(root, "notes.txt", "ours\n", "theirs\n");
+
+    const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK: no hits/);
+  });
+});
+
+describe("phi-scan: the union's targets are ENUMERATED, so they cannot be quietly skipped", () => {
+  // The layering, pinned rather than asserted. `unionCandidatePaths` is folded
+  // into the enumerated set BEFORE the first byte is read, so even a union half
+  // that produced no targets at all cannot let the sweep report clean over a
+  // tracked path. The copy below removes exactly the union's target list and
+  // nothing else.
+  it("with the union's targets removed, the sweep still REFUSES rather than passing", () => {
+    const root = makeRepo();
+    const scanner = scannerCopy(root, [[SHIPPED_UNION_CALL, UNION_DISABLED_CALL]]);
+    writeFileSync(join(root, "src", "carried.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/carried.ts"]);
+    rmSync(join(root, "src", "carried.ts"));
+
+    const patched = runCopyIn(root, scanner, []);
+    expect(patched.code, `stderr: ${patched.stderr}`).toBe(2);
+    expect(patched.stderr).toContain("src/carried.ts");
+    expect(patched.stderr).toContain("never read");
+    expectNoPhi(patched.stderr);
+
+    // ANTI-VACUITY: the shipped scanner reads the same tree and REPORTS.
+    const shipped = runIn(root, []);
+    expect(shipped.code, `stderr: ${shipped.stderr}`).toBe(1);
+    expect(shipped.stderr).toContain("src/carried.ts (as git carries it)");
   });
 });
 
@@ -1760,22 +1987,19 @@ describe("phi-scan: `scripts` is a scan root, so the scanner is no longer self-b
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
   });
 
-  it("the `git ls-files` reconciliation covers the new root with no new machinery", () => {
+  it("the index union covers the new root with no new machinery", () => {
+    // Both completeness rules and the union half all read `SCAN_ROOTS`, so
+    // declaring `scripts` was the whole fix. Proven here rather than asserted: a
+    // tracked file under the new root that the walk cannot see is still read.
     const root = makeRepo();
-    writeFileSync(join(root, "scripts", "tool.mjs"), "export const t = 1;\n");
-    git(root, [
-      "add",
-      "src/ordinary.ts",
-      "test/ordinary.test.ts",
-      "scripts/phi-allow-list.txt",
-      "scripts/tool.mjs",
-    ]);
+    writeFileSync(join(root, "scripts", "tool.mjs"), SYNTHETIC_PHI);
+    git(root, ["add", "scripts/tool.mjs"]);
     rmSync(join(root, "scripts", "tool.mjs"));
 
     const r = runIn(root, []);
-    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-    expect(r.stderr).toContain("scripts/tool.mjs");
-    expect(r.stderr).toContain("never read by this sweep");
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("scripts/tool.mjs (as git carries it)");
+    expect(r.stderr).toContain("123-45-6789");
   });
 
   it("the per-root rule covers it too: a gitignored allow-list starves `scripts`", () => {
@@ -1784,7 +2008,14 @@ describe("phi-scan: `scripts` is a scan root, so the scanner is no longer self-b
     // target is built, so an absent one refuses earlier on its own channel.
     // Gitignoring it leaves it readable for that check and out of scope for the
     // walk, which is the state the per-root rule exists for.
+    //
+    // ▶ IT HAS TO BE UNTRACKED FOR THE IGNORE TO BITE, AND THE UNION IS WHY THIS
+    // LINE IS HERE. `git check-ignore` is index-aware, so `makeRepo`'s committed
+    // allow-list would be walked and read whatever `.gitignore` says. Untracking
+    // it also takes it out of the index, so the union cannot vouch for the root
+    // either, which is the point: the per-root tier is fed by the WALK alone.
     const root = makeRepo();
+    git(root, ["rm", "-q", "--cached", "scripts/phi-allow-list.txt"]);
     writeFileSync(join(root, ".gitignore"), "scripts/\n");
 
     const r = runIn(root, []);
@@ -1963,6 +2194,12 @@ describe("phi-scan: a run must read EVERY target it enumerated, not just one of 
     // own files, the identical floor sat in `--staged`, which is the route a
     // developer's commit is actually blocked on.
     const root = makeRepo();
+    // A SECOND IN-SCOPE STAGED RECORD IS REQUIRED, and `makeRepo` commits its
+    // scaffold, so `src/ordinary.ts` has to be genuinely MODIFIED to become one.
+    // Without it the run stages exactly one file, that file is withdrawn, and the
+    // WHOLE-INVOCATION tier answers first with its own sharper message: a
+    // different rule, and not the floor-of-one this case is about.
+    writeFileSync(join(root, "src", "ordinary.ts"), "export const answer = 43;\n");
     writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
     git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
     logOverride(root, "src/violator.ts");
@@ -2154,6 +2391,10 @@ describe("phi-scan: a bypass that matches no target refuses instead of being ign
     // Ordering pin: the unmatched rule must not swallow the case the per-target
     // tier owns, and its message is the more specific one there.
     const root = makeRepo();
+    // Two in-scope staged records, for the reason written out at the other
+    // per-target case: one of them has to survive the bypass or a different tier
+    // answers first.
+    writeFileSync(join(root, "src", "ordinary.ts"), "export const answer = 43;\n");
     writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
     git(root, ["add", "src/ordinary.ts", "src/violator.ts"]);
     logOverride(root, "src/violator.ts");
