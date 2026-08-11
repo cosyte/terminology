@@ -186,9 +186,9 @@ format-specific arbitraries here; CI/CD are thin callers of the reusable `cosyte
   `agent-notes.md#the-phi-scan-staged-route-states-its-own-enumeration`
 - **▶ FOUR COMPLETENESS RULES; NO ONE SUBSUMES ANOTHER, KEEP ALL FOUR, ALL EXIT 2.** Per-root
   (sweep): every `SCAN_ROOTS` member must yield a file actually READ. Reconciliation against
-  **`git ls-files`**: every tracked file under a root must have been read. **Whole-invocation (EVERY
-  mode): a run that had targets and read NONE of them refuses**, one legitimate zero excepted, a
-  `--staged` commit with nothing in scope. **Per-target (EVERY mode): a target ENUMERATED but never
+  **`git ls-files`**: every tracked file under a root must have been read; **now UNREACHABLE (the
+  union reads them), KEPT anyway**. **Whole-invocation (EVERY mode): a run that had targets and read
+  NONE refuses**, one legitimate zero excepted (a `--staged` commit with nothing in scope). **Per-target (EVERY mode): a target ENUMERATED but never
   READ refuses**, naming it; KEEP IT AFTER whole-invocation. **`--allow-fixture` never exits 0,
   withdrawn OR unmatched: BOTH, or staged passes.** **No denominator; compare SETS**: a count
   agrees with the walk (`ncpdp` refuted it). **Existence is not observation.** **Never "resync"
@@ -197,8 +197,8 @@ format-specific arbitraries here; CI/CD are thin callers of the reusable `cosyte
 - **▶ THE SWEEP IS THE WALK UNION THE INDEX** (`ls-files -s -z` + `cat-file blob`), **deduped BY
   CONTENT** under git's `blob` framing, **both** copies scanned where they differ, a hit labelled
   `(as git carries it)`: LOCUS only, never scope. **KEYED ON THE ABSENCE OF STAGE 0, NEVER PORTED
-  FROM `--staged`.** **`ls-files` FATALS at 128 for a non-repo and never empty**: the `catch` is
-  load-bearing (node's exit 1 is the HITS code), an EMPTY index refuses too. **It does not vouch for
+  FROM `--staged`.** **`ls-files` FATALS at 128 for a non-repo, never empty**: the `catch`
+  is load-bearing (node's exit 1 is the HITS code); an EMPTY index refuses too. **It does not vouch for
   a root.** Why: `agent-notes.md#the-union-half-reads-the-bytes-git-carries`
 - **▶ ROOTS ARE `src`, `test` AND `scripts`, SO THE SCANNER IS UNDER ITS OWN SCAN; WIDENING IS
   TWO-SIDED.** Enumerating buys the SSN/email floor and **nothing else**: recognisers assume **the
@@ -262,8 +262,8 @@ one from the shape of the code.**
   only supplies the condition** (reproduced with zero concurrency), so the answer is **not** a lock,
   a lease or a build queue.
 - **▶ THE GATE'S RULES ARE IN `scripts/attw.mjs`'s DOCBLOCK, AND ONLY THERE: DO NOT RESTATE THEM
-  HERE.** This paragraph used to carry a copy and the copy went stale first. Every claim there is
-  measured and pinned in `test/scripts/attw-gate.test.ts`.
+  HERE.** A copy here went stale first. Every claim there is measured and pinned in
+  `test/scripts/attw-gate.test.ts`.
 - **This is a per-repo script; a fix here is not a fix in a sibling**, and
   `config/scripts/parser-template/` re-mints its copy into every future parser. **Do not write the
   repo count down**; derive it with `grep -l '"attw":'` over every non-vendored `package.json`.
@@ -303,8 +303,8 @@ Mirrors the meta-repo's `documentation/conventions.md`, and they bind here too:
      this package cites the normative source for the edge-direction convention. Reopening it has to
      be deliberate. Why: `agent-notes.md#the-bare-section-sign-non-catch`
    - **▶ THE GATE CATCHES IDENTIFIERS, NOT ENGLISH ABOUT OUR PROCESS. A ZERO FROM A RULE SET IS NOT A
-     ZERO.** Clause-terminal `phase` is deliberately uncaught (it collides with clinical vocabulary
-     such as `luteal phase`) and is cleared by hand. **Record the places, not a tally.** Why:
+     ZERO.** Clause-terminal `phase` is deliberately uncaught (it collides with clinical vocabulary,
+     `luteal phase`) and is cleared by hand. **Record the places, not a tally.** Why:
      `agent-notes.md#the-gate-catches-identifiers-not-english-about-our-process`
    - **▶ CUT THE CLAIM, NOT THE QUALIFIER THAT BOUNDS IT.** Almost every doc sentence here is a
      **scoped** claim one deleted qualifier away from a guarantee the code does not provide, and that

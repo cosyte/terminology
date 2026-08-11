@@ -1000,14 +1000,26 @@ function holdsUnwalkedContent(rel: string): boolean {
  * construction and says nothing about what it never opened. Reconciling against
  * an INDEPENDENT enumeration is the only version of this that can disagree.
  *
- * Returns an empty list when `git ls-files` cannot answer (not a repository).
- * That is deliberately not a refusal: it degrades to exactly the guarantees this
- * scanner made before the rule existed, and the per-root rule still applies.
+ * Returns an empty list when `git ls-files` cannot answer. THAT HAS TWO CAUSES
+ * AND A DRAFT OF THIS LINE NAMED ONLY ONE: not a repository (a fatal at 128), and
+ * an output too large for `execFileSync`'s `maxBuffer`, which throws `ENOBUFS`
+ * into the same `catch`. Degrading is deliberate for the first: it falls back to
+ * exactly the guarantees this scanner made before the rule existed, and the
+ * per-root rule still applies. For the second it would have been a SHORT LIST
+ * read as a complete one, which is the shape this whole rule refuses, so the
+ * bound is raised to match `gitIndexEntries` rather than left at the default.
+ * Node throws rather than truncating either way; the headroom is what keeps a
+ * legitimate repository from paying a silent degradation for it.
+ *
+ * THIS PATH IS UNREACHABLE FROM `all` MODE TODAY, because `buildTargetsForAll`
+ * refuses first when git cannot name the index. It is corrected rather than
+ * deleted, for the reason written at the reconciliation block itself.
  */
 function trackedUnderScanRoots(): string[] {
   try {
     const out = execFileSync("git", ["ls-files", "-z", "--", ...SCAN_ROOTS], {
       stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 64 * 1024 * 1024,
     });
     return out
       .toString("utf8")
