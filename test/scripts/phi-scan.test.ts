@@ -1705,12 +1705,7 @@ describe("phi-scan: the index union refuses what it cannot read, rather than pas
     // Built with `update-index` because a real submodule needs a second repo and
     // a network-free clone, and what this route reads is an INDEX STATE.
     const root = makeRepo();
-    git(root, [
-      "update-index",
-      "--add",
-      "--cacheinfo",
-      `160000,${"0".repeat(39)}1,src/nested`,
-    ]);
+    git(root, ["update-index", "--add", "--cacheinfo", `160000,${"0".repeat(39)}1,src/nested`]);
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(2);

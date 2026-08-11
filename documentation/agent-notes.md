@@ -1450,7 +1450,7 @@ by **gitignoring** the allow-list, which leaves it readable for that check and o
 walk, and that is the case the suite pins. The ordering is pinned too, so a future edit that moves
 `loadAllowList` below the walk reds rather than silently changing which message a developer sees.
 
-**`--staged` IS UNCHANGED AND `scripts/**` IS NOT IN IT.** This is the same residual as `test/**`
+**`--staged` IS UNCHANGED AND `scripts/**`IS NOT IN IT.** This is the same residual as`test/\*\*`
 widening a second time, not a new one, and it is deliberate: widening that predicate changes what a
 developer's commit is blocked on, which is a decision about the hook rather than the walk.
 
@@ -1522,14 +1522,14 @@ throwaway repository laid out like this one, with the bypassed path logged in
 `#55` wrote it for the **whole invocation**: a run satisfies it by reading **one** target. Neither
 says anything about the other targets on the list. So:
 
-| invocation | before | after |
-|---|---|---|
-| `<ordinary file> --allow-fixture <violator>` | **0**, `OK: no hits` | **2**, names the unread path |
+| invocation                                         | before               | after                        |
+| -------------------------------------------------- | -------------------- | ---------------------------- |
+| `<ordinary file> --allow-fixture <violator>`       | **0**, `OK: no hits` | **2**, names the unread path |
 | `--staged --allow-fixture <violator>`, both staged | **0**, `OK: no hits` | **2**, names the unread path |
-| `--allow-fixture <violator>`, no positional | 2 (`#55`) | 2, **unchanged message** |
-| `<violator>` alone | 1 | 1 |
-| `<ordinary file>` alone | 0 | 0 |
-| this repository's own sweep | 0 | 0 |
+| `--allow-fixture <violator>`, no positional        | 2 (`#55`)            | 2, **unchanged message**     |
+| `<violator>` alone                                 | 1                    | 1                            |
+| `<ordinary file>` alone                            | 0                    | 0                            |
+| this repository's own sweep                        | 0                    | 0                            |
 
 **The `paths` row is the item's own example and the `staged` row was re-derived here.** The backlog
 line named `paths` mode only. The identical floor sat in `--staged`, which is the route a developer's
@@ -1654,3 +1654,130 @@ run still refuses. The direction is fail-safe and the behaviour is pinned, but t
 broad and is corrected here rather than left in the history. **The accurate statement is that no
 invocation became MORE permissive**: every changed row moved toward a refusal, and none moved away
 from one.
+
+## The union half reads the bytes git carries
+
+`PHI-SCAN` is two independent halves and this repository already had the first. The completeness
+rules (per-root, reconciliation, whole-invocation, per-target) all answer the question "did this run
+read everything it said it would". The second half is a different question: **the walk reads the
+WORKING TREE, and what a commit carries is the INDEX.** Where the two disagree, the walk was the
+only voice, and a sweep whose only voice is the walk can print `OK: no hits` at exit 0 over a payload
+a commit genuinely carries.
+
+### Three states, measured, each a false green before this slice
+
+On a clone laid out like this repository, with the payload tracked and a live SSN/email shape in the
+blob, all three printed `[phi-scan] OK: no hits` and exited 0:
+
+| state                                       | how it is reached                                             | why nothing caught it                                                                                                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the working tree is SHORT of a tracked file | `rm src/carried.ts` without `git rm`                          | the walk has nothing to open there                                                                                                                                                                |
+| the path is occupied by a DIRECTORY         | `rm` the file, `mkdir` the same name, put a clean file inside | **a path-set rule cannot see this one**: `git ls-files` still names the path and the walk descends into the directory, so both enumerations agree the path is accounted for. Only the BLOB is not |
+| the two copies simply DIFFER                | `git add` the payload, then scrub the working-tree copy       | the walk reads the scrubbed copy and vouches for it                                                                                                                                               |
+
+The middle row is the reason the union reads the OBJECT (`git cat-file blob <sha>`) rather than
+re-reading the path. Re-reading the path is what the walk already did.
+
+### What it is
+
+`git ls-files -s -z` is read for the WHOLE index, and every in-scope tracked path whose stage-0 blob
+the walk did not already read verbatim is scanned. **It is a union and never a replacement:** the
+walk still runs first and still reads untracked files, which the index cannot name at all.
+
+**Deduplication is BY CONTENT**, under git's own `blob <len>\0` framing (`gitObjectHash` +
+`blobOid`). On a clean checkout the union adds ZERO reads and never invokes `git cat-file`. Measured
+on this repository with a logging `git` shim on `PATH`: a sweep over a tree with exactly one modified
+tracked file made exactly one `cat-file` call, for exactly that file's index blob, and none for the
+other 98 tracked paths under the scan roots. **Where the copies differ, BOTH are scanned**, which is
+the EOL axis: that is what makes this correct under a `text` attribute or `core.autocrlf` rather than
+merely untested by them. This repository ships no `.gitattributes`, so the axis is exercised by a
+constructed index in the suite rather than by the corpus.
+
+A union hit is labelled `(as git carries it)`. A hit naming the bare path sends a developer to open a
+file that is clean, or not there at all. **The label decorates the REPORTED LOCUS ONLY**: scope, the
+`.md` skip, the source-literal view and the deliberate-violator exemption are all still decided on
+`target.path`, so a labelled target is never a differently-scoped one.
+
+### The five axes, re-derived here rather than ported
+
+A prior survey counted this repository at 10 `ls-files` and 5 `reconcile` mentions. **A count is a
+starting point, not a finding.** Every one of the five came out as follows, and every one differs
+across the siblings this machinery is shared with:
+
+1. **Exit codes.** `0` clean, `1` HITS AND NOTHING ELSE, `2` every state in which the scan cannot
+   account for something. Derived from this file's own contract, which is why an unnameable index is
+   `2` and not `1`.
+2. **Roots and exclusions.** `src`, `test`, `scripts`. There is NO exclusion path list here; the read
+   filter is the `.md` skip plus the gitignore boundary, and the one carve-out
+   (`DELIBERATE_VIOLATOR_SOURCES`) is applied at the SCAN, so the file is still read, still observed
+   and still reconciled. **An exclusion is a LITERAL PATH, never a class**: a "binary blob" predicate
+   was refuted in a sibling on measurement, because hand-written sources there embed NUL bytes as
+   HMAC domain separators.
+3. **`--staged` scope.** Untouched by this slice, and it must not be resynced to `SCAN_ROOTS`.
+4. **Gitlinks and every other non-blob index mode.** Refused, with the index route's OWN noun
+   (`index entry is not a regular blob`): a gitlink's working tree may not exist at all, so the
+   walk's "not a regular file" would send a developer to look at a path where there is nothing to
+   see.
+5. **EOL normalization.** Handled by content deduplication rather than assumed away.
+
+### The unmerged axis is NOT the staged route's, and porting it is the known failure
+
+**The union is keyed on the ABSENCE OF STAGE 0.** `git ls-files -s` reports an unmerged path only at
+stages 1, 2 and/or 3, with **ORDINARY BLOB MODES**, so the mode rule cannot see it, and nothing in
+that output looks like the `U` status and `000000` destination mode `--staged` keys on. A sibling's
+draft took the FIRST record per path and never read the stage digit: it scanned **stage 1, the merge
+base**, labelled those bytes as the ones git carries, and printed a clean line over a marker living
+only in stage 3. The suite's fixture puts the payload in stage 3 and nowhere else, so any other
+choice of stage reports clean and reds the case.
+
+### `git ls-files` FATALS at 128 for a non-repository: it does not answer empty
+
+Four carriers of this machinery said otherwise. The `catch` in `gitIndexEntries` is load-bearing:
+delete it and a non-repository run takes node's own exit 1, **which this contract reserves for HITS
+FOUND**. An EMPTY answer is a separate route to the same refusal and both are needed, because
+`git ls-files` exits 0 printing nothing for an index with nothing in it, and an empty map would make
+every file untracked and silently delete the union.
+
+This is a real behaviour change: all-mode used to DEGRADE outside a repository, and the note beside
+`trackedUnderScanRoots` still describes that degradation for the reconciliation tier, which is a
+different rule with a different failure mode. The union refuses instead, because a sweep that cannot
+name the index cannot make the claim the union exists to make.
+
+### What it deliberately does NOT do
+
+- **It does not vouch for a scan root.** `observedRoots` is fed by the WALK alone, so `mv src ..`
+  still refuses (exit 2) even though the union read every tracked blob under `src`. The per-root rule
+  is a claim about the tree the developer is looking at; the union is a claim about the index.
+  Feeding the second into the first would silently retire a rule this repository measured.
+- **An untracked file is invisible to the index half.** It is walked, read and scanned, so it cannot
+  hide a payload; its ABSENCE is what nothing sees.
+- **It reads more bytes, not more shapes.** The floor is still SSN/email and the fenced TODO in
+  `scanTarget` is still open. A green sweep still means "no SSN/email shapes found", never "no PHI".
+
+### The reconciliation tier is now a backstop, and that is stated rather than hidden
+
+Every in-scope tracked regular blob is now READ by one route or the other, so the `git ls-files`
+difference at the end of `main` is empty whenever the union ran to completion. **It is kept, not
+deleted.** It reads the index a SECOND time through a DIFFERENT command (`ls-files -z`, no `-s`) and
+degrades to an empty list where `gitIndexEntries` refuses, so the two have different failure modes on
+purpose. Deleting a trap to make a claim tidier is what this repository refuses everywhere else.
+
+The layer that DOES still answer is the per-target tier: `unionCandidatePaths` is folded into the
+enumerated set **before the first byte is read**, so even a union half producing no targets at all
+cannot let the sweep report clean over a tracked path. The suite pins that with a copy of the scanner
+whose union target list is emptied and nothing else changed.
+
+### The throwaway-repo helper now commits its scaffold
+
+`makeRepo()` used to `git init` and stop, which left an EMPTY index: every sweeping case would now
+refuse on the helper's own state before reaching what it measures. It commits rather than only
+staging, because `git add` alone leaves the scaffold as staged `A` records and every `--staged` case
+would suddenly enumerate `src/ordinary.ts`. **Everything a case writes after calling it is untracked,
+deliberately**, so "what the walk reads" and "what git carries" stay separable in every fixture.
+
+Two cases needed a fixture correction as a consequence, and both are recorded here rather than
+quietly patched: the two per-target `--staged` cases now MODIFY `src/ordinary.ts` so there is a
+second in-scope staged record (a committed scaffold makes re-adding it a no-op, which left one target
+and let the whole-invocation tier answer first), and the `scripts` starvation case now untracks the
+allow-list, because `git check-ignore` is index-aware and would otherwise walk it whatever
+`.gitignore` says.

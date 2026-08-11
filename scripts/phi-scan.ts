@@ -1147,8 +1147,7 @@ function blobOid(algorithm: string, bytes: Buffer): string | null {
 function unionCandidatePaths(index: Map<string, IndexEntry>): string[] {
   return [...index]
     .filter(
-      ([p, e]) =>
-        REGULAR_BLOB_MODES.has(e.mode) && rootOf(p) !== undefined && isWalkReadable(p),
+      ([p, e]) => REGULAR_BLOB_MODES.has(e.mode) && rootOf(p) !== undefined && isWalkReadable(p),
     )
     .map(([p]) => p);
 }
