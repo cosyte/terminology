@@ -111,6 +111,100 @@
  * at the same exit code. The difference is that it no longer counts as a file
  * the sweep observed, which can only ever make a starved corpus louder, never
  * quieter.
+ *
+ * SO THE MODE IS DATA, AND `DetectContext` SHOULD NOT GROW ONE FOR THIS REPO.
+ * What the mode selected was WHICH PATHS AN ENUMERATION SKIPS, which is a set of
+ * literal paths plus the class of route the skip applies to. Both halves are
+ * declarable. What would defeat the declarative form is a detector whose LOGIC
+ * varies by mode rather than its inputs, and there is no such case here: the one
+ * mode-keyed line was an exclusion, and the engine runs its floor before `detect`
+ * and gives `detect` no way to withdraw a hit, so a mode on the context could not
+ * have expressed it even if one existed.
+ *
+ * ONE THING THAT IS THE ENGINE'S POLICY RATHER THAN THIS REPO'S DECLARATION, and
+ * is written here because it is load-bearing and undeclared: WHICH routes consult
+ * `excludedPaths`. Today it is fixed (the walk, the index union and `--staged`
+ * consult it; a path named on argv does not). This repository wants exactly that,
+ * so nothing is blocked, but it is a policy no caller states and none can vary.
+ * The declarative form is in the PENDING block at the end of this docblock.
+ * ===========================================================================
+ *
+ * ===========================================================================
+ * ██  PENDING ENGINE PARAMETERIZATION: WHY THIS BRANCH IS NOT FOR MERGE  ████
+ * ===========================================================================
+ *
+ * ALL PROCESS BELONGS IN `@cosyte/script-utils` AND THIS FILE IS MEANT TO BE
+ * DATA. It is not there yet, and the gap is measured rather than asserted: the
+ * suite in `test/scripts/phi-scan.test.ts` passes 132 of 132 against the scanner
+ * this replaced and 100 of 132 against the engine at `0.0.2`. The deltas that are
+ * EXIT-CODE deltas, each reproduced A/B in a throwaway repository, are listed
+ * below. The rest are message wording, which is the engine's to own.
+ *
+ * ▶ TWO ARE ENGINE DEFECTS RATHER THAN MISSING PARAMETERS, AND THEY REACH EVERY
+ * ADOPTER, NOT ONLY THIS ONE:
+ *
+ *   D1. AN UNREADABLE DIRECTORY AT ANY DEPTH TAKES NODE'S OWN EXIT 1, WHICH THIS
+ *       CONTRACT RESERVES FOR HITS FOUND. The walk does not wrap `readdirSync`,
+ *       so an `EACCES` at `src/locked` escapes as an uncaught throw and prints a
+ *       v8 stack trace under the code a caller reads as a verdict about PHI.
+ *       Measured: base exits 2 naming `cannot list src/locked (EACCES)`; the
+ *       engine exits 1 from `node:fs`. This is the same class as the `git
+ *       ls-files` fatal the shared record already names.
+ *   D2. THE `--staged` ROUTE DOES NOT STATE `--ignore-submodules=none`, so a
+ *       caller carrying `diff.ignoreSubmodules=all` stages a gitlink under a scan
+ *       root, git omits the record entirely, and the PRE-COMMIT gate prints its
+ *       clean line. Measured: base exits 2, the engine exits 0, same index. This
+ *       repository closed that hole deliberately; adoption reopens it.
+ *   D3. THE `--staged` ROUTE HAS NO SEPARATE UNMERGED SENTENCE. An unmerged path
+ *       IS refused, correctly, but is diagnosed as a mode-000000 entry the index
+ *       "holds no file content for", which is false for what is usually an
+ *       ordinary regular file, and sends a developer looking for the wrong thing.
+ *   D4. THE REPORTED LOCUS IS COMPUTED AFTER THE READ, so a failed union read
+ *       names the BARE path. `git cat-file blob` still runs at node's default
+ *       1 MiB `maxBuffer`, so a tracked blob above that bound whose working-tree
+ *       copy is clean or absent points a developer at a file that reads fine.
+ *
+ * ▶ AND THESE ARE PARAMETERS THIS REPOSITORY DECLARES THAT THE ENGINE CANNOT
+ * EXPRESS. Each names the parameter, its type, its default, and the case that
+ * defeats a default:
+ *
+ *   P1. `requireEachRootObserved?: boolean`, default `true`. EVERY DECLARED ROOT
+ *       MUST YIELD AT LEAST ONE FILE ACTUALLY READ, and the refusal names the
+ *       starved roots. Measured losses, both from exit 2 to exit 0 `OK: no hits`:
+ *       a root that is absent with its files untracked, and a root starved by
+ *       gitignoring the one file under it. A default cannot cover it: a repo that
+ *       declares a root it does not always populate needs `false`, and choosing
+ *       silence for everyone is how a declared root stops being watched.
+ *   P2. `scanRoots` ENTRIES MUST BE ABLE TO DECLARE THEIR KIND, e.g.
+ *       `readonly (string | { rel: string, shape: "directory" | "file" })[]`,
+ *       default `"directory"` for a bare string. The engine derives kind from the
+ *       filesystem and its own docblock names what derivation gives up: a root
+ *       that CHANGES kind is silently treated as what it now is. Measured: a walk
+ *       root replaced by a one-line regular file went from exit 2 to exit 0, and
+ *       P1 cannot catch it either, because that file IS read and so the root is
+ *       observed. `dicom` needs the same key for the opposite reason.
+ *   P3. A DERIVED-VIEW PARAMETER, so the engine runs ITS OWN floor over a text
+ *       this repository declares rather than over `ctx.text` alone, e.g.
+ *       `textViews?: readonly { kind: "source-literal-escapes", appliesTo:
+ *       readonly string[] }[]`, default `[]`, with the decoder SHIPPED BY THE
+ *       ENGINE and selected by name. It is not repo-specific: every `@cosyte/*`
+ *       repository is TypeScript, and a fixture spelled as an inline literal can
+ *       hide any character behind an escape in all thirteen. Until it exists, the
+ *       view below has to carry a LOCAL MIRROR of the engine's two recognisers,
+ *       which is the last process in this file and the reason it must not merge.
+ *   P4. `excludedPaths` SHOULD DECLARE ITS ROUTES rather than inherit them, e.g.
+ *       `{ paths: ReadonlySet<string>, routes?: readonly ("walk" | "index" |
+ *       "staged" | "named")[] }` with the current fixed policy as the default.
+ *       This repository declares the default; a repo wanting a violator source
+ *       skipped by the sweep but still blocking a COMMIT cannot say so today.
+ *   P5. `retiredRoots?: readonly string[]`, default `[]`: a root that was retired
+ *       and must REFUSE if a corpus reappears at it. Declared here today and
+ *       inert, because the path sits under a live root; it has no engine
+ *       equivalent, and it is listed so the derivation is complete rather than
+ *       because it is blocking.
+ *
+ * NOTHING ABOVE IS A COMPLETE LIST OF WHAT THE ENGINE COULD NOT EXPRESS. It is
+ * what the exit-code deltas of one suite, on one repository, actually showed.
  * ===========================================================================
  */
 
@@ -380,6 +474,12 @@ interface Shape {
  * A LOCAL MIRROR of the engine's cross-cutting floor, run over a text this file
  * derived. It exists because the engine's floor is not exported and runs over
  * `ctx.text` alone, and the decoded document is not `ctx.text`.
+ *
+ * 🛑 THIS IS THE LAST PROCESS IN THIS FILE AND IT IS NOT MEANT TO SURVIVE. It is
+ * what `P3` in the header replaces: the engine ships the decoder, this file names
+ * the view, and the engine's own floor runs over it. The mirror is written down
+ * here rather than deleted only so that this branch does not weaken a measured
+ * detection while it waits for that parameter.
  *
  * ▶ ITS RAW-PASS OUTPUT IS A SUPPRESSION SET AND NEVER A HIT SOURCE. Every hit
  * this file raises comes from the DECODED pass; the raw pass exists only to
