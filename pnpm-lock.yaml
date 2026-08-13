@@ -24,6 +24,9 @@ importers:
       '@cosyte/prettier-config':
         specifier: ^0.0.2
         version: 0.0.2
+      '@cosyte/process':
+        specifier: 0.0.2
+        version: 0.0.2(@types/node@22.20.1)(postcss@8.5.20)(tsx@4.21.0)(vite@7.3.6(@types/node@22.20.1)(tsx@4.21.0))
       '@cosyte/test-utils':
         specifier: ^0.0.2
         version: 0.0.2(fast-check@3.23.2)
@@ -39,12 +42,6 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
-      '@vitest/coverage-v8':
-        specifier: 4.1.4
-        version: 4.1.4(vitest@4.1.4)
-      eslint:
-        specifier: 10.5.0
-        version: 10.5.0
       fast-check:
         specifier: 3.23.2
         version: 3.23.2
@@ -54,15 +51,9 @@ importers:
       simple-git-hooks:
         specifier: 2.13.0
         version: 2.13.0
-      tsup:
-        specifier: 8.5.1
-        version: 8.5.1(postcss@8.5.20)(tsx@4.21.0)(typescript@5.9.3)
       tsx:
         specifier: 4.21.0
         version: 4.21.0
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@22.20.1)(tsx@4.21.0)
@@ -179,6 +170,11 @@ packages:
 
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
+
+  '@cosyte/process@0.0.2':
+    resolution: {integrity: sha512-bb+6nDiM/sgshbgFRk5DbRxa355qyA9BNixwm0YrHT2Rik8R8ZFVVCTjgONa/UH9M9YVktoo/wVJPa/wejV/DQ==}
+    engines: {node: '>=22.0.0'}
+    hasBin: true
 
   '@cosyte/test-utils@0.0.2':
     resolution: {integrity: sha512-sBH+Z/YnOX/vLEsJMc2EpP7EHpLvh0/CuL1+5sBtoy/oppIsvL/0AiZMa0dwv2P6lfxvHwja59qTbHHANixslQ==}
@@ -1988,6 +1984,36 @@ snapshots:
       - supports-color
 
   '@cosyte/prettier-config@0.0.2': {}
+
+  '@cosyte/process@0.0.2(@types/node@22.20.1)(postcss@8.5.20)(tsx@4.21.0)(vite@7.3.6(@types/node@22.20.1)(tsx@4.21.0))':
+    dependencies:
+      '@vitest/coverage-v8': 4.1.4(vitest@4.1.4)
+      eslint: 10.5.0
+      prettier: 3.8.3
+      tsup: 8.5.1(postcss@8.5.20)(tsx@4.21.0)(typescript@5.9.3)
+      typescript: 5.9.3
+      vitest: 4.1.4(@types/node@22.20.1)(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.1)(tsx@4.21.0))
+    transitivePeerDependencies:
+      - '@edge-runtime/vm'
+      - '@microsoft/api-extractor'
+      - '@opentelemetry/api'
+      - '@swc/core'
+      - '@types/node'
+      - '@vitest/browser'
+      - '@vitest/browser-playwright'
+      - '@vitest/browser-preview'
+      - '@vitest/browser-webdriverio'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/ui'
+      - happy-dom
+      - jiti
+      - jsdom
+      - msw
+      - postcss
+      - supports-color
+      - tsx
+      - vite
+      - yaml
 
   '@cosyte/test-utils@0.0.2(fast-check@3.23.2)':
     dependencies:
