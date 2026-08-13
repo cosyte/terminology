@@ -25,8 +25,8 @@ importers:
         specifier: ^0.0.2
         version: 0.0.2
       '@cosyte/process':
-        specifier: 0.0.1
-        version: 0.0.1(@types/node@22.20.1)(postcss@8.5.20)(tsx@4.21.0)(vite@7.3.6(@types/node@22.20.1)(tsx@4.21.0))
+        specifier: 0.0.2
+        version: 0.0.2(@types/node@22.20.1)(postcss@8.5.20)(tsx@4.21.0)(vite@7.3.6(@types/node@22.20.1)(tsx@4.21.0))
       '@cosyte/test-utils':
         specifier: ^0.0.2
         version: 0.0.2(fast-check@3.23.2)
@@ -168,8 +168,8 @@ packages:
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
 
-  '@cosyte/process@0.0.1':
-    resolution: {integrity: sha512-+HxUn2DmEop5I77TUwK0Xz1d9RaZcrYjWjB35RDJmn3ZAnoqlV5tlyPIfWuvpXzwWwsDJQvV1h4pA9YK/UQ2iQ==}
+  '@cosyte/process@0.0.2':
+    resolution: {integrity: sha512-bb+6nDiM/sgshbgFRk5DbRxa355qyA9BNixwm0YrHT2Rik8R8ZFVVCTjgONa/UH9M9YVktoo/wVJPa/wejV/DQ==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
@@ -1982,7 +1982,7 @@ snapshots:
 
   '@cosyte/prettier-config@0.0.2': {}
 
-  '@cosyte/process@0.0.1(@types/node@22.20.1)(postcss@8.5.20)(tsx@4.21.0)(vite@7.3.6(@types/node@22.20.1)(tsx@4.21.0))':
+  '@cosyte/process@0.0.2(@types/node@22.20.1)(postcss@8.5.20)(tsx@4.21.0)(vite@7.3.6(@types/node@22.20.1)(tsx@4.21.0))':
     dependencies:
       '@vitest/coverage-v8': 4.1.4(vitest@4.1.4)
       eslint: 10.5.0
