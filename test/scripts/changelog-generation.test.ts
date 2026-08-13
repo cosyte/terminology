@@ -511,7 +511,7 @@ describe("changelog generation is on", () => {
     // measurement rather than a preference.
     expect(config.prettier).toBeUndefined();
     expect(existsSync(join(REPO_ROOT, ".prettierignore"))).toBe(false);
-    expect(pkg.scripts?.["format:check"] ?? "").toContain('"*.{json,md,yml}"');
+    expect(pkg.scripts?.["format:check"] ?? "").toBe("cosyte-process format --check");
   });
 
   it("keeps the committed changelog Prettier-canonical, which is what makes leaving it on safe", async () => {
