@@ -65,7 +65,16 @@ export interface ConceptRef {
 export interface ConceptSetComponent {
   /** The code system these codes are drawn from (canonical URI), when the component names one. */
   readonly system?: string;
-  /** The code system version to pin the selection to, when declared. */
+  /**
+   * The code system version to pin the selection to, when declared.
+   *
+   * Wherever the selection actually resolves a supplied {@link CodeSystem} (a `filter`, or a
+   * whole-system component with no {@link concept} list), the pin is **checked** against that
+   * release's own `version`: a disagreement, or a release that declares no version to agree with, is
+   * a typed {@link DiagnosticCode.TERM_VALUESET_CANNOT_EXPAND} that marks the outcome incomplete or
+   * undetermined, never membership computed from the other release. The check is that the two
+   * declarations agree, not that either is true: a mislabelled release is still trusted.
+   */
   readonly version?: string;
   /** An explicit, enumerated code list (extensional). Mutually exclusive with {@link filter} in FHIR. */
   readonly concept?: readonly ConceptRef[];
@@ -173,8 +182,9 @@ export interface ExpansionDiagnostic {
  * The result of {@link expand}: the flattened membership plus an honest **completeness** signal.
  *
  * `complete` is `false` whenever any part could not be fully computed (a missing code system, an
- * unresolved referenced value set, an unimplemented `filter` op, or a truncated pre-computed
- * expansion). A `false` here is the never-fabricate contract in action: the `contains` set is a
+ * unresolved referenced value set, an unimplemented `filter` op, a truncated pre-computed
+ * expansion, or a component whose declared {@link ConceptSetComponent.version} disagrees with the
+ * supplied release). A `false` here is the never-fabricate contract in action: the `contains` set is a
  * **lower bound**, so it must never be read as exhaustive membership.
  */
 export interface ExpandResult {

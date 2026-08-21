@@ -50,7 +50,8 @@ matches the map's source side. Reverse translation needs an explicit inverse `Co
 The engine could not **prove** membership either way, so it refuses to guess. This happens when a part
 of the value set cannot be evaluated: an intensional `filter`/`system` include whose code system you
 did not pass in the `ExpansionContext`, a referenced value set that is not supplied, an unimplemented
-filter operator (`regex` / `generalizes`), or a **truncated** pre-computed expansion. The result
+filter operator (`regex` / `generalizes`), a **truncated** pre-computed expansion, or a component
+that pins a `version` the `CodeSystem` you supplied for that system does not agree with. The result
 carries `code: "TERM_VALUESET_CANNOT_EXPAND"` and a `diagnostics` list naming each gap.
 
 ```ts
@@ -62,7 +63,9 @@ if (r.undetermined) {
 
 Supply the missing `CodeSystem` (or referenced `ValueSet`) in the context and re-check. A truncated
 server expansion must be re-fetched in full: the engine never treats a truncated snapshot as complete
-membership (a false "not a member" is a clinical error).
+membership (a false "not a member" is a clinical error). For a version disagreement, supply the
+release the value set actually pins: re-checking against the release you already have is what the
+diagnostic exists to stop.
 
 ## `expand` returned `complete: false`
 
@@ -97,6 +100,14 @@ never the surrounding record.
 - **BYO data**: `$expand` and binding operate over the `CodeSystem` releases and referenced
   `ValueSet`s you supply in the `ExpansionContext`; an intensional part with no supplied code system is
   a typed `TERM_VALUESET_CANNOT_EXPAND`, never a fabricated member.
+- **A declared code system version is checked, not selected on**: where an intensional part resolves
+  a supplied release, a component's `version` is compared against that release's own `version`. A
+  disagreement (or a release that declares no version to confirm the pin against) is a typed
+  `TERM_VALUESET_CANNOT_EXPAND` located on that component, and its members are withheld or shipped
+  without the unconfirmed version stamp: never membership computed from the other release. The
+  `ExpansionContext` holds **one release per system URI**, so the engine cannot hold several releases
+  and pick the one a component asks for. What is compared is that the two declarations agree, never
+  that either is true: a mislabelled release is still trusted.
 - **Subsumption is the release's own hierarchy**: `is-a` / `descendent-of` read the loaded code
   system's `parent` edges (nested `concept`s or an explicit `parent` property). Subsumption across
   two separate releases is not computed.

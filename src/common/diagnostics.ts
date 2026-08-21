@@ -136,8 +136,10 @@ export const DIAGNOSTIC_CODES = {
   TERM_CONCEPT_HEADER_NOT_BILLABLE: "TERM_CONCEPT_HEADER_NOT_BILLABLE",
   /**
    * A ValueSet `compose` part could **not be expanded**: an intensional `include`/`exclude` whose
-   * code system was not supplied, an unresolvable referenced value set, or a `filter` operator the
-   * engine does not implement. Surfaced as a typed outcome that marks the expansion **incomplete**;
+   * code system was not supplied, an unresolvable referenced value set, a `filter` operator the
+   * engine does not implement, or a component whose declared code system version disagrees with the
+   * supplied release (or names a pin that release carries no version to confirm). Surfaced as a
+   * typed outcome that marks the expansion **incomplete**;
    * the engine **never** fabricates a member and **never** returns a silently-empty "no members"
    * answer for a part it could not compute (a false "not a member" is a clinical error).
    */

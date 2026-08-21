@@ -7,7 +7,8 @@
  * (`result: true`/`false`) **only when it can prove it**: a code found in a computable `include` and
  * not removed by any computable `exclude` is a definite member; a code absent from a fully-evaluated
  * value set is a definite non-member. When any relevant part cannot be evaluated (a missing code
- * system, a truncated pre-computed expansion, an unimplemented `filter`), the answer is a typed
+ * system, a truncated pre-computed expansion, an unimplemented `filter`, a component whose declared
+ * code system version disagrees with the supplied release), the answer is a typed
  * {@link ValueSetMemberUndetermined}: **never** a fabricated `false` (a false "not a member" is a
  * clinical error).
  *
@@ -65,7 +66,7 @@ function matchComponent(
   path: string,
 ): ComponentMatch {
   const diagnostics: ExpansionDiagnostic[] = [];
-  const { system, concept, filter, valueSet } = component;
+  const { system, version, concept, filter, valueSet } = component;
   // A present `concept` (even empty) is an enumeration; "all of system" is the concept/filter-absent
   // case only: mirrors expandComponent so membership and expansion agree.
   const hasConcept = concept !== undefined;
@@ -91,6 +92,31 @@ function matchComponent(
       const cs = ctx.codeSystems?.get(system);
       if (cs === undefined) {
         diagnostics.push(cannotExpand("code system not supplied for intensional include", path));
+        baseMatched = false;
+        baseComplete = false;
+      } else if (version !== undefined && cs.version !== version) {
+        // The component's declared pin and the supplied release do not agree (they name different
+        // versions, or the release names none to agree with). Deciding membership against it would
+        // decide it against the wrong release, so this component folds into the undetermined
+        // verdict exactly as an unresolved code system does: never a decided `true`/`false`.
+        // "Declares a version" is element presence, so an empty string is a declared pin.
+        // `ValueSetMemberDecided` carries no warning field, so undetermined-with-diagnostic is the
+        // only channel that can report an unconfirmable pin at all.
+        if (cs.version === undefined) {
+          diagnostics.push(
+            cannotExpand(
+              "supplied code system declares no version, so the component's declared version is unconfirmed",
+              path,
+            ),
+          );
+        } else {
+          diagnostics.push(
+            cannotExpand(
+              "supplied code system version disagrees with the component's declared version",
+              path,
+            ),
+          );
+        }
         baseMatched = false;
         baseComplete = false;
       } else if (hasFilter) {
