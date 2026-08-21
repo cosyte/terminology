@@ -12,7 +12,8 @@
  *   `system`, and/or by intersecting referenced value sets.
  *
  * **Never fabricate.** A part that cannot be computed (a missing code system, an unresolved
- * referenced value set, an unimplemented `filter` operator) yields a typed
+ * referenced value set, an unimplemented `filter` operator, or a component whose declared code
+ * system version disagrees with the supplied release) yields a typed
  * {@link ../common/diagnostics.DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND} and marks the result
  * `complete: false`, so the `contains` set is an explicit **lower bound**, never a silently-empty or
  * fabricated membership.
@@ -156,6 +157,40 @@ function expandComponent(
       diagnostics.push(cannotExpand("code system not supplied for intensional include", path));
       return { members: new Map(), complete: false, diagnostics };
     }
+    // The declared pin is **checked** against the release the caller supplied, never assumed: a
+    // component that names a version is asking for that release, and membership computed from a
+    // different one is a wrong answer presented as a right one. The test for "declares a version" is
+    // element PRESENCE (`!== undefined`): an empty string is a declared pin that no release version
+    // equals, not an absent one. Only the two declarations are compared; neither is checked for
+    // truth, and a mislabelled release is still trusted.
+    let stampedVersion = version;
+    if (version !== undefined && cs.version !== version) {
+      if (cs.version === undefined) {
+        // The release carries no version of its own, so the pin can be neither confirmed nor
+        // refuted. Expand (the concepts are real), but mark it incomplete and **drop the version
+        // stamp**: stamping an unconfirmed pin onto the members would assert the very thing that
+        // could not be checked.
+        diagnostics.push(
+          cannotExpand(
+            "supplied code system declares no version, so the component's declared version is unconfirmed",
+            path,
+          ),
+        );
+        complete = false;
+        stampedVersion = undefined;
+      } else {
+        // Two named releases that disagree. Whatever this component selects was selected from the
+        // wrong release, so it contributes nothing and `contains` stays a lower bound: exactly how
+        // an unresolved code system is treated.
+        diagnostics.push(
+          cannotExpand(
+            "supplied code system version disagrees with the component's declared version",
+            path,
+          ),
+        );
+        return { members: new Map(), complete: false, diagnostics };
+      }
+    }
     if (hasFilter) {
       const unsupported = unsupportedOps(filter);
       if (unsupported.length > 0) {
@@ -168,7 +203,7 @@ function expandComponent(
         if (matchesAllFilters(concpt, filter, sub).matched) {
           base.set(
             codingKey(system, concpt.code),
-            makeCoding(system, concpt.code, concpt.display, version),
+            makeCoding(system, concpt.code, concpt.display, stampedVersion),
           );
         }
       }
@@ -177,7 +212,7 @@ function expandComponent(
       for (const concpt of cs.concepts.values()) {
         base.set(
           codingKey(system, concpt.code),
-          makeCoding(system, concpt.code, concpt.display, version),
+          makeCoding(system, concpt.code, concpt.display, stampedVersion),
         );
       }
     }

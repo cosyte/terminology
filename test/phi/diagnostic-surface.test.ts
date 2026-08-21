@@ -229,6 +229,25 @@ function emptyCodeSystem(): CodeSystem {
   });
 }
 
+/**
+ * The same, but declaring a release `version`, so a probe reaches the version-DISAGREEMENT branch
+ * rather than the unconfirmed-pin one (which is what an unversioned release produces).
+ */
+function versionedCodeSystem(version: string): CodeSystem {
+  return loadCodeSystem({
+    format: "fhir",
+    resource: {
+      resourceType: "CodeSystem",
+      url: "http://example.org/cs",
+      version,
+      concept: [],
+    },
+  });
+}
+
+/** The version a component pins itself to when the marker is planted on the release instead. */
+const PINNED_VERSION = "1.0";
+
 const CSV_HEADER = "CODE,NAME,STATUS,EXTRA";
 const CSV_ROW = "2160-0,Creatinine,ACTIVE,x";
 
@@ -319,7 +338,7 @@ function rf2Row(over: { source?: string; advice?: string; category?: string } = 
  * The reviewed size of the slot table. It is asserted, so a slot cannot be dropped silently while
  * the suite still reports green.
  */
-const SLOT_COUNT = 52;
+const SLOT_COUNT = 58;
 
 const slots: readonly DiagnosticSlot<Probe>[] = [
   // ── RFC-4180 CSV reader: the caller-supplied column config ───────────────────────────────────
@@ -768,11 +787,66 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
       ),
     expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
   },
+  {
+    // MARKER-DRIVEN: the marked component version is the very thing that disagrees with the
+    // supplied release, so the declared code is raised by the position the marker sits in.
+    name: "ValueSet.compose.include[].version, disagrees with the supplied release (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        expand(
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: { include: [{ system: "http://example.org/cs", version: m }] },
+          }),
+          {
+            codeSystems: new Map([["http://example.org/cs", versionedCodeSystem(PINNED_VERSION)]]),
+          },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // MARKER-DRIVEN: the same position, on the other branch. The supplied release declares no
+    // version, so the marked pin is unconfirmable rather than refuted, and this is also the branch
+    // that must not stamp it onto the members.
+    name: "ValueSet.compose.include[].version, unconfirmable against an unversioned release (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        expand(
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: { include: [{ system: "http://example.org/cs", version: m }] },
+          }),
+          { codeSystems: new Map([["http://example.org/cs", emptyCodeSystem()]]) },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // MARKER-DRIVEN, from the other side of the same comparison: the marker is the SUPPLIED
+    // release's own version, which the component's fixed pin disagrees with.
+    name: "CodeSystem.version, disagrees with a component's declared pin (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        expand(
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: {
+              include: [{ system: "http://example.org/cs", version: PINNED_VERSION }],
+            },
+          }),
+          { codeSystems: new Map([["http://example.org/cs", versionedCodeSystem(m)]]) },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
 
   // ── ValueSet $validate-code (membership) ─────────────────────────────────────────────────────
   //
   // `src/valueset/validate.ts` is a SECOND, PRIVATE COPY of the diagnostic factories: its own
-  // `cannotExpand`, its own `underPath`, six diagnostic-producing branches. Covering `expand` and
+  // `cannotExpand`, its own `underPath`, and its own set of diagnostic-producing branches (derive
+  // it, do not write the count down: it grew when the version-agreement branches landed in both
+  // copies at once, which is exactly how a written-down count goes stale). Covering `expand` and
   // not `validateCodeInValueSet` left every one of them unswept, and a planted echo in
   // `validate.ts` passed the gate green. Every branch below is reached through the membership path
   // specifically, not through expansion.
@@ -895,6 +969,57 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
             expansion: { total: 9, contains: [{ code: m }] },
           }),
           {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // The version-agreement branches exist in BOTH copies of the factories, so both are swept: a
+    // leak planted in `validate.ts`'s copy is invisible to the `expand` slots above.
+    name: "validateCodeInValueSet: include[].version, disagrees with the supplied release (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: { include: [{ system: "http://example.org/cs", version: m }] },
+          }),
+          {
+            codeSystems: new Map([["http://example.org/cs", versionedCodeSystem(PINNED_VERSION)]]),
+          },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    name: "validateCodeInValueSet: include[].version, unconfirmable against an unversioned release (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: { include: [{ system: "http://example.org/cs", version: m }] },
+          }),
+          { codeSystems: new Map([["http://example.org/cs", emptyCodeSystem()]]) },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    name: "validateCodeInValueSet: CodeSystem.version, disagrees with a component's pin (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: {
+              include: [{ system: "http://example.org/cs", version: PINNED_VERSION }],
+            },
+          }),
+          { codeSystems: new Map([["http://example.org/cs", versionedCodeSystem(m)]]) },
         ),
       ),
     expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
