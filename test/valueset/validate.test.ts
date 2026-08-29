@@ -6,6 +6,7 @@ import {
   validateCodeInValueSet,
   type CodeSystem,
 } from "../../src/index.js";
+import { only } from "../helpers.js";
 
 const CS_URL = "http://example.org/animals";
 
@@ -318,5 +319,142 @@ describe("validateCodeInValueSet: whole-system include and system-less expansion
     const r = validateCodeInValueSet({ system: "http://anything", code: "loose" }, vs);
     if (r.undetermined) throw new Error("expected decided");
     expect(r.result).toBe(true);
+  });
+});
+
+// ── The valueset-unclosed extension: a post-coordinated value set bounds what ABSENCE means ──────
+//
+// A server marks a pre-computed expansion `unclosed` when the value set is unbounded (SNOMED CT,
+// UCUM post-coordination), so codes other than the listed ones may be valid. Every expansion below
+// has a `total` that MATCHES its `contains` length and (unless the case is about both markers) no
+// `valueset-toocostly`, so the unclosed extension is the only thing that can make it incomplete.
+
+const UNCLOSED_URL = "http://hl7.org/fhir/StructureDefinition/valueset-unclosed";
+const TOO_COSTLY_URL = "http://hl7.org/fhir/StructureDefinition/valueset-toocostly";
+const SNOMED = "http://snomed.info/sct";
+
+/** A pre-computed expansion of `codes`, with a matching `total` and the given `extension` array. */
+function expansionVs(
+  codes: readonly string[],
+  extension?: readonly unknown[],
+): ReturnType<typeof loadValueSet> {
+  const expansion: Record<string, unknown> = {
+    total: codes.length,
+    contains: codes.map((code) => ({ system: SNOMED, code })),
+  };
+  if (extension !== undefined) expansion["extension"] = extension;
+  return loadValueSet({ resourceType: "ValueSet", expansion });
+}
+
+/** The same expansion, marked unclosed with an explicit `valueBoolean: true`. */
+function unclosedVs(codes: readonly string[]): ReturnType<typeof loadValueSet> {
+  return expansionVs(codes, [{ url: UNCLOSED_URL, valueBoolean: true }]);
+}
+
+describe("validateCodeInValueSet: an unclosed expansion", () => {
+  it("a code ABSENT from an unclosed expansion is undetermined, never a decided non-membership", () => {
+    const r = validateCodeInValueSet({ system: SNOMED, code: "999999" }, unclosedVs(["73211009"]));
+    expect(r.undetermined).toBe(true);
+    if (!r.undetermined) throw new Error("expected undetermined");
+    expect(r.code).toBe("TERM_VALUESET_CANNOT_EXPAND");
+    expect(only(r.diagnostics).path).toBe("expansion");
+  });
+
+  it("a code PRESENT in an unclosed expansion is a decided membership of true", () => {
+    // Enumerated membership is proven: unclosedness bounds absence, never presence.
+    const r = validateCodeInValueSet(
+      { system: SNOMED, code: "73211009" },
+      unclosedVs(["73211009"]),
+    );
+    if (r.undetermined) throw new Error("expected decided");
+    expect(r.result).toBe(true);
+  });
+
+  it("an unclosed expansion with an EMPTY contains is undetermined for any code", () => {
+    const r = validateCodeInValueSet({ system: SNOMED, code: "73211009" }, unclosedVs([]));
+    expect(r.undetermined).toBe(true);
+  });
+
+  it("an empty expansion with total 0 and NO marker is a decided non-membership", () => {
+    // An empty expansion that says it is empty is a complete answer, not an undetermined one.
+    const r = validateCodeInValueSet({ system: SNOMED, code: "73211009" }, expansionVs([]));
+    if (r.undetermined) throw new Error("expected decided");
+    expect(r.result).toBe(false);
+  });
+
+  it("an explicit valueBoolean false decides non-membership exactly as an absent extension does", () => {
+    const explicitlyClosed = expansionVs(
+      ["73211009"],
+      [{ url: UNCLOSED_URL, valueBoolean: false }],
+    );
+    const noExtension = expansionVs(["73211009"]);
+    const marked = validateCodeInValueSet({ system: SNOMED, code: "999999" }, explicitlyClosed);
+    const plain = validateCodeInValueSet({ system: SNOMED, code: "999999" }, noExtension);
+    if (marked.undetermined || plain.undetermined) throw new Error("expected decided");
+    expect(marked.result).toBe(false);
+    expect(plain.result).toBe(false);
+    expect(marked).toStrictEqual(plain);
+  });
+
+  it("an unreadable unclosed value is undetermined and never throws", () => {
+    const vs = expansionVs(["73211009"], [{ url: UNCLOSED_URL, valueBoolean: "true" }]);
+    const r = validateCodeInValueSet({ system: SNOMED, code: "999999" }, vs);
+    expect(r.undetermined).toBe(true);
+  });
+
+  it("names unclosed in the diagnostic detail, distinguishably from too-costly", () => {
+    const unclosed = validateCodeInValueSet(
+      { system: SNOMED, code: "999999" },
+      unclosedVs(["73211009"]),
+    );
+    const tooCostly = validateCodeInValueSet(
+      { system: SNOMED, code: "999999" },
+      expansionVs(["73211009"], [{ url: TOO_COSTLY_URL, valueBoolean: true }]),
+    );
+    if (!unclosed.undetermined || !tooCostly.undetermined) {
+      throw new Error("expected undetermined");
+    }
+    expect(only(unclosed.diagnostics).detail).toContain("unclosed");
+    // The too-costly wording is unchanged by this feature, and does not claim unclosedness.
+    expect(only(tooCostly.diagnostics).detail).toBe(
+      "pre-computed expansion is incomplete (truncated or too-costly)",
+    );
+    expect(only(tooCostly.diagnostics).detail).not.toContain("unclosed");
+  });
+
+  it("reports unclosed even when valueset-toocostly is present too, in ONE diagnostic entry", () => {
+    const vs = expansionVs(
+      ["73211009"],
+      [
+        { url: TOO_COSTLY_URL, valueBoolean: true },
+        { url: UNCLOSED_URL, valueBoolean: true },
+      ],
+    );
+    const r = validateCodeInValueSet({ system: SNOMED, code: "999999" }, vs);
+    expect(r.undetermined).toBe(true);
+    if (!r.undetermined) throw new Error("expected undetermined");
+    // Exactly one entry for the one `expansion` locus: both markers are one concern, not two.
+    expect(r.diagnostics).toHaveLength(1);
+    expect(r.diagnostics.filter((d) => d.path === "expansion")).toHaveLength(1);
+    expect(only(r.diagnostics).detail).toContain("unclosed");
+  });
+
+  it("decides from compose exactly as before when the value set carries NO expansion", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ system: CS_URL, concept: [{ code: "dog" }] }] },
+    });
+    const member = validateCodeInValueSet({ system: CS_URL, code: "dog" }, vs);
+    const absent = validateCodeInValueSet({ system: CS_URL, code: "cat" }, vs);
+    if (member.undetermined || absent.undetermined) throw new Error("expected decided");
+    expect(member.result).toBe(true);
+    expect(absent.result).toBe(false);
+    // And a value set with neither compose nor expansion is still a decided non-membership.
+    const empty = validateCodeInValueSet(
+      { system: CS_URL, code: "dog" },
+      loadValueSet({ resourceType: "ValueSet", url: "http://x/none" }),
+    );
+    if (empty.undetermined) throw new Error("expected decided");
+    expect(empty.result).toBe(false);
   });
 });

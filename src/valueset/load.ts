@@ -30,6 +30,13 @@ import type {
 /** The FHIR `valueset-toocostly` extension URL: flags a pre-computed expansion as incomplete. */
 const TOO_COSTLY_EXTENSION = "http://hl7.org/fhir/StructureDefinition/valueset-toocostly";
 
+/**
+ * The FHIR `valueset-unclosed` extension URL: a server sets it on `ValueSet.expansion` when the
+ * value set is **unbounded** because it includes post-coordinated content (SNOMED CT, UCUM), so no
+ * practical expansion can enumerate its membership and the snapshot is a sample of it.
+ */
+const UNCLOSED_EXTENSION = "http://hl7.org/fhir/StructureDefinition/valueset-unclosed";
+
 /** Throw a value-free {@link TerminologyError} for a malformed ValueSet at `path`. */
 function malformed(path: string, fault: string): never {
   throw new TerminologyError(FATAL_CODES.TERM_VALUESET_MALFORMED, `ValueSet ${path}: ${fault}`);
@@ -148,6 +155,35 @@ function isTooCostly(raw: Record<string, unknown>): boolean {
   return false;
 }
 
+/**
+ * True when the `expansion.extension` array carries `valueset-unclosed` and that entry does not
+ * readably say `false`.
+ *
+ * **Resolved toward incomplete**, deliberately unlike {@link isTooCostly}'s stricter `=== true`. The
+ * extension exists only to say "this expansion is not the whole membership", so an entry that names
+ * the URL but carries no readable `valueBoolean` (missing, or present as a string / number / `null`)
+ * is read as the mark it was sent to be: the fail-safe direction, which can only ever lower
+ * confidence. An entry that **is** the URL string rather than an object around it carries the mark
+ * with nothing to read either, and resolves the same way. Only an explicit `valueBoolean: false`
+ * (the sender saying the expansion IS closed) reads as absent.
+ *
+ * The trigger is the URL: an unrelated malformed entry names no URL, so it is not this extension and
+ * never marks an expansion unclosed. Reading it any wider would turn expansions that decide
+ * non-membership correctly today into `undetermined`.
+ */
+function isUnclosed(raw: Record<string, unknown>): boolean {
+  for (const ext of getArray(raw, "extension") ?? []) {
+    if (typeof ext === "string") {
+      if (ext === UNCLOSED_EXTENSION) return true;
+      continue;
+    }
+    if (getString(ext, "url") !== UNCLOSED_EXTENSION) continue;
+    if (getBoolean(ext, "valueBoolean") === false) continue;
+    return true;
+  }
+  return false;
+}
+
 function loadExpansion(raw: unknown, path: string): ValueSetExpansion {
   if (!isJsonObject(raw)) malformed(path, "expansion is not an object");
   const contains = Object.freeze(
@@ -156,10 +192,16 @@ function loadExpansion(raw: unknown, path: string): ValueSetExpansion {
     ),
   );
   const total = getNumber(raw, "total");
+  const unclosed = isUnclosed(raw);
   // Truncated when the server-reported total exceeds what it actually returned, or it flagged the
   // expansion too-costly. Either way the snapshot is a lower bound, never complete membership.
-  const truncated = (total !== undefined && total > contains.length) || isTooCostly(raw);
-  const out: Writable<ValueSetExpansion> = { contains, truncated };
+  // `unclosed` folds into the SAME flag as a third source of that one incompleteness: an unbounded
+  // value set cannot be enumerated, so absence from the snapshot proves nothing either. Both
+  // original derivations are untouched, and a disjunct can only ever turn this `false` into `true`:
+  // incompleteness never raises confidence, so no expansion that reads as truncated today stops.
+  const truncated =
+    (total !== undefined && total > contains.length) || isTooCostly(raw) || unclosed;
+  const out: Writable<ValueSetExpansion> = { contains, truncated, unclosed };
   if (total !== undefined) out.total = total;
   return Object.freeze(out);
 }
@@ -169,8 +211,9 @@ function loadExpansion(raw: unknown, path: string): ValueSetExpansion {
  *
  * Accepts the standard resource shape: `resourceType: "ValueSet"` with an optional intensional
  * `compose` (`include`/`exclude` of `system`/`concept`/`filter`/`valueSet`) and/or a **pre-computed**
- * `expansion` (`contains`, with `total` and the `valueset-toocostly` extension read into a derived
- * `truncated` flag). The result is deep-frozen. Anything structurally unusable throws a
+ * `expansion` (`contains`, with `total` and the `valueset-toocostly` / `valueset-unclosed`
+ * extensions read into a derived `truncated` flag, the last of them also surfaced on its own
+ * `unclosed` flag). The result is deep-frozen. Anything structurally unusable throws a
  * {@link TerminologyError} carrying {@link FATAL_CODES.TERM_VALUESET_MALFORMED}.
  *
  * @param json - The untrusted resource (typically `JSON.parse` output, hence `unknown`).

@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 import { loadValueSet, TerminologyError } from "../../src/index.js";
 import { nth, only } from "../helpers.js";
 
+const UNCLOSED_URL = "http://hl7.org/fhir/StructureDefinition/valueset-unclosed";
+const TOO_COSTLY_URL = "http://hl7.org/fhir/StructureDefinition/valueset-toocostly";
+
+/** A ValueSet whose expansion is otherwise COMPLETE (total === contains.length), plus `extension`. */
+function expansionWith(extension: unknown): ReturnType<typeof loadValueSet> {
+  return loadValueSet({
+    resourceType: "ValueSet",
+    expansion: { total: 1, contains: [{ system: "http://x", code: "a" }], extension },
+  });
+}
+
 describe("loadValueSet", () => {
   it("loads an intensional compose (system + explicit concept list)", () => {
     const vs = loadValueSet({
@@ -102,6 +113,7 @@ describe("loadValueSet", () => {
       expansion: { total: 1, contains: [{ system: "http://x", code: "a" }] },
     });
     expect(vs.expansion?.truncated).toBe(false);
+    expect(vs.expansion?.unclosed).toBe(false);
   });
 
   it("loads a value set with neither compose nor expansion", () => {
@@ -204,6 +216,163 @@ describe("loadValueSet", () => {
       throw new Error("expected throw");
     } catch (err) {
       expect((err as TerminologyError).message).toContain("compose.include[0].concept[0]");
+      expect((err as TerminologyError).message).not.toContain("SECRET");
+    }
+  });
+});
+
+describe("loadValueSet: the valueset-unclosed extension", () => {
+  it("derives unclosed (and therefore truncated) from valueBoolean true", () => {
+    // The expansion's own `total` MATCHES its `contains` length and it carries no too-costly marker,
+    // so nothing but the unclosed extension can make this incomplete.
+    const vs = expansionWith([{ url: UNCLOSED_URL, valueBoolean: true }]);
+    expect(vs.expansion?.unclosed).toBe(true);
+    expect(vs.expansion?.truncated).toBe(true);
+  });
+
+  it("treats an explicit valueBoolean false exactly as if the extension were absent", () => {
+    const vs = expansionWith([{ url: UNCLOSED_URL, valueBoolean: false }]);
+    expect(vs.expansion?.unclosed).toBe(false);
+    expect(vs.expansion?.truncated).toBe(false);
+  });
+
+  it.each([
+    ["valueBoolean missing", { url: UNCLOSED_URL }],
+    ["valueBoolean is a string", { url: UNCLOSED_URL, valueBoolean: "false" }],
+    ["valueBoolean is the string 'true'", { url: UNCLOSED_URL, valueBoolean: "true" }],
+    ["valueBoolean is a number", { url: UNCLOSED_URL, valueBoolean: 0 }],
+    ["valueBoolean is null", { url: UNCLOSED_URL, valueBoolean: null }],
+    ["valueString instead of valueBoolean", { url: UNCLOSED_URL, valueString: "yes" }],
+  ])("resolves an unreadable value toward incomplete and never throws: %s", (_name, entry) => {
+    // Fail-safe: the extension exists only to say "incomplete", so an unreadable one is resolved in
+    // the direction that can only LOWER confidence. Deliberately looser than too-costly's `=== true`.
+    const vs = expansionWith([entry]);
+    expect(vs.expansion?.unclosed).toBe(true);
+    expect(vs.expansion?.truncated).toBe(true);
+  });
+
+  it("reads the mark off an entry that IS the URL rather than an object around it", () => {
+    // The URL is present and there is no value to read: the same unreadable-value case, and the
+    // loader must not throw on an extension entry that is not a JSON object.
+    const vs = expansionWith([UNCLOSED_URL]);
+    expect(vs.expansion?.unclosed).toBe(true);
+    expect(vs.expansion?.truncated).toBe(true);
+  });
+
+  it.each([
+    ["a null entry", null],
+    ["a number entry", 42],
+    ["an unrelated string entry", "not an extension"],
+    ["an array entry", [UNCLOSED_URL]],
+    [
+      "an object naming another extension URL",
+      { url: "http://example.org/ext", valueBoolean: true },
+    ],
+    ["an object with no url at all", { valueBoolean: true }],
+  ])("does not fire on an entry that never names the unclosed URL: %s", (_name, entry) => {
+    // The trigger is the URL. Reading it any wider would turn expansions that decide non-membership
+    // correctly today into `undetermined`, which is the mirror failure this must not cause.
+    const vs = expansionWith([entry]);
+    expect(vs.expansion?.unclosed).toBe(false);
+    expect(vs.expansion?.truncated).toBe(false);
+  });
+
+  it("reads unclosed alongside valueset-toocostly, both true, without throwing", () => {
+    const vs = expansionWith([
+      { url: TOO_COSTLY_URL, valueBoolean: true },
+      { url: UNCLOSED_URL, valueBoolean: true },
+    ]);
+    expect(vs.expansion?.unclosed).toBe(true);
+    expect(vs.expansion?.truncated).toBe(true);
+  });
+
+  it("leaves too-costly alone: unclosed false with too-costly true is still truncated", () => {
+    // The too-costly derivation is untouched by the unclosed reading, in either direction.
+    const vs = expansionWith([
+      { url: TOO_COSTLY_URL, valueBoolean: true },
+      { url: UNCLOSED_URL, valueBoolean: false },
+    ]);
+    expect(vs.expansion?.unclosed).toBe(false);
+    expect(vs.expansion?.truncated).toBe(true);
+  });
+
+  it("leaves too-costly's stricter reading alone: an unreadable too-costly value is NOT truncated", () => {
+    // `valueset-toocostly` still requires an explicit `=== true`; only `unclosed` is fail-safe.
+    const vs = expansionWith([{ url: TOO_COSTLY_URL, valueBoolean: "true" }]);
+    expect(vs.expansion?.truncated).toBe(false);
+    expect(vs.expansion?.unclosed).toBe(false);
+  });
+
+  it("a non-array expansion.extension marks nothing (no entries to read, no throw)", () => {
+    const vs = expansionWith(UNCLOSED_URL);
+    expect(vs.expansion?.unclosed).toBe(false);
+    expect(vs.expansion?.truncated).toBe(false);
+  });
+
+  it("an empty contains with total 0 and no marker is complete; marked unclosed it is not", () => {
+    const closed = loadValueSet({
+      resourceType: "ValueSet",
+      expansion: { total: 0, contains: [] },
+    });
+    expect(closed.expansion?.truncated).toBe(false);
+    expect(closed.expansion?.unclosed).toBe(false);
+    const open = loadValueSet({
+      resourceType: "ValueSet",
+      expansion: { total: 0, contains: [], extension: [{ url: UNCLOSED_URL, valueBoolean: true }] },
+    });
+    expect(open.expansion?.truncated).toBe(true);
+    expect(open.expansion?.unclosed).toBe(true);
+  });
+});
+
+describe("loadValueSet: an unclosed expansion never softens the conservative refusals", () => {
+  it("still throws TERM_VALUESET_MALFORMED when the expansion is not an object", () => {
+    try {
+      loadValueSet({ resourceType: "ValueSet", expansion: "unclosed" });
+      throw new Error("expected throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(TerminologyError);
+      expect((err as TerminologyError).code).toBe("TERM_VALUESET_MALFORMED");
+      expect((err as TerminologyError).message).toContain("expansion is not an object");
+    }
+  });
+
+  it("still throws on a non-object contains entry under an unclosed expansion", () => {
+    expect(() =>
+      loadValueSet({
+        resourceType: "ValueSet",
+        expansion: {
+          extension: [{ url: UNCLOSED_URL, valueBoolean: true }],
+          contains: ["2160-0"],
+        },
+      }),
+    ).toThrowError(/contains entry is not an object/);
+  });
+
+  it("still throws on a contains entry missing its code under an unclosed expansion", () => {
+    expect(() =>
+      loadValueSet({
+        resourceType: "ValueSet",
+        expansion: {
+          extension: [{ url: UNCLOSED_URL, valueBoolean: true }],
+          contains: [{ system: "http://x" }],
+        },
+      }),
+    ).toThrowError(/contains entry is missing its required 'code'/);
+  });
+
+  it("the refusal is value-free: it names the path and the fault, never a code value", () => {
+    try {
+      loadValueSet({
+        resourceType: "ValueSet",
+        expansion: {
+          extension: [{ url: UNCLOSED_URL, valueBoolean: true }],
+          contains: [{ system: "http://x", display: "SECRET" }],
+        },
+      });
+      throw new Error("expected throw");
+    } catch (err) {
+      expect((err as TerminologyError).message).toContain("expansion.contains[0]");
       expect((err as TerminologyError).message).not.toContain("SECRET");
     }
   });

@@ -146,9 +146,11 @@ export const DIAGNOSTIC_CODES = {
   TERM_VALUESET_CANNOT_EXPAND: "TERM_VALUESET_CANNOT_EXPAND",
   /**
    * A **pre-computed** `ValueSet.expansion` is **incomplete**: its `total` exceeds the number of
-   * `contains` entries, or it is flagged too-costly (the VSAC `$expand` >1200-code truncation
-   * hazard). The engine **never treats a truncated expansion as complete membership**: a code
-   * absent from a truncated expansion is `undetermined`, never a confident "not a member".
+   * `contains` entries, it is flagged too-costly (the VSAC `$expand` >1200-code truncation
+   * hazard), or it is marked `unclosed` (the value set is unbounded because it includes
+   * post-coordinated content, so no expansion can enumerate it). The engine **never treats an
+   * incomplete expansion as complete membership**: a code absent from one is `undetermined`, never
+   * a confident "not a member". The diagnostic's `detail` says which of those it was.
    */
   TERM_VALUESET_EXPANSION_TRUNCATED: "TERM_VALUESET_EXPANSION_TRUNCATED",
   /**

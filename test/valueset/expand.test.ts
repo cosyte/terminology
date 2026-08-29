@@ -308,6 +308,77 @@ describe("expand: pre-computed expansion", () => {
   });
 });
 
+describe("expand: an unclosed pre-computed expansion", () => {
+  const UNCLOSED_URL = "http://hl7.org/fhir/StructureDefinition/valueset-unclosed";
+  const TOO_COSTLY_URL = "http://hl7.org/fhir/StructureDefinition/valueset-toocostly";
+
+  /** An expansion of one code whose `total` MATCHES its `contains` length, plus `extension`. */
+  function expansionVs(extension?: readonly unknown[]): ValueSet {
+    const expansion: Record<string, unknown> = {
+      total: 1,
+      contains: [{ system: "http://snomed.info/sct", code: "73211009" }],
+    };
+    if (extension !== undefined) expansion["extension"] = extension;
+    return loadValueSet({ resourceType: "ValueSet", expansion });
+  }
+
+  it("is complete: false with a truncated diagnostic at `expansion`, on a matching total", () => {
+    // `total` equals `contains.length` and there is no too-costly marker: only the unclosed
+    // extension can make this incomplete, so this is the criterion's own shape.
+    const r = expand(expansionVs([{ url: UNCLOSED_URL, valueBoolean: true }]));
+    expect(r.complete).toBe(false);
+    expect(r.diagnostics).toHaveLength(1);
+    expect(nth(r.diagnostics, 0).code).toBe("TERM_VALUESET_EXPANSION_TRUNCATED");
+    expect(nth(r.diagnostics, 0).path).toBe("expansion");
+    expect(nth(r.diagnostics, 0).detail).toContain("unclosed");
+    // The members it DID enumerate are still returned: `contains` is a lower bound, not empty.
+    expect(codes(r)).toStrictEqual(["73211009"]);
+    expect(r.total).toBe(1);
+  });
+
+  it("stays complete: true with no diagnostics when nothing marks the expansion incomplete", () => {
+    const plain = expand(expansionVs());
+    expect(plain.complete).toBe(true);
+    expect(plain.diagnostics).toStrictEqual([]);
+    // An explicit `valueBoolean: false` is the sender saying the expansion is closed.
+    const closed = expand(expansionVs([{ url: UNCLOSED_URL, valueBoolean: false }]));
+    expect(closed.complete).toBe(true);
+    expect(closed.diagnostics).toStrictEqual([]);
+  });
+
+  it("reports ONE diagnostic naming unclosed when both markers are present", () => {
+    const r = expand(
+      expansionVs([
+        { url: TOO_COSTLY_URL, valueBoolean: true },
+        { url: UNCLOSED_URL, valueBoolean: true },
+      ]),
+    );
+    expect(r.complete).toBe(false);
+    expect(r.diagnostics).toHaveLength(1);
+    expect(nth(r.diagnostics, 0).detail).toContain("unclosed");
+  });
+
+  it("leaves the too-costly wording untouched when the expansion is only too-costly", () => {
+    const r = expand(expansionVs([{ url: TOO_COSTLY_URL, valueBoolean: true }]));
+    expect(r.complete).toBe(false);
+    expect(nth(r.diagnostics, 0).detail).toBe(
+      "pre-computed expansion is incomplete (truncated or too-costly)",
+    );
+  });
+
+  it("agrees with validate: absent is undetermined, present is a decided member", () => {
+    const vs = expansionVs([{ url: UNCLOSED_URL, valueBoolean: true }]);
+    const absent = validateCodeInValueSet({ system: "http://snomed.info/sct", code: "999999" }, vs);
+    const present = validateCodeInValueSet(
+      { system: "http://snomed.info/sct", code: "73211009" },
+      vs,
+    );
+    expect(absent.undetermined).toBe(true);
+    if (present.undetermined) throw new Error("expected decided");
+    expect(present.result).toBe(true);
+  });
+});
+
 describe("expand: referenced value sets", () => {
   const base = animalCs();
 

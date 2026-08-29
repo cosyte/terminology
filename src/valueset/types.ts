@@ -117,9 +117,26 @@ export interface ValueSetExpansion {
   /**
    * Derived at load: the expansion is **incomplete**. True when `total` exceeds `contains.length`, or
    * the `http://hl7.org/fhir/StructureDefinition/valueset-toocostly` extension flagged it too-costly
-   * (the VSAC >1200-code truncation hazard). A truncated expansion never reads as complete membership.
+   * (the VSAC >1200-code truncation hazard), or {@link unclosed} is set. A truncated expansion never
+   * reads as complete membership.
    */
   readonly truncated: boolean;
+  /**
+   * Derived at load: the server marked the expansion `unclosed`
+   * (`http://hl7.org/fhir/StructureDefinition/valueset-unclosed`), meaning the value set is
+   * **unbounded** because it includes post-coordinated content (SNOMED CT, UCUM), so codes other
+   * than the ones listed may be valid and no expansion can enumerate its membership.
+   *
+   * A source of incompleteness in its own right: whenever this is `true` so is {@link truncated}.
+   * It is carried separately so a caller can tell an unbounded value set from a truncated page, and
+   * the mark is read **fail-safe**: an entry that names the extension but carries no readable
+   * boolean is taken as set, and only an explicit `valueBoolean: false` reads as absent.
+   *
+   * The engine only ever **reads** this off a supplied expansion. It never sets it on an expansion
+   * it computes: `expand` runs over consumer-supplied code systems and cannot assert
+   * post-coordination.
+   */
+  readonly unclosed: boolean;
 }
 
 /**
