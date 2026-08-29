@@ -50,9 +50,10 @@ matches the map's source side. Reverse translation needs an explicit inverse `Co
 The engine could not **prove** membership either way, so it refuses to guess. This happens when a part
 of the value set cannot be evaluated: an intensional `filter`/`system` include whose code system you
 did not pass in the `ExpansionContext`, a referenced value set that is not supplied, an unimplemented
-filter operator (`regex` / `generalizes`), a **truncated** pre-computed expansion, or a component
-that pins a `version` the `CodeSystem` you supplied for that system does not agree with. The result
-carries `code: "TERM_VALUESET_CANNOT_EXPAND"` and a `diagnostics` list naming each gap.
+filter operator (`regex` / `generalizes`), a **truncated** pre-computed expansion, a pre-computed
+expansion the server marked **`unclosed`**, or a component that pins a `version` the `CodeSystem` you
+supplied for that system does not agree with. The result carries
+`code: "TERM_VALUESET_CANNOT_EXPAND"` and a `diagnostics` list naming each gap.
 
 ```ts
 const r = validateCodeInValueSet(coding, valueSet, { codeSystems });
@@ -63,9 +64,13 @@ if (r.undetermined) {
 
 Supply the missing `CodeSystem` (or referenced `ValueSet`) in the context and re-check. A truncated
 server expansion must be re-fetched in full: the engine never treats a truncated snapshot as complete
-membership (a false "not a member" is a clinical error). For a version disagreement, supply the
-release the value set actually pins: re-checking against the release you already have is what the
-diagnostic exists to stop.
+membership (a false "not a member" is a clinical error). An `unclosed` expansion cannot be re-fetched
+into completeness at all: the marker says the value set is unbounded because it includes
+post-coordinated content (SNOMED CT, UCUM), so codes beyond the listed ones may be valid and only a
+terminology server that understands that content can decide the ones it did not list. A code that IS
+in such an expansion still validates `true`: the marker bounds what **absence** means, not presence.
+For a version disagreement, supply the release the value set actually pins: re-checking against the
+release you already have is what the diagnostic exists to stop.
 
 ## `expand` returned `complete: false`
 

@@ -64,6 +64,20 @@ function truncated(detail: string, path?: string): ExpansionDiagnostic {
 }
 
 /**
+ * The value-free reason a pre-computed expansion is incomplete: **one** sentence for the one
+ * `expansion` locus, naming `unclosed` whenever the value set declared itself unbounded so a caller
+ * can tell post-coordination from a truncated page. An expansion carrying both markers reports the
+ * unclosed one (it is the stronger claim: no page size can ever complete it), never only
+ * too-costly. Both spellings are literals this module owns, so nothing consumer-supplied reaches a
+ * diagnostic. Duplicated verbatim in `validate.ts`, which keeps its own copy of these factories.
+ */
+function expansionIncompleteDetail(unclosed: boolean): string {
+  return unclosed
+    ? "pre-computed expansion is incomplete (marked unclosed: the value set is unbounded, so the snapshot is a sample of its membership)"
+    : "pre-computed expansion is incomplete (truncated or too-costly)";
+}
+
+/**
  * Re-root a diagnostic raised inside a *referenced* value set onto the reference that reached it, so
  * a nested `compose.include[3]` is still navigable from the caller's own resource. Value-free: both
  * halves are index paths this module built.
@@ -256,9 +270,9 @@ function expandInternal(
     let complete = true;
     if (vs.expansion.truncated) {
       complete = false;
-      diagnostics.push(
-        truncated("pre-computed expansion is incomplete (truncated or too-costly)", "expansion"),
-      );
+      // Exactly one diagnostic for the one `expansion` locus, however many markers set it: an
+      // expansion carrying both `unclosed` and `too-costly` is not two concerns to count twice.
+      diagnostics.push(truncated(expansionIncompleteDetail(vs.expansion.unclosed), "expansion"));
     }
     const out: Writable<ExpandResult> = {
       complete,

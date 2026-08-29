@@ -33,6 +33,21 @@ function cannotExpand(detail: string, path?: string): ExpansionDiagnostic {
 }
 
 /**
+ * The value-free reason a pre-computed expansion is incomplete: **one** sentence for the one
+ * `expansion` locus, naming `unclosed` whenever the value set declared itself unbounded so a caller
+ * can tell post-coordination from a truncated page. An expansion carrying both markers reports the
+ * unclosed one (it is the stronger claim: no page size can ever complete it), never only
+ * too-costly. Both spellings are literals this module owns, so nothing consumer-supplied reaches a
+ * diagnostic. The wording is shared with `expand.ts` on purpose (the same fact, reported under the
+ * membership code rather than the expansion one); this file keeps its own copy of these factories.
+ */
+function expansionIncompleteDetail(unclosed: boolean): string {
+  return unclosed
+    ? "pre-computed expansion is incomplete (marked unclosed: the value set is unbounded, so the snapshot is a sample of its membership)"
+    : "pre-computed expansion is incomplete (truncated or too-costly)";
+}
+
+/**
  * Re-root a diagnostic raised inside a *referenced* value set onto the reference that reached it.
  *
  * The **path format and its construction** are shared with `expand` (index paths over `compose`,
@@ -205,10 +220,13 @@ function validateInternal(
         c.code === target.code &&
         (c.system === undefined || target.system === undefined || c.system === target.system),
     );
+    // Enumerated membership is PROVEN, so a found code decides `true` before any incompleteness is
+    // consulted: unclosedness bounds what ABSENCE means, never what presence means.
     if (found) return decided(true, target);
     if (vs.expansion.truncated) {
+      // Exactly one diagnostic for the one `expansion` locus, however many markers set it.
       return undetermined(target, [
-        cannotExpand("pre-computed expansion is incomplete (truncated or too-costly)", "expansion"),
+        cannotExpand(expansionIncompleteDetail(vs.expansion.unclosed), "expansion"),
       ]);
     }
     return decided(false, target);
