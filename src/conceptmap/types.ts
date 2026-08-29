@@ -65,6 +65,30 @@ export interface TranslateMatch {
 }
 
 /**
+ * One target the map explicitly asserted is **not related** to the source: an R4 `disjoint` row,
+ * carried verbatim on a {@link TranslateUnmapped} result so the assertion the map author made is
+ * not lost when the source reports as not translated.
+ *
+ * This is the opposite of a {@link TranslateMatch}: a `disjoint` row is a declared non-mapping, so
+ * it never counts toward the translated verdict. It is surfaced because dropping it would discard
+ * what the steward said. A pure `unmatched` assertion carries no target code and is not surfaced
+ * here.
+ */
+export interface TranslateNotRelated {
+  /** The target {@link Coding} exactly as declared in the map (frozen). */
+  readonly target: Coding;
+  /**
+   * The normalized, version-neutral relationship (R5 vocabulary), folded from the token below by
+   * the same table every match uses: always `not-related-to` for a `disjoint` row.
+   */
+  readonly relationship: Relationship;
+  /** Always `disjoint`: the verbatim FHIR R4 `equivalence` token this assertion was declared with. */
+  readonly equivalence: "disjoint";
+  /** Author's free-text comment on this assertion, when present (carried verbatim). */
+  readonly comment?: string;
+}
+
+/**
  * The FHIR R4 `group.unmapped.mode` an unmapped source fell through to: the map author's declared
  * fallback behavior. Surfaced (never silently acted on): the caller decides whether to trust a
  * fallback.
@@ -72,7 +96,8 @@ export interface TranslateMatch {
  * - `provided`: echo the source code as the target (the map declares no real mapping).
  * - `fixed`: a single fixed fallback code the map declares for *all* unmapped sources.
  * - `other-map`: consult the referenced ConceptMap (which this engine does not auto-follow).
- * - `none`: no `group.unmapped` directive applied (plain no-match, or an explicit `unmatched`).
+ * - `none`: no `group.unmapped` directive applied (plain no-match, or an authored non-mapping: an
+ *   explicit `unmatched`, or a source whose every declared target is `disjoint`).
  */
 export type UnmappedMode = "provided" | "fixed" | "other-map" | "none";
 
@@ -94,11 +119,21 @@ export interface MapProvenance {
   readonly targetSystem?: string;
 }
 
-/** A successful translation: one or more matches, never empty (an empty result is `unmapped`). */
+/**
+ * A successful translation: one or more matches, never empty (an empty result is `unmapped`), and
+ * **at least one of them asserts a relationship** to the source. A `disjoint` row still appears in
+ * `matches`, in its declared position, whenever some other target for the same source does assert a
+ * relationship: nothing the map said is dropped. When *every* declared target asserts non-relation
+ * there is no relationship to report, so the result is a {@link TranslateUnmapped} carrying those
+ * rows on `notRelated` instead.
+ */
 export interface TranslateMatched {
   /** Discriminant: the source mapped. */
   readonly unmapped: false;
-  /** The target concepts, in declared order. Non-empty and frozen. */
+  /**
+   * The target concepts, in declared order. Non-empty and frozen. At least one carries a
+   * relationship other than `not-related-to`.
+   */
   readonly matches: readonly TranslateMatch[];
   /** Where this translation came from. */
   readonly provenance: MapProvenance;
@@ -109,6 +144,11 @@ export interface TranslateMatched {
  * **no target is ever guessed**. Any `group.unmapped` fallback the author declared is reported via
  * {@link UnmappedMode} (and `fixedTarget`/`otherMapUrl`) for the caller to accept or reject: the
  * engine does not silently substitute it.
+ *
+ * A source whose every declared target asserts non-relation (R4 `disjoint` or `unmatched`) reports
+ * here too: the map said these concepts are *not* related, which is an answer, not a translation.
+ * The `disjoint` rows it asserted are carried on `notRelated`, verbatim. Any target on this result
+ * was declared in the map; none of it is a mapping.
  */
 export interface TranslateUnmapped {
   /** Discriminant: the source did not map. */
@@ -119,6 +159,13 @@ export interface TranslateUnmapped {
   readonly mode: UnmappedMode;
   /** The original source {@link Coding}, surfaced untouched. */
   readonly source: Coding;
+  /**
+   * The `disjoint` rows the map declared for this source, in declared order, when it declared any:
+   * explicit assertions that those targets are **not related** to the source. Present (frozen and
+   * non-empty) only when every declared target asserted non-relation, which is what put the result
+   * here; omitted otherwise. These are declared non-mappings, never candidates to fall back to.
+   */
+  readonly notRelated?: readonly TranslateNotRelated[];
   /** For `mode: "fixed"`, the author's fixed fallback coding: reported, not auto-applied. */
   readonly fixedTarget?: Coding;
   /** For `mode: "other-map"`, the referenced map's URL: reported, not auto-followed. */

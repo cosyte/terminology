@@ -73,6 +73,7 @@ const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
 
 if (result.unmapped) {
   // Typed, surfaced outcome: carries any group.unmapped fallback mode. Never a guessed target.
+  result.notRelated; // the map's own "not related" assertions, when it made any (see below)
 } else {
   for (const m of result.matches) {
     m.target; // a frozen Coding, drawn verbatim from the map
@@ -82,6 +83,27 @@ if (result.unmapped) {
   }
 }
 ```
+
+A map can also say, explicitly, that a source and a target are **not** related (FHIR R4
+`equivalence: "disjoint"`, R5 `not-related-to`). That is an assertion, not a translation: when
+**every** declared target for a source asserts non-relation (`disjoint` or `unmatched`), the source
+reports as **not translated** (`result.unmapped === true`), and the rows the map asserted are
+carried on `result.notRelated` verbatim, each with its target coding, its R4 `equivalence` and the
+author's `comment`. So a caller branching on the verdict never reads a declared "not related" as a
+successful translation, and still gets to see what the steward said:
+
+```ts
+if (result.unmapped) {
+  for (const n of result.notRelated ?? []) {
+    n.target; // the target the map declared, verbatim: NOT a mapping to use
+    n.equivalence; // "disjoint"
+    n.comment; // why the steward says these are unrelated, when they said
+  }
+}
+```
+
+When at least one target does assert a relationship, the source is translated exactly as before and
+any `disjoint` row rides along in `result.matches`, in its declared position.
 
 ## Look up a code in a code system
 

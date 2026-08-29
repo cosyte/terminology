@@ -5,7 +5,9 @@
  *      unmapped source is a typed `unmapped`, never a guessed target.
  *   2. **Never invert**: a matched result implies the source `code` was a *source-side* element
  *      code; the engine never reaches a target code as if it were a source.
- *   3. **Liberal load, typed failure**: `loadConceptMap` over arbitrary JSON either returns a
+ *   3. **A not-related verdict is one-directional**: a source with any usable target asserting a
+ *      relationship is always translated; no source gains a translation it did not have.
+ *   4. **Liberal load, typed failure**: `loadConceptMap` over arbitrary JSON either returns a
  *      frozen map or throws a typed `TerminologyError`, never any other error and never a crash.
  *
  * The arbitraries are local (the format-specific generators); the invariants are asserted directly.
@@ -32,6 +34,7 @@ import {
   TerminologyError,
   type Coding,
   type ConceptMap,
+  type ConceptMapTarget,
   type R4Equivalence,
 } from "../../src/index.js";
 
@@ -102,6 +105,19 @@ describe("invariant: never fabricate", () => {
             const declared = map.group.some((g) => g.unmapped?.code === result.fixedTarget?.code);
             expect(declared).toBe(true);
           }
+          // The not-related rows a not-translated result carries are targets too, so the same
+          // never-fabricate rule binds them: each must be a declared `disjoint` target of this
+          // exact source code.
+          for (const n of result.notRelated ?? []) {
+            const declared = map.group.some((g) =>
+              g.element.some(
+                (e) =>
+                  e.code === src.code &&
+                  e.target.some((t) => t.code === n.target.code && t.equivalence === "disjoint"),
+              ),
+            );
+            expect(declared).toBe(true);
+          }
           return;
         }
         // Matched: every target code must appear verbatim as a declared, non-unmatched target
@@ -116,6 +132,51 @@ describe("invariant: never fabricate", () => {
           );
           expect(declared).toBe(true);
         }
+      }),
+      { numRuns: 500 },
+    );
+  });
+});
+
+/**
+ * The declared targets a source coding can reach that are **usable at all**: a target with no
+ * `code`, or an explicit `unmatched`, asserts "no target" and is reported on no outcome. This set
+ * being non-empty is exactly the verdict `translate` gave at the pin, which is what the
+ * one-directional invariant below is stated against.
+ */
+function usableTargets(map: ConceptMap, src: Coding): readonly ConceptMapTarget[] {
+  const out: ConceptMapTarget[] = [];
+  for (const g of map.group) {
+    const applies = src.system === undefined || g.source === undefined || g.source === src.system;
+    if (!applies) continue;
+    for (const e of g.element) {
+      if (e.code !== src.code) continue;
+      for (const t of e.target) {
+        if (t.code === undefined || t.equivalence === "unmatched") continue;
+        out.push(t);
+      }
+    }
+  }
+  return out;
+}
+
+describe("invariant: the not-related verdict is one-directional", () => {
+  it("any target asserting a relationship keeps the source translated, and nothing gains a translation", () => {
+    fc.assert(
+      fc.property(conceptMapJsonArb, codingArb, (json, src) => {
+        const map = loadConceptMap(json);
+        const usable = usableTargets(map, src);
+        const assertsRelation = usable.some((t) => t.equivalence !== "disjoint");
+        const result = translate(src, map);
+
+        // Forward: one usable target asserting any relationship other than non-relation is enough.
+        if (assertsRelation) expect(result.unmapped).toBe(false);
+        // Reverse, the fail-safe direction: a source translated now was translated at the pin too,
+        // where every usable target counted as a match.
+        if (!result.unmapped) expect(usable.length).toBeGreaterThan(0);
+        // ... and a source translated at the pin only loses that verdict when EVERY one of its
+        // usable targets asserts non-relation.
+        if (usable.length > 0 && result.unmapped) expect(assertsRelation).toBe(false);
       }),
       { numRuns: 500 },
     );

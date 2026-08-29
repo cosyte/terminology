@@ -16,6 +16,9 @@
  * - {@link loadConceptMap} + {@link translate}: the ConceptMap `$translate` engine, with the
  *   **never-fabricate / never-invert** invariants: an unmapped source is a typed
  *   {@link TranslateUnmapped}, never a guessed target; a directional map is never run backwards.
+ *   A source whose every declared target asserts non-relation (R4 `disjoint` / `unmatched`) is not
+ *   translated either: it reports as {@link TranslateUnmapped}, carrying the `disjoint` rows the
+ *   map asserted on `notRelated`.
  *
  * **The CodeSystem load layer**, with the FHIR `$lookup` / `$validate-code` operations:
  *
@@ -172,6 +175,7 @@ export type {
   Relationship,
   TranslateMatch,
   TranslateMatched,
+  TranslateNotRelated,
   TranslateResult,
   TranslateUnmapped,
   UnmappedMode,
