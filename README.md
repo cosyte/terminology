@@ -29,7 +29,9 @@ listed with its copyright under [What is bundled](#what-is-bundled).
 > - **ValueSet** binding (`compose` / **`$expand`** / **`$validate-code`**), subsumption read from the
 >   release's own hierarchy;
 > - **UCUM** unit validation and canonicalization (`validateUcum` / `ucumEqual`, recognition only, **no
->   magnitude conversion**): the official UCUM functional-test suite is the conformance gate;
+>   magnitude conversion**), gated on the official UCUM functional tests: the **validation** and
+>   **conversion** case kinds, against the suite dated 3-Feb 2021, and no other kind
+>   ([UCUM conformance](#ucum-conformance));
 > - the **crosswalk resolvers**: the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
 >   public-domain) and the NLM **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` /
 >   `applyComplexMap`, BYO: no SNOMED CT refset bundled), never inverted;
@@ -124,15 +126,39 @@ ucumEqual("Cel", "K"); // false: a special (non-linear) unit is never equated wi
 The UCUM table is the official `ucum-essence.xml` (version 2.2), and it **is bundled with this
 package**: embedded verbatim in the published build and parsed at runtime. It is copyright
 ©1999–2024 Regenstrief Institute, Inc., reproduced under the UCUM Copyright Notice and License
-(<https://ucum.org/license>); the engine ships no derivative of it and passes the official UCUM
-functional-test suite. The full notice ships in the package at `vendor/ucum/NOTICE.md`: see
-[What is bundled](#what-is-bundled).
+(<https://ucum.org/license>); the engine ships no derivative of it. It passes the official UCUM
+functional-test cases it claims, and claims no more than it runs: see
+[UCUM conformance](#ucum-conformance). The full notice ships in the package at
+`vendor/ucum/NOTICE.md`: see [What is bundled](#what-is-bundled).
 
 > **Case-sensitive (c/s) mode only.** UCUM's normative interchange mode (the one FHIR/HL7 bind to)
 > is case-sensitive (`m` = metre, `M` = mega, `Pa` = pascal, `pA` = picoampere). The
 > case-**insensitive** (c/i) spelling variant is **not** supported; a c/i-only string returns a typed
 > `TERM_UCUM_INVALID` (fail-safe, never silently reinterpreted). Magnitude conversion is likewise a
 > deliberate non-goal (recognition and canonicalization only).
+
+### UCUM conformance
+
+The claim in full, so a reader can tell what was run from what was not. UCUM permits a qualified
+claim where an implementation does not cover every kind of case, and asks that the most recent date
+in the suite's own history be quoted:
+
+- **Case kinds claimed: validation, conversion.** Every `validation` case is executed and its
+  expected `valid` outcome asserted. The `conversion` cases are executed for **commensurability
+  only**: source and destination must reduce to the same dimension. The converted magnitude is not
+  asserted, because magnitude conversion is a deliberate non-goal of this engine.
+- **Case kinds not claimed: displayNameGeneration, multiplication.** Those cases are not executed and
+  no conformance to them is claimed.
+- **Suite date: 3-Feb 2021.** The most recent history entry in the vendored
+  `UcumFunctionalTests.xml`, which is the file the cases are read from.
+- **Table: `ucum-essence.xml` version 2.2, revision-date 2024-06-17.** The unit-table release this
+  claim is made against, and the one embedded in the published build.
+
+The package's own test suite holds the claim to those files, so it cannot go stale in silence. It
+fails if the vendored table's declared version or revision-date stops matching the release named
+here, if the suite's most recent history date stops matching the date named here, if a kind named
+here is not one the tests execute, if a named kind's section carries no case, or if this page and
+`vendor/ucum/NOTICE.md` state different suite dates.
 
 ## Navigate the RxNorm drug graph
 

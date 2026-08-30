@@ -45,4 +45,6 @@ Reproduced verbatim under the Eclipse Public License v1.0
 (<https://www.eclipse.org/legal/epl-v10.html>). Used **only** as a test fixture, and it is **not** part
 of the published npm package: `package.json`'s `files` does not name it, and unlike the unit table it
 is not embedded in the build. Conformance is declared against the most recent history entry in the
-file (3-Feb 2021).
+file (3-Feb 2021), and only for the `validation` and `conversion` case kinds: the
+`displayNameGeneration` and `multiplication` cases are not executed and are not claimed. The
+package's README states the same claim in full.
