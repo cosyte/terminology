@@ -7,7 +7,7 @@ import {
   type TranslateMatched,
   type TranslateUnmapped,
 } from "../../src/index.js";
-import { nth } from "../helpers.js";
+import { nth, only } from "../helpers.js";
 
 const GENDER_MAP: ConceptMap = loadConceptMap({
   resourceType: "ConceptMap",
@@ -100,6 +100,10 @@ describe("translate(): matches", () => {
       "related-to",
       "not-related-to",
     ]);
+    // The verdict, asserted beside the relationship list: eight of these nine targets assert a
+    // relationship, so the source is translated and the disjoint row rides along in place.
+    expect(r.unmapped).toBe(false);
+    expect(nth(r.matches, 8).equivalence).toBe("disjoint");
   });
 
   it("carries a target comment (steward advice) verbatim", () => {
@@ -228,6 +232,213 @@ describe("translate(): never fabricate (unmapped)", () => {
       translate({ system: "http://hl7.org/fhir/administrative-gender", code: "other" }, GENDER_MAP),
     );
     expect(r.mode).toBe("none");
+  });
+});
+
+describe("translate(): an explicit not-related assertion (disjoint)", () => {
+  /** A map whose source `x` is asserted NOT related to target `y`, and nothing else. */
+  const DISJOINT_MAP: ConceptMap = loadConceptMap({
+    resourceType: "ConceptMap",
+    group: [
+      {
+        source: "http://s",
+        target: "http://t",
+        targetVersion: "3.1",
+        element: [{ code: "x", target: [{ code: "y", display: "Why", equivalence: "disjoint" }] }],
+      },
+    ],
+  });
+
+  it("reports a source whose every target is disjoint as NOT translated", () => {
+    const r = asUnmapped(translate({ system: "http://s", code: "x" }, DISJOINT_MAP));
+    expect(r.unmapped).toBe(true);
+    expect(r.code).toBe("TERM_TRANSLATE_UNMAPPED");
+    expect(r.source).toStrictEqual({ system: "http://s", code: "x" });
+    expect(Object.isFrozen(r)).toBe(true);
+  });
+
+  it("still carries the disjoint row verbatim: coding, equivalence and relationship", () => {
+    const r = asUnmapped(translate({ system: "http://s", code: "x" }, DISJOINT_MAP));
+    const rows = r.notRelated ?? [];
+    expect(only(rows)).toStrictEqual({
+      target: { system: "http://t", code: "y", display: "Why", version: "3.1" },
+      relationship: "not-related-to",
+      equivalence: "disjoint",
+    });
+    expect(Object.isFrozen(rows)).toBe(true);
+    expect(Object.isFrozen(only(rows))).toBe(true);
+  });
+
+  it("carries the author's comment on a disjoint row verbatim", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          source: "http://s",
+          target: "http://t",
+          element: [
+            {
+              code: "x",
+              target: [
+                { code: "y", equivalence: "disjoint", comment: "EXPLICITLY NOT THE SAME CONCEPT" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const r = asUnmapped(translate({ system: "http://s", code: "x" }, map));
+    expect(only(r.notRelated ?? []).comment).toBe("EXPLICITLY NOT THE SAME CONCEPT");
+  });
+
+  it("reports every disjoint row, in declared order, and none for an unmatched sibling", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          source: "http://s",
+          target: "http://t",
+          element: [
+            {
+              code: "x",
+              target: [
+                { code: "y1", equivalence: "disjoint" },
+                { equivalence: "unmatched" },
+                { code: "y2", equivalence: "disjoint" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const r = asUnmapped(translate({ system: "http://s", code: "x" }, map));
+    expect((r.notRelated ?? []).map((n) => n.target.code)).toStrictEqual(["y1", "y2"]);
+  });
+
+  it("reports no target at all for a lone disjoint row that declares no code", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          source: "http://s",
+          target: "http://t",
+          element: [{ code: "x", target: [{ equivalence: "disjoint" }] }],
+        },
+      ],
+    });
+    const call = (): ReturnType<typeof translate> =>
+      translate({ system: "http://s", code: "x" }, map);
+    expect(call).not.toThrow();
+    const r = asUnmapped(call());
+    expect(r.notRelated).toBeUndefined();
+    expect(r.mode).toBe("none");
+  });
+
+  it("stays translated when one target is disjoint and another asserts a relationship", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          source: "http://s",
+          target: "http://t",
+          element: [
+            {
+              code: "x",
+              target: [
+                { code: "y", equivalence: "disjoint" },
+                { code: "z", equivalence: "wider" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const r = asMatched(translate({ system: "http://s", code: "x" }, map));
+    expect(r.unmapped).toBe(false);
+    // The disjoint row keeps its declared position on the matched result: nothing is dropped.
+    expect(r.matches.map((m) => [m.target.code, m.equivalence])).toStrictEqual([
+      ["y", "disjoint"],
+      ["z", "wider"],
+    ]);
+  });
+
+  it("is translated when the relationship is asserted in another group for the same source", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          source: "http://s",
+          target: "http://t1",
+          element: [{ code: "x", target: [{ code: "y", equivalence: "disjoint" }] }],
+        },
+        {
+          source: "http://s",
+          target: "http://t2",
+          element: [{ code: "x", target: [{ code: "z", equivalence: "equivalent" }] }],
+        },
+      ],
+    });
+    const r = asMatched(translate({ system: "http://s", code: "x" }, map));
+    expect(r.matches.map((m) => m.target.code)).toStrictEqual(["y", "z"]);
+  });
+});
+
+describe("translate(): disjoint and the group.unmapped fallback", () => {
+  /**
+   * The fallback parity cases, beside the `unmatched` one above: an authored non-mapping does not
+   * open the fallback door, and a source that is simply absent still reports the author's mode.
+   */
+  const FALLBACK_MAP: ConceptMap = loadConceptMap({
+    resourceType: "ConceptMap",
+    group: [
+      {
+        source: "http://s",
+        target: "http://t",
+        element: [
+          { code: "d", target: [{ code: "y", equivalence: "disjoint" }] },
+          { code: "u", target: [{ equivalence: "unmatched" }] },
+        ],
+        unmapped: { mode: "fixed", code: "UNK", display: "Unknown" },
+      },
+    ],
+  });
+
+  it("reports mode none for a disjoint-only source, the same mode an unmatched-only source gets", () => {
+    const disjointOnly = asUnmapped(translate({ system: "http://s", code: "d" }, FALLBACK_MAP));
+    const unmatchedOnly = asUnmapped(translate({ system: "http://s", code: "u" }, FALLBACK_MAP));
+    expect(disjointOnly.mode).toBe("none");
+    expect(disjointOnly.mode).toBe(unmatchedOnly.mode);
+    // The declared `fixed` fallback must NOT fire: the source code is present and answered.
+    expect(disjointOnly.fixedTarget).toBeUndefined();
+    expect(disjointOnly.otherMapUrl).toBeUndefined();
+  });
+
+  it("still reports the declared fallback for a source absent from every element", () => {
+    const r = asUnmapped(translate({ system: "http://s", code: "absent" }, FALLBACK_MAP));
+    expect(r.mode).toBe("fixed");
+    expect(r.fixedTarget).toStrictEqual({ system: "http://t", code: "UNK", display: "Unknown" });
+    expect(r.notRelated).toBeUndefined();
+  });
+
+  it("still reports an other-map fallback for an absent source, without following it", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          source: "http://s",
+          target: "http://t",
+          element: [{ code: "d", target: [{ code: "y", equivalence: "disjoint" }] }],
+          unmapped: { mode: "other-map", url: "http://example.org/cm/other" },
+        },
+      ],
+    });
+    const absent = asUnmapped(translate({ system: "http://s", code: "absent" }, map));
+    expect(absent.mode).toBe("other-map");
+    expect(absent.otherMapUrl).toBe("http://example.org/cm/other");
+    // ... and the disjoint source in that same group still reports mode none, not other-map.
+    const disjoint = asUnmapped(translate({ system: "http://s", code: "d" }, map));
+    expect(disjoint.mode).toBe("none");
+    expect(disjoint.otherMapUrl).toBeUndefined();
   });
 });
 

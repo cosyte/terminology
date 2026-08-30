@@ -7,7 +7,10 @@
  * a **typed {@link TranslateUnmapped}**. Two invariants govern it:
  *
  * 1. **Never fabricate.** An unmapped source yields a surfaced `unmapped` result: never a guessed
- *    target. Every target returned is drawn verbatim from the map; the engine invents nothing.
+ *    target. Every target returned is drawn verbatim from the map; the engine invents nothing. A
+ *    map that explicitly asserts non-relation (R4 `disjoint`) has answered, so that source reports
+ *    as not translated with the asserted rows carried on `notRelated`: reading a declared
+ *    "not related" as a successful translation would be a fabrication of the same kind.
  * 2. **Never invert.** Translation reads the map in its authored direction only: a source coding is
  *    matched against `group.element.code` (the source side) and **never** against target codes. A
  *    directional map therefore cannot be run backwards: reverse translation requires an explicit
@@ -25,6 +28,7 @@ import type {
   R4Equivalence,
   Relationship,
   TranslateMatch,
+  TranslateNotRelated,
   TranslateResult,
   TranslateUnmapped,
   UnmappedMode,
@@ -85,6 +89,7 @@ function unmappedResult(
   provenance: MapProvenance,
   fixedTarget: Coding | undefined,
   otherMapUrl: string | undefined,
+  notRelated: readonly TranslateNotRelated[] = [],
 ): TranslateResult {
   const out: Writable<TranslateUnmapped> = {
     unmapped: true,
@@ -95,6 +100,7 @@ function unmappedResult(
   };
   if (fixedTarget !== undefined) out.fixedTarget = fixedTarget;
   if (otherMapUrl !== undefined) out.otherMapUrl = otherMapUrl;
+  if (notRelated.length > 0) out.notRelated = Object.freeze(notRelated);
   return Object.freeze(out);
 }
 
@@ -104,9 +110,14 @@ function unmappedResult(
  * Matches the coding's `code` against each applicable group's `element.code` (the **source** side,
  * never targets, so the map is never inverted) and returns every declared target for it. A target
  * with an `unmatched` equivalence, or with no `code`, is treated as "no target" (the FHIR way of
- * asserting a non-mapping), and does not count as a match. When nothing matches, the map author's
- * `group.unmapped` directive (if any) is *reported* via the result's {@link UnmappedMode} but never
- * silently applied.
+ * asserting a non-mapping), and does not count as a match. A `disjoint` target is the map's
+ * explicit assertion that the target is *not related* to the source, so it does not count as a
+ * match either: when **every** declared target for the source asserts non-relation the result is
+ * `unmapped`, carrying those `disjoint` rows verbatim on `notRelated`. When at least one target
+ * does assert a relationship, the result is matched and carries every declared target, `disjoint`
+ * rows included, in declared order. When nothing matches, the map author's `group.unmapped`
+ * directive (if any) is *reported* via the result's {@link UnmappedMode} but never silently
+ * applied.
  *
  * @param sourceCoding - The source concept to translate.
  * @param map - A {@link ConceptMap} from {@link loadConceptMap}.
@@ -136,8 +147,12 @@ export function translate(sourceCoding: Coding, map: ConceptMap): TranslateResul
   const source = coding(sourceCoding);
   const system = source.system;
 
-  const matches: TranslateMatch[] = [];
-  let firstMatchGroup: ConceptMapGroup | undefined;
+  // Every declared target with a usable code, in declared order, and the `disjoint` subset of them.
+  // A `disjoint` row is in both: it stays visible on a matched result (nothing the map said is
+  // dropped), and it is what a not-translated result carries when it is all the map declared.
+  const rows: TranslateMatch[] = [];
+  const notRelated: TranslateNotRelated[] = [];
+  let firstRowGroup: ConceptMapGroup | undefined;
   let sourceCodePresent = false;
   let fallbackGroup: ConceptMapGroup | undefined;
 
@@ -149,7 +164,8 @@ export function translate(sourceCoding: Coding, map: ConceptMap): TranslateResul
       if (element.code !== source.code) continue;
       sourceCodePresent = true;
       for (const t of element.target) {
-        // A target without a code, or an explicit `unmatched`, asserts "no target": not a match.
+        // A target without a code, or an explicit `unmatched`, asserts "no target": nothing to
+        // report at all, so it is not carried on either outcome.
         if (t.code === undefined || t.equivalence === "unmatched") continue;
         const targetCoding = coding({
           ...(group.target !== undefined ? { system: group.target } : {}),
@@ -157,26 +173,53 @@ export function translate(sourceCoding: Coding, map: ConceptMap): TranslateResul
           ...(t.display !== undefined ? { display: t.display } : {}),
           ...(group.targetVersion !== undefined ? { version: group.targetVersion } : {}),
         });
-        const match: {
-          -readonly [K in keyof TranslateMatch]: TranslateMatch[K];
-        } = {
-          target: targetCoding,
-          relationship: equivalenceToRelationship(t.equivalence),
-          equivalence: t.equivalence,
-        };
-        if (t.comment !== undefined) match.comment = t.comment;
-        matches.push(Object.freeze(match));
-        if (firstMatchGroup === undefined) firstMatchGroup = group;
+        if (t.equivalence === "disjoint") {
+          // An explicit "not related to" assertion: reported verbatim, never counted as a mapping.
+          const assertion: Writable<TranslateNotRelated> = {
+            target: targetCoding,
+            relationship: equivalenceToRelationship(t.equivalence),
+            equivalence: t.equivalence,
+          };
+          if (t.comment !== undefined) assertion.comment = t.comment;
+          const frozen = Object.freeze(assertion);
+          notRelated.push(frozen);
+          rows.push(frozen);
+        } else {
+          const match: Writable<TranslateMatch> = {
+            target: targetCoding,
+            relationship: equivalenceToRelationship(t.equivalence),
+            equivalence: t.equivalence,
+          };
+          if (t.comment !== undefined) match.comment = t.comment;
+          rows.push(Object.freeze(match));
+        }
+        if (firstRowGroup === undefined) firstRowGroup = group;
       }
     }
   }
 
-  if (matches.length > 0) {
-    return Object.freeze({
-      unmapped: false,
-      matches: Object.freeze(matches),
-      provenance: provenanceOf(map, firstMatchGroup, system),
-    });
+  if (rows.length > 0) {
+    // Translated only if some target asserts a relationship. Where every one of them asserts
+    // non-relation the map has answered "these are not related", which is not a translation: FHIR
+    // R4 `$translate` says its `result` "can only be true if at least one returned match has an
+    // equivalence which is not unmatched or disjoint".
+    if (notRelated.length < rows.length) {
+      return Object.freeze({
+        unmapped: false,
+        matches: Object.freeze(rows),
+        provenance: provenanceOf(map, firstRowGroup, system),
+      });
+    }
+    // Mode `none`: the source code IS present, so a group.unmapped fallback must not fire, exactly
+    // as it does not for a source whose only target is `unmatched`.
+    return unmappedResult(
+      source,
+      "none",
+      provenanceOf(map, firstRowGroup, system),
+      undefined,
+      undefined,
+      notRelated,
+    );
   }
 
   // No usable target. If the source code appeared but every target was a non-mapping, this is an
@@ -203,7 +246,7 @@ export function translate(sourceCoding: Coding, map: ConceptMap): TranslateResul
   return unmappedResult(
     source,
     "none",
-    provenanceOf(map, firstMatchGroup, system),
+    provenanceOf(map, firstRowGroup, system),
     undefined,
     undefined,
   );
