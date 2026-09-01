@@ -53,7 +53,15 @@ export interface ConceptSetFilter {
 export interface ConceptRef {
   /** The code, drawn verbatim from the value set. */
   readonly code: string;
-  /** The display, when the value set supplied one (carried verbatim, never fabricated). */
+  /**
+   * The display, when the value set supplied one (carried verbatim, never fabricated).
+   *
+   * This is the value set's **own** display and it always wins. Where the value set supplies none,
+   * {@link expand} falls back to the display the supplied {@link CodeSystem} release carries for the
+   * same code, again **verbatim**: the engine still synthesizes nothing, so a member whose release
+   * was not supplied, does not carry the code, or carries it with no display comes back with no
+   * display at all.
+   */
   readonly display?: string;
 }
 
@@ -90,6 +98,21 @@ export interface ValueSetCompose {
   readonly include: readonly ConceptSetComponent[];
   /** The `exclude` components: codes removed from the include union. */
   readonly exclude: readonly ConceptSetComponent[];
+  /**
+   * `ValueSet.compose.inactive`, when the resource declares one: whether codes the supplied release
+   * marks as **not active** belong to the membership.
+   *
+   * A declared `false` is an **active-only** value set, and the engine honours it: an `include`
+   * contributes only the codes the supplied {@link CodeSystem} release marks active. A release that
+   * carries no status for a selected concept is not evidence of inactivity, so that member is kept;
+   * a component whose activity cannot be checked against any usable release contributes **nothing**
+   * and marks the outcome incomplete, so `contains` stays a lower bound rather than a set that may
+   * hold inactive codes.
+   *
+   * Absent, or `true`, and no code is ever omitted on activity grounds. This is the value set's own
+   * declaration and nothing else: `$expand`'s `activeOnly` **request** parameter is not modelled.
+   */
+  readonly inactive?: boolean;
 }
 
 /** One `ValueSet.expansion.contains` entry from a **pre-computed** expansion. */

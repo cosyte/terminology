@@ -128,7 +128,17 @@ function loadCompose(raw: unknown, path: string): ValueSetCompose {
       loadComponent(c, `${path}.exclude[${String(i)}]`),
     ),
   );
-  return Object.freeze({ include, exclude });
+  const out: Writable<ValueSetCompose> = { include, exclude };
+  // `inactive` decides whether the membership admits codes the release marks not active, so a value
+  // present but unreadable is REFUSED rather than dropped: silently discarding it would expand an
+  // active-only value set as if it had never said so, which is the wrong answer stated confidently.
+  // `getBoolean` never coerces, so `"false"` and `0` are unreadable here, not a declared `false`.
+  if (raw["inactive"] !== undefined) {
+    const inactive = getBoolean(raw, "inactive");
+    if (inactive === undefined) malformed(`${path}.inactive`, "'inactive' is not a boolean");
+    out.inactive = inactive;
+  }
+  return Object.freeze(out);
 }
 
 function loadContains(raw: unknown, path: string): ExpansionContains {
@@ -210,7 +220,8 @@ function loadExpansion(raw: unknown, path: string): ValueSetExpansion {
  * Load an untrusted FHIR R4 `ValueSet` JSON value into an immutable {@link ValueSet}.
  *
  * Accepts the standard resource shape: `resourceType: "ValueSet"` with an optional intensional
- * `compose` (`include`/`exclude` of `system`/`concept`/`filter`/`valueSet`) and/or a **pre-computed**
+ * `compose` (`include`/`exclude` of `system`/`concept`/`filter`/`valueSet`, plus the `inactive`
+ * declaration that decides whether non-active codes belong to the membership) and/or a **pre-computed**
  * `expansion` (`contains`, with `total` and the `valueset-toocostly` / `valueset-unclosed`
  * extensions read into a derived `truncated` flag, the last of them also surfaced on its own
  * `unclosed` flag). The result is deep-frozen. Anything structurally unusable throws a

@@ -192,6 +192,91 @@ describe("matchesFilter", () => {
   });
 });
 
+// ── A repeating property: `CodeSystem.concept.property` is 0..*, and a predicate must read them all ──
+describe("matchesFilter: a property a concept carries SEVERAL values for", () => {
+  /**
+   * `code3` carries `dup = alpha` AND `dup = beta`, so `beta` is not its first value; `code4`
+   * carries only `alpha`; `code5` carries none. The upstream tx-ecosystem fixture is this shape.
+   */
+  const cs = loadCodeSystem({
+    format: "fhir",
+    resource: {
+      resourceType: "CodeSystem",
+      url: "http://example.org/repeating",
+      concept: [
+        {
+          code: "code3",
+          property: [
+            { code: "dup", valueString: "alpha" },
+            { code: "dup", valueString: "beta" },
+          ],
+        },
+        { code: "code4", property: [{ code: "dup", valueString: "alpha" }] },
+        { code: "code5" },
+      ],
+    },
+  });
+  const sub = buildSubsumption(cs);
+  const on = (code: string, op: "=" | "in" | "not-in" | "exists", value: string): boolean =>
+    matchesFilter(concept(cs, code), { property: "dup", op, value }, sub).matched;
+
+  it("= matches on ANY value, including one that is not the first", () => {
+    expect(on("code3", "=", "beta")).toBe(true);
+    expect(on("code3", "=", "alpha")).toBe(true);
+    expect(on("code4", "=", "beta")).toBe(false);
+  });
+
+  it("in matches when ANY value is in the set", () => {
+    expect(on("code3", "in", "beta, gamma")).toBe(true);
+    expect(on("code4", "in", "beta, gamma")).toBe(false);
+    expect(on("code4", "in", "alpha, gamma")).toBe(true);
+  });
+
+  it("not-in matches only where NO value is in the set", () => {
+    // `alpha` is not in the set but `beta` is: a concept carrying a listed value is IN it.
+    expect(on("code3", "not-in", "beta, gamma")).toBe(false);
+    expect(on("code3", "not-in", "gamma")).toBe(true);
+    expect(on("code4", "not-in", "beta, gamma")).toBe(true);
+  });
+
+  it("a concept carrying no value for the property: = / in miss, not-in matches, exists follows", () => {
+    expect(on("code5", "=", "alpha")).toBe(false);
+    expect(on("code5", "in", "alpha, beta")).toBe(false);
+    expect(on("code5", "not-in", "alpha, beta")).toBe(true);
+    expect(on("code5", "exists", "false")).toBe(true);
+    expect(on("code5", "exists", "true")).toBe(false);
+    expect(on("code3", "exists", "true")).toBe(true);
+  });
+
+  it("a non-string property value still compares by its stringified form", () => {
+    // `warm` is a valueBoolean on the animal release: unchanged by reading every value rather than
+    // the first, since stringification is where a non-string was always compared.
+    const animals = animalCs();
+    const animalSub = buildSubsumption(animals);
+    expect(
+      matchesFilter(
+        concept(animals, "mammal"),
+        { property: "warm", op: "=", value: "true" },
+        animalSub,
+      ).matched,
+    ).toBe(true);
+    expect(
+      matchesFilter(
+        concept(animals, "mammal"),
+        { property: "warm", op: "in", value: "true" },
+        animalSub,
+      ).matched,
+    ).toBe(true);
+    expect(
+      matchesFilter(
+        concept(animals, "mammal"),
+        { property: "warm", op: "not-in", value: "true" },
+        animalSub,
+      ).matched,
+    ).toBe(false);
+  });
+});
+
 describe("unsupportedOps", () => {
   it("returns only the filters with an unimplemented operator", () => {
     const bad = unsupportedOps([

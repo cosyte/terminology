@@ -135,12 +135,21 @@ function valueSet(value: string): ReadonlySet<string> {
   );
 }
 
-/** Read a concept's first property value for `property`, as a string, or `undefined`. */
-function propertyValue(concept: Concept, property: string): string | undefined {
+/**
+ * Read **every** value a concept carries for `property`, as strings, in load order.
+ *
+ * `CodeSystem.concept.property` is `0..*` and a repeating property is ordinary in real releases, so
+ * reading only the first value silently under-selects: a concept carrying `dup = alpha` and
+ * `dup = beta` would not be selected by `dup = beta`, and the caller would see a `complete: true`
+ * expansion that had quietly dropped a member. Non-string values are stringified exactly as they
+ * were when only one was read.
+ */
+function propertyValues(concept: Concept, property: string): string[] {
+  const values: string[] = [];
   for (const p of concept.properties) {
-    if (p.code === property) return typeof p.value === "string" ? p.value : String(p.value);
+    if (p.code === property) values.push(typeof p.value === "string" ? p.value : String(p.value));
   }
-  return undefined;
+  return values;
 }
 
 /** The outcome of evaluating a single filter against a single concept. */
@@ -157,8 +166,11 @@ const UNSUPPORTED: FilterMatch = Object.freeze({ matched: false, supported: fals
  * Evaluate one {@link ConceptSetFilter} against one {@link Concept}, using the release's hierarchy.
  *
  * The `concept` filter property (and the hierarchy operators regardless of property) reads the code
- * itself / its subsumption; other properties read the concept's `property` values. An unimplemented
- * operator returns `{ supported: false }`: never a coerced `matched`.
+ * itself / its subsumption; other properties read the concept's `property` values. `CodeSystem
+ * .concept.property` is `0..*`, so **every** value the concept carries for the property is read:
+ * `=` and `in` match on ANY of them, `not-in` matches only where NONE of them is in the filter's
+ * set, and `exists` follows whether the concept carries any at all. An unimplemented operator
+ * returns `{ supported: false }`: never a coerced `matched`.
  *
  * @param concept - The concept under test.
  * @param filter - The filter predicate.
@@ -194,22 +206,34 @@ export function matchesFilter(
     case "is-not-a":
       return { matched: !isA(sub, concept.code, filter.value), supported: true };
     case "=": {
-      const actual = onCode ? concept.code : propertyValue(concept, filter.property);
-      return { matched: actual === filter.value, supported: true };
+      // ANY of the concept's values for the property, not its first one alone: a repeating property
+      // selects on every value it carries. A concept carrying none for it matches nothing.
+      if (onCode) return { matched: concept.code === filter.value, supported: true };
+      return {
+        matched: propertyValues(concept, filter.property).includes(filter.value),
+        supported: true,
+      };
     }
     case "in": {
       const set = valueSet(filter.value);
-      const actual = onCode ? concept.code : propertyValue(concept, filter.property);
-      return { matched: actual !== undefined && set.has(actual), supported: true };
+      if (onCode) return { matched: set.has(concept.code), supported: true };
+      return {
+        matched: propertyValues(concept, filter.property).some((v) => set.has(v)),
+        supported: true,
+      };
     }
     case "not-in": {
       const set = valueSet(filter.value);
-      const actual = onCode ? concept.code : propertyValue(concept, filter.property);
-      // A concept the property is absent on is not "in" the set, hence "not-in" is true.
-      return { matched: actual === undefined || !set.has(actual), supported: true };
+      if (onCode) return { matched: !set.has(concept.code), supported: true };
+      // The complement of `in` over the SAME value set: true only when NO value the concept carries
+      // is in the set. A concept the property is absent on carries none, so "not-in" is true.
+      return {
+        matched: propertyValues(concept, filter.property).every((v) => !set.has(v)),
+        supported: true,
+      };
     }
     case "exists": {
-      const present = onCode ? true : propertyValue(concept, filter.property) !== undefined;
+      const present = onCode ? true : propertyValues(concept, filter.property).length > 0;
       const wantPresent = filter.value.trim().toLowerCase() === "true";
       return { matched: present === wantPresent, supported: true };
     }

@@ -8,13 +8,20 @@
  * not removed by any computable `exclude` is a definite member; a code absent from a fully-evaluated
  * value set is a definite non-member. When any relevant part cannot be evaluated (a missing code
  * system, a truncated pre-computed expansion, an unimplemented `filter`, a component whose declared
- * code system version disagrees with the supplied release), the answer is a typed
+ * code system version disagrees with the supplied release, or an active-only value set whose
+ * activity no supplied release can decide), the answer is a typed
  * {@link ValueSetMemberUndetermined}: **never** a fabricated `false` (a false "not a member" is a
  * clinical error).
+ *
+ * The mirror of that rule is that a code is never decided a member on evidence the caller did not
+ * supply either: a `Coding` carrying no `system` names no code in a system-scoped component, so such
+ * a component is a definite non-match, and a value set whose components all name a system decides
+ * `false` rather than asserting an unqualified code into it.
  *
  * @packageDocumentation
  */
 
+import type { CodeSystem } from "../codesystem/types.js";
 import type { Coding } from "../common/coding.js";
 import type { Writable } from "../common/writable.js";
 import { buildSubsumption, matchesAllFilters, unsupportedOps } from "./filters.js";
@@ -48,6 +55,40 @@ function expansionIncompleteDetail(unclosed: boolean): string {
 }
 
 /**
+ * The value-free reason an **active-only** value set (`compose.inactive: false`) could not decide
+ * whether the tested code is active: there is no release its activity could be read from. A literal
+ * this module owns, so nothing consumer-supplied reaches a diagnostic. The wording is shared with
+ * `expand.ts` on purpose (the same fact, reported on the membership path); this file keeps its own
+ * copy of these factories.
+ */
+const ACTIVITY_UNCHECKABLE_DETAIL =
+  "active-only value set: no usable code system release to check whether a selected code is active";
+
+/**
+ * The supplied release a component's own selection may be read from: the one keyed by `system`,
+ * unless the component declares a `version` that release does not agree with (the same test the
+ * branches above apply, so membership and expansion resolve the same release or neither does).
+ * Duplicated from `expand.ts`, which asks it of a member map rather than of one target.
+ */
+function usableRelease(
+  component: ConceptSetComponent,
+  system: string | undefined,
+  ctx: ExpansionContext,
+): CodeSystem | undefined {
+  if (system === undefined) return undefined;
+  const cs = ctx.codeSystems?.get(system);
+  if (cs === undefined) return undefined;
+  if (
+    system === component.system &&
+    component.version !== undefined &&
+    cs.version !== component.version
+  ) {
+    return undefined;
+  }
+  return cs;
+}
+
+/**
  * Re-root a diagnostic raised inside a *referenced* value set onto the reference that reached it.
  *
  * The **path format and its construction** are shared with `expand` (index paths over `compose`,
@@ -73,12 +114,19 @@ interface ComponentMatch {
   readonly diagnostics: readonly ExpansionDiagnostic[];
 }
 
+/**
+ * Whether one `include`/`exclude` component matches `target`.
+ *
+ * `activeOnly` is the value set's own `compose.inactive: false`, and it is passed for an `include`
+ * only: an `exclude` decides what to REMOVE, and screening it would leave an excluded code a member.
+ */
 function matchComponent(
   target: Coding,
   component: ConceptSetComponent,
   ctx: ExpansionContext,
   visited: ReadonlySet<string>,
   path: string,
+  activeOnly = false,
 ): ComponentMatch {
   const diagnostics: ExpansionDiagnostic[] = [];
   const { system, version, concept, filter, valueSet } = component;
@@ -151,6 +199,17 @@ function matchComponent(
     }
   }
 
+  // A component scoped to a `system` selects only codes drawn from THAT system, so a target `Coding`
+  // carrying no `system` names none of them: the component is a definite NON-match. Without this the
+  // guard above (which needs both systems to compare them) fell through to the enumeration and the
+  // whole-system branches, and an unqualified code was decided a MEMBER on the strength of its code
+  // alone: an assertion the caller never supplied the evidence for.
+  //
+  // Applied only where the base was fully evaluated. A component the engine could not evaluate (no
+  // release supplied, an unsupported operator, a version disagreement) stays undetermined exactly as
+  // it is today: this fix removes a fabricated `true`, it does not turn a refusal into an answer.
+  if (system !== undefined && target.system === undefined && baseComplete) baseMatched = false;
+
   // ── referenced value sets (intersection: member of every one) ──
   let refDefiniteFalse = false;
   let refUndetermined = false;
@@ -187,6 +246,24 @@ function matchComponent(
     return { matched: false, complete: true, diagnostics };
   }
   if (baseDefiniteTrue && refDefiniteTrue) {
+    // The active-only screen runs only over a component that would otherwise CONTRIBUTE this code:
+    // a component that does not select it needs no activity evidence, so nothing that is decided
+    // today becomes undetermined. Mirrors `expand`'s screen, so the two never disagree: a code the
+    // release marks not active is omitted there and a definite non-member here, and a code whose
+    // activity no supplied release can decide is dropped there and undetermined here.
+    if (activeOnly) {
+      const cs = usableRelease(component, target.system, ctx);
+      if (cs === undefined) {
+        diagnostics.push(cannotExpand(ACTIVITY_UNCHECKABLE_DETAIL, path));
+        return { matched: false, complete: false, diagnostics };
+      }
+      const concept = cs.concepts.get(target.code);
+      // Absence of status is not evidence of inactivity: only a release that MARKS it not active
+      // removes the code.
+      if (concept?.status !== undefined && !concept.status.active) {
+        return { matched: false, complete: true, diagnostics };
+      }
+    }
     return { matched: true, complete: true, diagnostics };
   }
   return { matched: false, complete: false, diagnostics };
@@ -236,8 +313,17 @@ function validateInternal(
     const diagnostics: ExpansionDiagnostic[] = [];
     let includedDefinite = false;
     let anyIncludeUndetermined = false;
+    // The value set's OWN declaration, read only where it says `false` (see `expand`).
+    const activeOnly = vs.compose.inactive === false;
     for (const [i, inc] of vs.compose.include.entries()) {
-      const m = matchComponent(target, inc, ctx, visited, `compose.include[${String(i)}]`);
+      const m = matchComponent(
+        target,
+        inc,
+        ctx,
+        visited,
+        `compose.include[${String(i)}]`,
+        activeOnly,
+      );
       for (const d of m.diagnostics) diagnostics.push(d);
       if (m.complete && m.matched) includedDefinite = true;
       if (!m.complete) anyIncludeUndetermined = true;

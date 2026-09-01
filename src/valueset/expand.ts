@@ -10,6 +10,9 @@
  *   releases: the union of `include` components minus the union of `exclude` components. Each component
  *   selects by explicit `concept`, by `filter` (subsumption + property predicates), by the whole
  *   `system`, and/or by intersecting referenced value sets.
+ * - A `compose` that declares `inactive: false` is **active-only**: a code the supplied release marks
+ *   not active is omitted from every `include` branch alike, and a component whose activity no
+ *   supplied release can decide contributes nothing and marks the result incomplete.
  *
  * **Never fabricate.** A part that cannot be computed (a missing code system, an unresolved
  * referenced value set, an unimplemented `filter` operator, or a component whose declared code
@@ -21,6 +24,7 @@
  * @packageDocumentation
  */
 
+import type { CodeSystem } from "../codesystem/types.js";
 import { coding, type Coding } from "../common/coding.js";
 import type { Writable } from "../common/writable.js";
 import { buildSubsumption, matchesAllFilters, unsupportedOps } from "./filters.js";
@@ -75,6 +79,74 @@ function expansionIncompleteDetail(unclosed: boolean): string {
   return unclosed
     ? "pre-computed expansion is incomplete (marked unclosed: the value set is unbounded, so the snapshot is a sample of its membership)"
     : "pre-computed expansion is incomplete (truncated or too-costly)";
+}
+
+/**
+ * The value-free reason an **active-only** value set (`compose.inactive: false`) could not screen
+ * one component: there is no release its codes' activity could be read from, because none was
+ * supplied for their `system` or the one supplied does not agree with the component's declared
+ * version. A literal this module owns, so nothing consumer-supplied reaches a diagnostic.
+ * Duplicated verbatim in `validate.ts`, which keeps its own copy of these factories.
+ */
+const ACTIVITY_UNCHECKABLE_DETAIL =
+  "active-only value set: no usable code system release to check whether a selected code is active";
+
+/**
+ * The supplied release a component's own selection may be read from: the one keyed by `system`,
+ * unless the component declares a `version` that release does not agree with.
+ *
+ * "Does not agree" is the same test the intensional branches already apply, element PRESENCE on the
+ * component and equality against the release: a release that declares no version of its own agrees
+ * with no declared pin either, so it is not usable evidence about the pinned release's content.
+ * A declared pin scopes the component's OWN `system`, so a member drawn from a referenced value set
+ * in another system is not pinned by it. Duplicated in `validate.ts`, which asks the same question
+ * of one target rather than of a member map.
+ */
+function usableRelease(
+  component: ConceptSetComponent,
+  system: string | undefined,
+  ctx: ExpansionContext,
+): CodeSystem | undefined {
+  if (system === undefined) return undefined;
+  const cs = ctx.codeSystems?.get(system);
+  if (cs === undefined) return undefined;
+  if (
+    system === component.system &&
+    component.version !== undefined &&
+    cs.version !== component.version
+  ) {
+    return undefined;
+  }
+  return cs;
+}
+
+/**
+ * Screen one component's members down to the ones an **active-only** value set may admit.
+ *
+ * Three outcomes per member, and the middle one is the point: a release that marks the code not
+ * active drops it; a release that carries no status for it (or does not carry it at all) KEEPS it,
+ * because absence of status is not evidence of inactivity and the engine never guesses a status;
+ * and a member with no usable release at all is dropped with `uncheckable` set, so the caller gets
+ * an explicit lower bound instead of a set that may hold inactive codes.
+ */
+function screenActive(
+  members: Map<string, Coding>,
+  component: ConceptSetComponent,
+  ctx: ExpansionContext,
+): { readonly members: Map<string, Coding>; readonly uncheckable: boolean } {
+  const kept = new Map<string, Coding>();
+  let uncheckable = false;
+  for (const [key, member] of members) {
+    const cs = usableRelease(component, member.system, ctx);
+    if (cs === undefined) {
+      uncheckable = true;
+      continue;
+    }
+    const concept = cs.concepts.get(member.code);
+    if (concept?.status !== undefined && !concept.status.active) continue;
+    kept.set(key, member);
+  }
+  return { members: kept, uncheckable };
 }
 
 /**
@@ -136,12 +208,19 @@ function expandReferencedValueSets(
   return { members: acc ?? new Map<string, Coding>(), complete, diagnostics };
 }
 
-/** Expand one `include`/`exclude` component into a keyed member map. */
+/**
+ * Expand one `include`/`exclude` component into a keyed member map.
+ *
+ * `activeOnly` is the value set's own `compose.inactive: false`, and it is passed for an `include`
+ * only. An `exclude` computes what to REMOVE: screening it would leave a code the value set excludes
+ * behind, and the include union it is subtracted from has already been screened.
+ */
 function expandComponent(
   component: ConceptSetComponent,
   ctx: ExpansionContext,
   visited: ReadonlySet<string>,
   path: string,
+  activeOnly = false,
 ): ComponentExpansion {
   const diagnostics: ExpansionDiagnostic[] = [];
   let complete = true;
@@ -156,9 +235,19 @@ function expandComponent(
 
   if (hasConcept) {
     // Extensional: enumerated codes are always fully computable.
+    //
+    // The value set's OWN display wins and is carried verbatim. Where it supplies none, the supplied
+    // release's display for that code is carried verbatim too: taking a display off a resource the
+    // caller handed in is not fabrication, and the filter and whole-system branches below already do
+    // it, so the enumerated branch doing otherwise was an inconsistency between three branches of
+    // one operation rather than a posture. Nothing is invented: no usable release, no such code, or
+    // no display on it, and the member simply carries no display. Membership and completeness are
+    // untouched either way, since a missing display is not a missing member.
     base = new Map();
+    const release = usableRelease(component, system, ctx);
     for (const c of concept) {
-      base.set(codingKey(system, c.code), makeCoding(system, c.code, c.display, version));
+      const display = c.display ?? release?.concepts.get(c.code)?.display;
+      base.set(codingKey(system, c.code), makeCoding(system, c.code, display, version));
     }
   } else if (hasFilter || (system !== undefined && !hasVs)) {
     // Intensional filter, or a whole-system include: both need the loaded code system.
@@ -248,7 +337,19 @@ function expandComponent(
   }
 
   // A component that selects nothing (no system, concept, filter, or valueSet) adds no members.
-  return { members: base ?? new Map<string, Coding>(), complete, diagnostics };
+  const members = base ?? new Map<string, Coding>();
+  if (!activeOnly) return { members, complete, diagnostics };
+
+  // The active-only screen runs LAST, over whatever this component finally selects, so the
+  // enumerated, filtered, whole-system and referenced-value-set members are all screened by one
+  // rule. It runs AFTER the version-pin check on purpose: a component whose pin was refuted has
+  // already contributed nothing, so there is nothing left to screen and no second diagnostic.
+  const screened = screenActive(members, component, ctx);
+  if (screened.uncheckable) {
+    diagnostics.push(cannotExpand(ACTIVITY_UNCHECKABLE_DETAIL, path));
+    complete = false;
+  }
+  return { members: screened.members, complete, diagnostics };
 }
 
 /** Expand a compose, or pass through a pre-computed expansion, with a cycle-visited set. */
@@ -287,8 +388,11 @@ function expandInternal(
     const included = new Map<string, Coding>();
     const diagnostics: ExpansionDiagnostic[] = [];
     let complete = true;
+    // The value set's OWN declaration, read only where it says `false`: absent (the FHIR default)
+    // and `true` both admit every code the components select, exactly as before.
+    const activeOnly = vs.compose.inactive === false;
     for (const [i, inc] of vs.compose.include.entries()) {
-      const r = expandComponent(inc, ctx, visited, `compose.include[${String(i)}]`);
+      const r = expandComponent(inc, ctx, visited, `compose.include[${String(i)}]`, activeOnly);
       if (!r.complete) complete = false;
       for (const d of r.diagnostics) diagnostics.push(d);
       for (const [k, c] of r.members) if (!included.has(k)) included.set(k, c);

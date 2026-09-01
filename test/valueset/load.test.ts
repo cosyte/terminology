@@ -199,6 +199,49 @@ describe("loadValueSet", () => {
     ).toThrowError(/must name a 'system'/);
   });
 
+  it("carries compose.inactive through the load path as a declared boolean", () => {
+    const off = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { inactive: false, include: [{ system: "http://x" }] },
+    });
+    expect(off.compose?.inactive).toBe(false);
+    const on = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { inactive: true, include: [{ system: "http://x" }] },
+    });
+    expect(on.compose?.inactive).toBe(true);
+  });
+
+  it("leaves compose.inactive absent when the resource declares none", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ system: "http://x" }] },
+    });
+    expect(vs.compose?.inactive).toBeUndefined();
+    expect("inactive" in (vs.compose ?? {})).toBe(false);
+  });
+
+  it("throws on a non-boolean compose.inactive rather than dropping the declaration", () => {
+    // A dropped declaration would expand an active-only value set as if it had never said so: the
+    // wrong membership, stated confidently. `getBoolean` never coerces, so a string is not a boolean.
+    for (const inactive of ["false", 0, null, {}]) {
+      try {
+        loadValueSet({
+          resourceType: "ValueSet",
+          compose: { inactive, include: [{ system: "http://x" }] },
+        });
+        throw new Error("expected throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(TerminologyError);
+        expect((err as TerminologyError).code).toBe("TERM_VALUESET_MALFORMED");
+        // Value-free: the path, and the fault, never the value the resource carried.
+        expect((err as TerminologyError).message).toBe(
+          "ValueSet compose.inactive: 'inactive' is not a boolean",
+        );
+      }
+    }
+  });
+
   it("accepts a component with only a valueSet reference (no system)", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
