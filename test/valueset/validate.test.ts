@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  expand,
   loadCodeSystem,
   loadValueSet,
   validateCodeInValueSet,
@@ -456,5 +457,250 @@ describe("validateCodeInValueSet: an unclosed expansion", () => {
     );
     if (empty.undetermined) throw new Error("expected decided");
     expect(empty.result).toBe(false);
+  });
+});
+
+// ── A Coding that carries no `system`, against a component that names one ────────────────────────
+
+describe("validateCodeInValueSet: an unqualified Coding", () => {
+  const enumerated = loadValueSet({
+    resourceType: "ValueSet",
+    compose: { include: [{ system: CS_URL, concept: [{ code: "dog" }, { code: "cat" }] }] },
+  });
+  const wholeSystem = loadValueSet({
+    resourceType: "ValueSet",
+    compose: { include: [{ system: CS_URL }] },
+  });
+  const filtered = loadValueSet({
+    resourceType: "ValueSet",
+    compose: {
+      include: [{ system: CS_URL, filter: [{ property: "concept", op: "is-a", value: "mammal" }] }],
+    },
+  });
+
+  it("is a definite non-member of a value set whose components all name a system", () => {
+    // The component selects codes from CS_URL; an unqualified coding names none of them, so "not a
+    // member" is asserted on evidence rather than on the strength of the code string alone.
+    for (const vs of [enumerated, wholeSystem, filtered]) {
+      const r = validateCodeInValueSet({ code: "dog" }, vs, ctx());
+      if (r.undetermined) throw new Error("expected decided");
+      expect(r.result).toBe(false);
+    }
+  });
+
+  it("returns a DECIDED outcome, never the typed undetermined refusal", () => {
+    // A typed refusal here would remove the case from an answer instead of answering it.
+    for (const vs of [enumerated, wholeSystem, filtered]) {
+      const r = validateCodeInValueSet({ code: "dog" }, vs, ctx());
+      expect(r.undetermined).toBe(false);
+    }
+  });
+
+  it("leaves every undetermined outcome the engine returns today exactly as it is", () => {
+    // The system scope decides only a component the engine could actually evaluate. A component it
+    // could not evaluate stays undetermined: this fix removes a fabricated `true`, it does not turn
+    // a refusal into an answer.
+    const versioned = loadCodeSystem({
+      format: "fhir",
+      resource: { resourceType: "CodeSystem", url: CS_URL, version: "1.0", concept: [] },
+    });
+    const unevaluable = [
+      // No release supplied for the component's system.
+      [filtered, {}],
+      // An unimplemented filter operator.
+      [
+        loadValueSet({
+          resourceType: "ValueSet",
+          compose: {
+            include: [{ system: CS_URL, filter: [{ property: "d", op: "regex", value: ".*" }] }],
+          },
+        }),
+        ctx(),
+      ],
+      // A declared version the supplied release disagrees with.
+      [
+        loadValueSet({
+          resourceType: "ValueSet",
+          compose: { include: [{ system: CS_URL, version: "2.0" }] },
+        }),
+        { codeSystems: new Map([[CS_URL, versioned]]) },
+      ],
+    ] as const;
+    for (const [vs, context] of unevaluable) {
+      expect(validateCodeInValueSet({ code: "dog" }, vs, context).undetermined).toBe(true);
+      // ...and the same coding WITH the component's system answers identically.
+      expect(
+        validateCodeInValueSet({ system: CS_URL, code: "dog" }, vs, context).undetermined,
+      ).toBe(true);
+    }
+  });
+
+  it("answers exactly as before for a Coding whose system equals the component's", () => {
+    const member = validateCodeInValueSet({ system: CS_URL, code: "dog" }, enumerated, ctx());
+    const nonMember = validateCodeInValueSet({ system: CS_URL, code: "bird" }, enumerated, ctx());
+    if (member.undetermined || nonMember.undetermined) throw new Error("expected decided");
+    expect(member.result).toBe(true);
+    expect(nonMember.result).toBe(false);
+    // A component naming NO system is unaffected: it never scoped the answer to begin with.
+    const inner = loadValueSet({
+      resourceType: "ValueSet",
+      url: "http://x/inner",
+      compose: { include: [{ system: CS_URL, concept: [{ code: "dog" }] }] },
+    });
+    const byRef = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ valueSet: ["http://x/inner"] }] },
+    });
+    const viaRef = validateCodeInValueSet({ code: "dog" }, byRef, {
+      valueSets: new Map([["http://x/inner", inner]]),
+    });
+    // The reference resolves, and the inner component's own system scope decides it.
+    if (viaRef.undetermined) throw new Error("expected decided");
+    expect(viaRef.result).toBe(false);
+  });
+});
+
+// ── compose.inactive: membership must never disagree with the expansion ──────────────────────────
+
+const SIMPLE_CS_URL = "http://example.org/CodeSystem/simple";
+
+/** `code1` is `active`, `code2` is `retired` (`status.active === false`), `code3` has no status. */
+function simpleCs(): CodeSystem {
+  return loadCodeSystem({
+    format: "fhir",
+    resource: {
+      resourceType: "CodeSystem",
+      url: SIMPLE_CS_URL,
+      concept: [
+        { code: "code1", property: [{ code: "status", valueString: "active" }] },
+        { code: "code2", property: [{ code: "status", valueString: "retired" }] },
+        { code: "code3" },
+      ],
+    },
+  });
+}
+
+describe("validateCodeInValueSet: an active-only value set (compose.inactive: false)", () => {
+  const activeOnly = loadValueSet({
+    resourceType: "ValueSet",
+    compose: {
+      inactive: false,
+      include: [
+        {
+          system: SIMPLE_CS_URL,
+          concept: [{ code: "code1" }, { code: "code2" }, { code: "code3" }],
+        },
+      ],
+    },
+  });
+  const simpleCtx = (): { codeSystems: Map<string, CodeSystem> } => ({
+    codeSystems: new Map([[SIMPLE_CS_URL, simpleCs()]]),
+  });
+
+  it("decides `false` for a code the supplied release marks not active", () => {
+    const r = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "code2" },
+      activeOnly,
+      simpleCtx(),
+    );
+    if (r.undetermined) throw new Error("expected decided");
+    expect(r.result).toBe(false);
+  });
+
+  it("decides `true` for an active code, and for one the release carries no status for", () => {
+    for (const code of ["code1", "code3"]) {
+      const r = validateCodeInValueSet({ system: SIMPLE_CS_URL, code }, activeOnly, simpleCtx());
+      if (r.undetermined) throw new Error("expected decided");
+      expect(r.result).toBe(true);
+    }
+  });
+
+  it("returns undetermined, not a decided answer, when no release can check the activity", () => {
+    const r = validateCodeInValueSet({ system: SIMPLE_CS_URL, code: "code1" }, activeOnly, {});
+    expect(r.undetermined).toBe(true);
+    if (!r.undetermined) throw new Error("expected undetermined");
+    expect(r.code).toBe("TERM_VALUESET_CANNOT_EXPAND");
+    const d = only(r.diagnostics);
+    expect(d.path).toBe("compose.include[0]");
+    expect(d.detail).toBe(
+      "active-only value set: no usable code system release to check whether a selected code is active",
+    );
+    expect(d.detail).not.toContain(SIMPLE_CS_URL);
+  });
+
+  it("never disagrees with the expansion, member by member", () => {
+    for (const code of ["code1", "code2", "code3", "absent"]) {
+      const inExpansion = expand(activeOnly, simpleCtx()).contains.some((c) => c.code === code);
+      const m = validateCodeInValueSet({ system: SIMPLE_CS_URL, code }, activeOnly, simpleCtx());
+      if (m.undetermined) throw new Error("expected decided");
+      expect(m.result).toBe(inExpansion);
+    }
+    // And where expansion refuses, so does membership.
+    expect(expand(activeOnly, {}).complete).toBe(false);
+    expect(
+      validateCodeInValueSet({ system: SIMPLE_CS_URL, code: "code1" }, activeOnly, {}).undetermined,
+    ).toBe(true);
+  });
+
+  it("decides exactly as today when `inactive` is absent or true", () => {
+    for (const inactive of [undefined, true]) {
+      const compose: Record<string, unknown> = {
+        include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code2" }] }],
+      };
+      if (inactive !== undefined) compose["inactive"] = inactive;
+      const vs = loadValueSet({ resourceType: "ValueSet", compose });
+      const r = validateCodeInValueSet({ system: SIMPLE_CS_URL, code: "code2" }, vs, simpleCtx());
+      if (r.undetermined) throw new Error("expected decided");
+      expect(r.result).toBe(true);
+    }
+  });
+});
+
+// ── The recorded tx-ecosystem membership answers ─────────────────────────────────────────────────
+
+describe("validateCodeInValueSet: the recorded tx-ecosystem answers", () => {
+  it("validation-simple-coding-no-system: an unqualified code1 is `result: false`", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1" }, { code: "code2" }] }],
+      },
+    });
+    const r = validateCodeInValueSet({ code: "code1" }, vs, {
+      codeSystems: new Map([[SIMPLE_CS_URL, simpleCs()]]),
+    });
+    expect(r.undetermined).toBe(false);
+    if (r.undetermined) throw new Error("expected decided");
+    expect(r.result).toBe(false);
+  });
+
+  it("simple-expand-repeating-prop: a member selected by a non-first property value is `true`", () => {
+    const repeating = loadCodeSystem({
+      format: "fhir",
+      resource: {
+        resourceType: "CodeSystem",
+        url: SIMPLE_CS_URL,
+        concept: [
+          {
+            code: "code3",
+            property: [
+              { code: "dup", valueString: "alpha" },
+              { code: "dup", valueString: "beta" },
+            ],
+          },
+        ],
+      },
+    });
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, filter: [{ property: "dup", op: "=", value: "beta" }] }],
+      },
+    });
+    const r = validateCodeInValueSet({ system: SIMPLE_CS_URL, code: "code3" }, vs, {
+      codeSystems: new Map([[SIMPLE_CS_URL, repeating]]),
+    });
+    if (r.undetermined) throw new Error("expected decided");
+    expect(r.result).toBe(true);
   });
 });

@@ -338,7 +338,7 @@ function rf2Row(over: { source?: string; advice?: string; category?: string } = 
  * The reviewed size of the slot table. It is asserted, so a slot cannot be dropped silently while
  * the suite still reports green.
  */
-const SLOT_COUNT = 58;
+const SLOT_COUNT = 61;
 
 const slots: readonly DiagnosticSlot<Probe>[] = [
   // ── RFC-4180 CSV reader: the caller-supplied column config ───────────────────────────────────
@@ -841,6 +841,62 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
     expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
   },
 
+  {
+    // MARKER-DRIVEN: an ACTIVE-ONLY value set (`compose.inactive: false`) must decide every
+    // enumerated member's activity, and the marked system is the very one no release was supplied
+    // for, so the screen's own branch raises the declared code. A NEW diagnostic-producing branch,
+    // and it landed in both copies of the factories at once (see the `validate.ts` block below).
+    name: "ValueSet.compose.include[].system, active-only with no release to check activity (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        expand(
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: { inactive: false, include: [{ system: m, concept: [{ code: "a" }] }] },
+          }),
+          {},
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // MODEL-ONLY: an enumerated member with no display of its own now carries the SUPPLIED
+    // RELEASE's display, which is payload (the answer, carried verbatim) and so is deliberately not
+    // swept. What this slot holds is the other half: that a release's display reaches no
+    // DIAGNOSTIC. The marker-free `http://not-supplied` component is what raises the declared code.
+    name: "CodeSystem.concept[].display, carried onto an enumerated $expand member (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        expand(
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: {
+              include: [
+                { system: "http://example.org/cs", concept: [{ code: "A" }] },
+                { system: "http://not-supplied" },
+              ],
+            },
+          }),
+          {
+            codeSystems: new Map([
+              [
+                "http://example.org/cs",
+                loadCodeSystem({
+                  format: "fhir",
+                  resource: {
+                    resourceType: "CodeSystem",
+                    url: "http://example.org/cs",
+                    concept: [{ code: "A", display: m }],
+                  },
+                }),
+              ],
+            ]),
+          },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+
   // ── ValueSet $validate-code (membership) ─────────────────────────────────────────────────────
   //
   // `src/valueset/validate.ts` is a SECOND, PRIVATE COPY of the diagnostic factories: its own
@@ -1020,6 +1076,30 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
             },
           }),
           { codeSystems: new Map([["http://example.org/cs", versionedCodeSystem(m)]]) },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // The active-only screen's SECOND copy: `validate.ts` raises this branch through its own
+    // `cannotExpand`, so a leak planted there is invisible to the `expand` slot above. The marker
+    // sits in `ValueSet.url` rather than in the component's `system`, because the queried coding has
+    // to carry the component's system to reach a would-be match, and a marker in the query would be
+    // swept as the caller's own payload echo instead of proving anything about this branch.
+    name: "validateCodeInValueSet: ValueSet.url, active-only with no release to check activity (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        validateCodeInValueSet(
+          { system: "http://example.org/cs", code: "dog" },
+          loadValueSet({
+            resourceType: "ValueSet",
+            url: m,
+            compose: {
+              inactive: false,
+              include: [{ system: "http://example.org/cs", concept: [{ code: "dog" }] }],
+            },
+          }),
+          {},
         ),
       ),
     expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,

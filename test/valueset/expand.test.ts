@@ -8,7 +8,7 @@ import {
   type CodeSystem,
   type ValueSet,
 } from "../../src/index.js";
-import { nth } from "../helpers.js";
+import { nth, only } from "../helpers.js";
 
 const CS_URL = "http://example.org/animals";
 
@@ -55,9 +55,11 @@ describe("expand: extensional", () => {
     expect(r.complete).toBe(true);
     expect(codes(r)).toStrictEqual(["cat", "dog"]);
     expect(nth(r.contains, 0).system).toBe(CS_URL);
-    // Explicit-list display is carried verbatim from the value set (not the code system).
+    // The value set's own display wins and is carried verbatim: the release calls `dog` "Dog".
     const dog = r.contains.find((c) => c.code === "dog");
     expect(dog?.display).toBe("Doggo");
+    // `cat` supplies none and the release carries none for it either, so it still has none.
+    expect(r.contains.find((c) => c.code === "cat")?.display).toBeUndefined();
   });
 
   it("expands an explicit list even without the code system (extensional needs no CS)", () => {
@@ -487,5 +489,351 @@ describe("expand: empty value set", () => {
     const r = expand(vs);
     expect(r.complete).toBe(true);
     expect(r.contains).toStrictEqual([]);
+  });
+});
+
+// ── compose.inactive: an active-only value set ──────────────────────────────────────────────────
+
+const SIMPLE_CS_URL = "http://example.org/CodeSystem/simple";
+
+/** The exact detail the active-only screen surfaces; pinned whole, never by substring. */
+const ACTIVITY_UNCHECKABLE_DETAIL =
+  "active-only value set: no usable code system release to check whether a selected code is active";
+
+/**
+ * A release carrying status for two of its three codes: `code1` is `active`, `code2` is `retired`
+ * (the FHIR reader maps a non-`active` status string to `deprecated`, so `status.active` is
+ * `false`), and `code3` carries no status information at all.
+ */
+function simpleCs(version?: string): CodeSystem {
+  const resource: Record<string, unknown> = {
+    resourceType: "CodeSystem",
+    url: SIMPLE_CS_URL,
+    concept: [
+      {
+        code: "code1",
+        display: "Display 1",
+        property: [{ code: "status", valueString: "active" }],
+      },
+      {
+        code: "code2",
+        display: "Display 2",
+        property: [{ code: "status", valueString: "retired" }],
+      },
+      { code: "code3", display: "Display 3" },
+    ],
+  };
+  if (version !== undefined) resource["version"] = version;
+  return loadCodeSystem({ format: "fhir", resource });
+}
+
+describe("expand: compose.inactive (an active-only value set)", () => {
+  const all = [{ code: "code1" }, { code: "code2" }, { code: "code3" }];
+
+  it("omits a code the release marks not active, from every include branch alike", () => {
+    // Enumerated, filtered and whole-system components are three branches of ONE operation: an
+    // active-only value set screens all of them, or it screens none of them honestly.
+    const enumerated = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { inactive: false, include: [{ system: SIMPLE_CS_URL, concept: all }] },
+    });
+    const filtered = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        inactive: false,
+        include: [
+          {
+            system: SIMPLE_CS_URL,
+            filter: [{ property: "concept", op: "in", value: "code1, code2, code3" }],
+          },
+        ],
+      },
+    });
+    const wholeSystem = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { inactive: false, include: [{ system: SIMPLE_CS_URL }] },
+    });
+    for (const vs of [enumerated, filtered, wholeSystem]) {
+      const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+      // `code2` is retired and gone; `code1` is marked active and kept; `code3` carries no status
+      // at all and is kept, because absence of status is not evidence of inactivity.
+      expect(codes(r)).toStrictEqual(["code1", "code3"]);
+      expect(r.complete).toBe(true);
+      expect(r.diagnostics).toStrictEqual([]);
+    }
+  });
+
+  it("keeps a concept the release carries no status for, and stays complete", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        inactive: false,
+        include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code3" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(codes(r)).toStrictEqual(["code3"]);
+    expect(r.complete).toBe(true);
+    expect(r.diagnostics).toStrictEqual([]);
+  });
+
+  it("omits no code on activity grounds when `inactive` is absent or true", () => {
+    const absent = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ system: SIMPLE_CS_URL, concept: all }] },
+    });
+    const declaredTrue = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { inactive: true, include: [{ system: SIMPLE_CS_URL, concept: all }] },
+    });
+    for (const vs of [absent, declaredTrue]) {
+      const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+      expect(codes(r)).toStrictEqual(["code1", "code2", "code3"]);
+      expect(r.complete).toBe(true);
+      expect(r.diagnostics).toStrictEqual([]);
+    }
+  });
+
+  it("passes a pre-computed expansion through unchanged, whatever compose.inactive says", () => {
+    // A pre-computed expansion is a membership SNAPSHOT the engine never re-derives: `compose` (and
+    // so its `inactive`) is not consulted at all when one is present.
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { inactive: false, include: [{ system: SIMPLE_CS_URL, concept: all }] },
+      expansion: {
+        total: 2,
+        contains: [
+          { system: SIMPLE_CS_URL, code: "code1" },
+          { system: SIMPLE_CS_URL, code: "code2" },
+        ],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(codes(r)).toStrictEqual(["code1", "code2"]);
+    expect(r.complete).toBe(true);
+    expect(r.diagnostics).toStrictEqual([]);
+  });
+
+  it("contributes no member and marks the result incomplete when no release can decide activity", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { inactive: false, include: [{ system: SIMPLE_CS_URL, concept: all }] },
+    });
+    const r = expand(vs, {});
+    // `contains` must stay a true LOWER BOUND: a member kept here might be a retired code.
+    expect(codes(r)).toStrictEqual([]);
+    expect(r.complete).toBe(false);
+    const d = only(r.diagnostics);
+    expect(d.code).toBe("TERM_VALUESET_CANNOT_EXPAND");
+    expect(d.path).toBe("compose.include[0]");
+    // Value-free: engine-owned wording, nothing the caller's resource supplied.
+    expect(d.detail).toBe(ACTIVITY_UNCHECKABLE_DETAIL);
+    expect(d.detail).not.toContain(SIMPLE_CS_URL);
+  });
+
+  it("screens an exclude's own membership out of it, never the exclude itself", () => {
+    // An `exclude` says what to REMOVE. Screening it would leave an excluded code a member, so the
+    // rule applies to the include union only.
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        inactive: false,
+        include: [{ system: SIMPLE_CS_URL }],
+        exclude: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1" }, { code: "code2" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(codes(r)).toStrictEqual(["code3"]);
+    expect(r.complete).toBe(true);
+  });
+});
+
+// ── An enumerated member's display, taken from the release the caller supplied ───────────────────
+
+describe("expand: an enumerated member's display", () => {
+  it("takes the supplied release's display, verbatim, when the value set supplies none", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1" }] }] },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(nth(r.contains, 0).display).toBe("Display 1");
+  });
+
+  it("carries the value set's OWN display verbatim, even where the release differs", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1", display: "The VS one" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(nth(r.contains, 0).display).toBe("The VS one");
+  });
+
+  it("invents nothing: no release, no such code, or no display leaves the member without one", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [
+          { system: SIMPLE_CS_URL, concept: [{ code: "code1" }, { code: "not-in-release" }] },
+        ],
+      },
+    });
+    // No release supplied at all.
+    const bare = expand(vs, {});
+    expect(bare.complete).toBe(true);
+    expect(bare.diagnostics).toStrictEqual([]);
+    expect(bare.contains.map((c) => c.display)).toStrictEqual([undefined, undefined]);
+
+    // A release that carries one code and not the other, and a code carrying no display of its own.
+    const noDisplayCs = loadCodeSystem({
+      format: "fhir",
+      resource: {
+        resourceType: "CodeSystem",
+        url: SIMPLE_CS_URL,
+        concept: [{ code: "code1" }],
+      },
+    });
+    const supplied = expand(vs, ctx([SIMPLE_CS_URL, noDisplayCs]));
+    // A missing display is not a missing member: both are still here, and still complete.
+    expect(codes(supplied)).toStrictEqual(["code1", "not-in-release"]);
+    expect(supplied.complete).toBe(true);
+    expect(supplied.diagnostics).toStrictEqual([]);
+    expect(supplied.contains.map((c) => c.display)).toStrictEqual([undefined, undefined]);
+  });
+
+  it("takes no display from a release the component's declared version disagrees with", () => {
+    const pinned = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, version: "2.0", concept: [{ code: "code1" }] }],
+      },
+    });
+    const disagrees = expand(pinned, ctx([SIMPLE_CS_URL, simpleCs("1.0")]));
+    expect(nth(disagrees.contains, 0).display).toBeUndefined();
+    // Membership and completeness are untouched: an enumeration needs no release to be computable.
+    expect(codes(disagrees)).toStrictEqual(["code1"]);
+    expect(disagrees.complete).toBe(true);
+    expect(disagrees.diagnostics).toStrictEqual([]);
+    expect(nth(disagrees.contains, 0).version).toBe("2.0");
+
+    // A release that declares no version agrees with no pin either.
+    const unversioned = expand(pinned, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(nth(unversioned.contains, 0).display).toBeUndefined();
+    expect(unversioned.complete).toBe(true);
+
+    // The agreeing release DOES supply it.
+    const agrees = expand(pinned, ctx([SIMPLE_CS_URL, simpleCs("2.0")]));
+    expect(nth(agrees.contains, 0).display).toBe("Display 1");
+  });
+});
+
+// ── The recorded tx-ecosystem answers, replayed through the public API ───────────────────────────
+//
+// Five of the six answers HL7 records that this engine used to disagree with are expansions; the
+// sixth is a membership test and is pinned in `validate.test.ts`. Each is replayed here straight
+// through `loadValueSet` + `expand`, with no conformance runner and no vendored fixture involved.
+
+describe("expand: the recorded tx-ecosystem answers", () => {
+  it("simple-expand-active: an active-only value set does not contain the retired code2", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        inactive: false,
+        include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1" }, { code: "code2" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(r.contains.some((c) => c.code === "code2")).toBe(false);
+    expect(codes(r)).toStrictEqual(["code1"]);
+    expect(r.complete).toBe(true);
+  });
+
+  it("simple-expand-enum / -enum-bad: the enumerated member carries the release's Display 1", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1" }] }] },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(only(r.contains).display).toBe("Display 1");
+  });
+
+  it("parameters-expand-enum-hierarchy: the same, through a hierarchical release", () => {
+    const hierarchy = loadCodeSystem({
+      format: "fhir",
+      resource: {
+        resourceType: "CodeSystem",
+        url: SIMPLE_CS_URL,
+        concept: [
+          {
+            code: "code1",
+            display: "Display 1",
+            concept: [{ code: "code2", display: "Display 2" }],
+          },
+        ],
+      },
+    });
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1" }] }] },
+    });
+    expect(only(expand(vs, ctx([SIMPLE_CS_URL, hierarchy])).contains).display).toBe("Display 1");
+  });
+
+  it("simple-expand-repeating-prop: filtering on a NON-first property value still selects code3", () => {
+    // The upstream fixture states it in words: code3 has dup=alpha and dup=beta; filtering on beta,
+    // which is not its first value, must still select it.
+    const repeating = loadCodeSystem({
+      format: "fhir",
+      resource: {
+        resourceType: "CodeSystem",
+        url: SIMPLE_CS_URL,
+        concept: [
+          {
+            code: "code3",
+            property: [
+              { code: "dup", valueString: "alpha" },
+              { code: "dup", valueString: "beta" },
+            ],
+          },
+          { code: "code4", property: [{ code: "dup", valueString: "alpha" }] },
+        ],
+      },
+    });
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, filter: [{ property: "dup", op: "=", value: "beta" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, repeating]));
+    expect(codes(r)).toStrictEqual(["code3"]);
+    expect(r.complete).toBe(true);
+    // expand and validate agree: the member the filter selects is a decided member.
+    const m = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "code3" },
+      vs,
+      ctx([SIMPLE_CS_URL, repeating]),
+    );
+    if (m.undetermined) throw new Error("expected decided");
+    expect(m.result).toBe(true);
+  });
+
+  it("validation-simple-coding-no-system: the expansion is untouched by the membership fix", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: [{ code: "code1" }, { code: "code2" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(codes(r)).toStrictEqual(["code1", "code2"]);
+    expect(r.complete).toBe(true);
+    expect(r.diagnostics).toStrictEqual([]);
+    // Only the membership test changed: a system-less coding is a decided non-member.
+    const m = validateCodeInValueSet({ code: "code1" }, vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    if (m.undetermined) throw new Error("expected decided");
+    expect(m.result).toBe(false);
   });
 });
