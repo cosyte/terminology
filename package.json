@@ -64,6 +64,7 @@
     "build": "cosyte-process build",
     "changeset": "changeset",
     "gen:ucum": "tsx scripts/generate-ucum-essence-data.ts",
+    "conformance:tx": "tsx scripts/tx-conformance.ts",
     "typecheck": "cosyte-process typecheck",
     "phi-scan": "tsx scripts/phi-scan.ts",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",

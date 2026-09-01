@@ -1,0 +1,121 @@
+{
+  "$optional-properties$" : ["id", "date", "publisher", "compose"],
+  "resourceType" : "ValueSet",
+  "id" : "$id$",
+  "url" : "http://hl7.org/fhir/test/ValueSet/simple-enumerated",
+  "version" : "5.0.0",
+  "name" : "SimpleValueSetEnumerated",
+  "title" : "Simple ValueSet Enumerated",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "concept" : [{
+        "code" : "code1"
+      },
+      {
+        "code" : "code2"
+      },
+      {
+        "code" : "code3"
+      },
+      {
+        "code" : "code2a"
+      },
+      {
+        "code" : "code2b"
+      }]
+    }]
+  },
+  "expansion" : {
+    "$optional-properties$" : ["id", "offset"],
+    "id":"$id$",
+    "identifier" : "$uuid$",
+    "timestamp" : "$instant$",
+    "total" : 5,
+    "offset" : 0,
+    "parameter" : [{
+      "name" : "excludeNested",
+      "valueBoolean" : false
+    },
+    {
+      "$optional$" : true,
+      "name" : "includeDefinition",
+      "valueBoolean" : true
+    },
+    {
+      "name" : "includeDesignations",
+      "valueBoolean" : true
+    },
+    {
+      "name" : "used-codesystem",
+      "valueUri" : "http://hl7.org/fhir/test/CodeSystem/simple|0.1.0"
+    }],
+    "property" : [{
+      "code" : "status",
+      "uri" : "http://hl7.org/fhir/concept-properties#status"
+    }],
+    "contains" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "code" : "code1",
+      "display" : "Display 1",
+      "designation" : [{
+        "use" : {
+          "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+          "code" : "olde-english"
+        },
+        "value" : "mine own first code"
+      }]
+    },
+    {
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "abstract" : true,
+      "inactive" : true,
+      "code" : "code2",
+      "display" : "Display 2",
+      "designation" : [{
+        "use" : {
+          "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+          "code" : "olde-english"
+        },
+        "value" : "mine own second code"
+      }],
+      "property" : [{
+        "code" : "status",
+        "valueCode" : "retired"
+      }]
+    },
+    {
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "code" : "code2a",
+      "display" : "Display 2a",
+      "designation" : [{
+        "use" : {
+          "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+          "code" : "olde-english"
+        },
+        "value" : "mine own first code yond's issue of the second code"
+      }]
+    },
+    {
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "code" : "code2b",
+      "display" : "Display 2b",
+      "designation" : [{
+        "use" : {
+          "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+          "code" : "olde-english"
+        },
+        "value" : "Mine own second second leveleth code"
+      }]
+    },
+    {
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "code" : "code3",
+      "display" : "Display 3"
+    }]
+  }
+}

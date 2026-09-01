@@ -1,0 +1,38 @@
+{
+  "suites": [
+    {
+      "name": "simple-cases",
+      "mode": "general",
+      "description": "the fixtures' own tolerance vocabulary",
+      "setup": [
+        "cs.json",
+        "vs-all.json",
+        "vs-enum.json"
+      ],
+      "tests": [
+        {
+          "name": "optional-member-and-optional-property",
+          "description": "an optional member and an optional element are honoured as declared",
+          "operation": "expand",
+          "request": "req-all.json",
+          "response": "resp-all.json"
+        },
+        {
+          "name": "flat-variant-is-preferred",
+          "description": "the fixture's own flat variant is the response a flat engine is compared to",
+          "operation": "expand",
+          "request": "req-all.json",
+          "response": "resp-hierarchical.json",
+          "response:flat": "resp-all.json"
+        },
+        {
+          "name": "placeholder-display",
+          "description": "a placeholder value matches whatever the engine answers",
+          "operation": "expand",
+          "request": "req-enum.json",
+          "response": "resp-enum.json"
+        }
+      ]
+    }
+  ]
+}

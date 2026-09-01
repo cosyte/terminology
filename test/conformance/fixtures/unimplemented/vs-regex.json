@@ -1,0 +1,21 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fixture/ValueSet/regex",
+  "version": "1.0.0",
+  "name": "FixtureRegex",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "filter": [
+          {
+            "property": "concept",
+            "op": "regex",
+            "value": "a.*"
+          }
+        ]
+      }
+    ]
+  }
+}

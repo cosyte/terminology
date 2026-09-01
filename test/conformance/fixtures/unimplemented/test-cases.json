@@ -1,0 +1,38 @@
+{
+  "suites": [
+    {
+      "name": "simple-cases",
+      "mode": "general",
+      "description": "the decline routes",
+      "setup": [
+        "cs.json",
+        "vs-all.json",
+        "vs-regex.json"
+      ],
+      "tests": [
+        {
+          "name": "unsupported-parameter",
+          "description": "a request parameter the public surface has no argument for",
+          "operation": "expand",
+          "request": "req-active-only.json",
+          "response": "resp-empty.json"
+        },
+        {
+          "name": "typed-refusal",
+          "description": "a filter operator the engine refuses with its own typed code",
+          "operation": "expand",
+          "request": "req-regex.json",
+          "response": "resp-empty.json"
+        },
+        {
+          "name": "case-directive",
+          "description": "a directive asking for an HTTP status a library call has no shape for",
+          "operation": "expand",
+          "http-code": "4xx",
+          "request": "req-active-only.json",
+          "response": "resp-empty.json"
+        }
+      ]
+    }
+  ]
+}

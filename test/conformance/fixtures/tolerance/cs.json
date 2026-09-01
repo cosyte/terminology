@@ -1,0 +1,18 @@
+{
+  "resourceType": "CodeSystem",
+  "url": "http://example.org/fixture/CodeSystem/basic",
+  "version": "1.0.0",
+  "name": "FixtureBasic",
+  "status": "active",
+  "content": "complete",
+  "concept": [
+    {
+      "code": "a",
+      "display": "Alpha"
+    },
+    {
+      "code": "b",
+      "display": "Beta"
+    }
+  ]
+}

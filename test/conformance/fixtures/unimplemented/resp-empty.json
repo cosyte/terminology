@@ -1,0 +1,7 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fixture/ValueSet/all",
+  "expansion": {
+    "contains": []
+  }
+}

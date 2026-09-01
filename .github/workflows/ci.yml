@@ -31,6 +31,13 @@ jobs:
   # with no error anywhere: the ruleset still passes because the job it names still passes. Splitting
   # a step out means adding its new context to the ruleset in the same change.
   #
+  # ▶ THE TERMINOLOGY ECOSYSTEM CONFORMANCE JOB RUNS INSIDE `verify`, AS PART OF WHAT `pnpm test`
+  # ALREADY RUNS (`test/conformance/tx-ecosystem.test.ts`, driven by the vendored snapshot under
+  # `vendor/tx-ecosystem/`). It is deliberately NOT a job of its own, for the reason directly above:
+  # a new job emits a new check-run context, the ruleset does not name it, and it would be required
+  # by nobody. `pnpm run conformance:tx` is the same measurement with a printed summary, for a human
+  # at a terminal; CI needs no separate step for it.
+  #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an
   # examples smoke, a starter-kit build) are added on top of this caller, never instead of it.

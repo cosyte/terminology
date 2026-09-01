@@ -1,0 +1,21 @@
+{
+  "suites": [
+    {
+      "name": "simple-cases",
+      "mode": "general",
+      "description": "every case is out of the operation scope",
+      "setup": [
+        "cs.json"
+      ],
+      "tests": [
+        {
+          "name": "a-lookup",
+          "description": "lookup is not in scope",
+          "operation": "lookup",
+          "request": "req-all.json",
+          "response": "resp-empty.json"
+        }
+      ]
+    }
+  ]
+}

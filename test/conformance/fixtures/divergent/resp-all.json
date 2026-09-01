@@ -1,0 +1,23 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fixture/ValueSet/all",
+  "expansion": {
+    "contains": [
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "code": "a",
+        "display": "Alpha"
+      },
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "code": "b",
+        "display": "Beta"
+      },
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "code": "z",
+        "display": "Zeta"
+      }
+    ]
+  }
+}

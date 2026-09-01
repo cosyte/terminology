@@ -1,0 +1,13 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "url",
+      "valueUri": "http://example.org/fixture/ValueSet/all"
+    },
+    {
+      "name": "activeOnly",
+      "valueBoolean": true
+    }
+  ]
+}

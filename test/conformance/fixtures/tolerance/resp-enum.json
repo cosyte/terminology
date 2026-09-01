@@ -1,0 +1,13 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fixture/ValueSet/enum",
+  "expansion": {
+    "contains": [
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "code": "a",
+        "display": "$id$"
+      }
+    ]
+  }
+}
