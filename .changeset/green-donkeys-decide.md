@@ -1,0 +1,15 @@
+---
+"@cosyte/terminology": patch
+---
+
+ValueSet binding: an enumerated `compose` code the release you supplied does not define is no longer expanded into a silent, complete member.
+
+A `compose.include` / `.exclude` component that lists codes explicitly was treated as always fully computable, so `expand` returned every enumerated code as a member and called the answer complete, even when the caller had supplied the very `CodeSystem` release that shows one of those codes does not exist. `validateCodeInValueSet` agreed with it and decided such a code a member. That is a decided, complete, diagnostic-free membership set carrying a code nothing defines: the engine asserting something it holds contrary evidence for, which is the failure the never-fabricate posture exists to prevent, and a wrong binding silently mistranslates clinical meaning downstream.
+
+An enumerated entry is now admitted only where the evidence the caller supplied does not contradict it. Where the `ExpansionContext` holds a `CodeSystem` for the component's `system`, and the component either declares no `version` or the supplied release declares the same one, a code that release does not define is not a member: `expand` omits it from `contains` and `validateCodeInValueSet` returns a decided `result: false` for it. That is the same release-usability test the intensional branches already apply.
+
+The answer stays **decided**. `expand` reports `complete: true` (the engine decided the component, on the evidence it was given, so `contains` is the answer and not a lower bound) and surfaces the drop as one new typed diagnostic per affected component, `TERM_VALUESET_ENUMERATED_CODE_UNDEFINED`, located by that component's own index path (`compose.include[0]`, `compose.exclude[1]`). A complete expansion can therefore carry diagnostics; read `diagnostics` whatever `complete` says. `validateCodeInValueSet` reports the same fact as a decided non-member rather than a diagnostic, because a decided membership carries none, and never as the typed `undetermined` refusal: the engine knows this code is not a member.
+
+The rule is bounded to the case where contrary evidence is actually in hand, and the bound is the point: no release supplied for the component's `system`, a release for a different system, a declared `version` the supplied release disagrees with, a release that declares no version to agree with, or a component naming no `system` at all all leave the enumeration exactly as it was, with no diagnostic. Absence of evidence is not evidence a code is undefined, and widening to that case would turn most legitimate enumerated value sets incomplete. An `exclude` entry the release does not define removes nothing from the include union, and is reported on the `exclude` component's own path.
+
+Everything else is unchanged: pre-computed `ValueSet.expansion` handling, the `filter`, whole-system, referenced-value-set and active-only branches, and the display fallback (a member the release carries with no display of its own still comes back with none, and is still a member). One diagnostic code was added and none was renamed or removed.

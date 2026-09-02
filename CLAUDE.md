@@ -129,7 +129,8 @@ format-specific arbitraries here; CI/CD are thin callers of the reusable `cosyte
 - **The rule is about the ARGUMENTS, not the signatures. DO NOT RESTORE THE ABSOLUTE FORM** ("no
   diagnostic factory takes a value parameter"): it was flatly false of factories in `src/`, and a
   guardrail stronger than the code gets "fixed" in the wrong direction. **Do not write the factory
-  count down**; derive it: `rg -n '^function (malformed|cannotExpand|truncated|underPath)' src/`. Why:
+  count down**; derive it:
+  `rg -n '^function (malformed|cannotExpand|truncated|enumeratedUndefined|underPath)' src/`. Why:
   `agent-notes.md#the-rule-is-about-arguments-not-signatures`
 - **Positional context is a LOCUS: an integer, an index path, or a closed-set token**
   (`RXNCONSO`/`RXNREL`/`RXNSAT`): never a URI, a column name, or anything the file supplied. Name the

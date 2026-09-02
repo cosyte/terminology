@@ -72,6 +72,31 @@ in such an expansion still validates `true`: the marker bounds what **absence** 
 For a version disagreement, supply the release the value set actually pins: re-checking against the
 release you already have is what the diagnostic exists to stop.
 
+## `expand` dropped a code my value set lists explicitly
+
+A `compose` component that enumerates codes is admitted only where the evidence you supplied does
+not contradict it. When you pass a `CodeSystem` for that component's `system` (and the component's
+declared `version`, if it has one, agrees with that release), a code the release does not define is
+**not** a member: `expand` leaves it out of `contains` and reports one
+`TERM_VALUESET_ENUMERATED_CODE_UNDEFINED` diagnostic on that component, and
+`validateCodeInValueSet` decides it a non-member rather than a member.
+
+The result is still `complete: true`, so this is a **decided** answer rather than a lower bound, and
+a complete expansion can carry diagnostics: read `diagnostics` on both.
+
+```ts
+const r = expand(valueSet, { codeSystems });
+r.complete; // => true
+r.diagnostics.filter((d) => d.code === "TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
+// each carries a `path` into your own compose, such as "compose.include[0]"
+```
+
+If the release you passed is the incomplete party rather than the value set, supply the release the
+value set was written against: the rule reads the evidence you hand it and nothing else. If you want
+the enumeration honored as written, do not pass a release for that system, or pass one whose
+`version` the component does not pin to: with no usable release the engine holds no contrary
+evidence and every enumerated code is carried, exactly as before.
+
 ## `expand` returned `complete: false`
 
 The `contains` set is a **lower bound**, not exhaustive membership: some intensional part could not be
@@ -105,6 +130,12 @@ never the surrounding record.
 - **BYO data**: `$expand` and binding operate over the `CodeSystem` releases and referenced
   `ValueSet`s you supply in the `ExpansionContext`; an intensional part with no supplied code system is
   a typed `TERM_VALUESET_CANNOT_EXPAND`, never a fabricated member.
+- **An enumeration is checked against the release you supplied, where there is one**: an explicit
+  `concept` entry a usable release does not define is not admitted, reported as a typed
+  `TERM_VALUESET_ENUMERATED_CODE_UNDEFINED` on that component while the answer stays
+  `complete: true`. Bounded to that case on purpose: with no release for the system, or a declared
+  `version` the supplied release does not agree with, the engine has no contrary evidence and every
+  enumerated code is carried.
 - **A declared code system version is checked, not selected on**: where an intensional part resolves
   a supplied release, a component's `version` is compared against that release's own `version`. A
   disagreement (or a release that declares no version to confirm the pin against) is a typed

@@ -338,7 +338,7 @@ function rf2Row(over: { source?: string; advice?: string; category?: string } = 
  * The reviewed size of the slot table. It is asserted, so a slot cannot be dropped silently while
  * the suite still reports green.
  */
-const SLOT_COUNT = 61;
+const SLOT_COUNT = 62;
 
 const slots: readonly DiagnosticSlot<Probe>[] = [
   // ── RFC-4180 CSV reader: the caller-supplied column config ───────────────────────────────────
@@ -858,6 +858,26 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
         ),
       ),
     expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+  },
+  {
+    // MARKER-DRIVEN: the marked `system` is the very key the usable release is looked up under, and
+    // that release does not define the enumerated code, so the position the marker sits in is what
+    // raises the declared code. `validate.ts` carries NO second copy of this factory, so there is
+    // no membership twin to this slot: binding answers the same case with a DECIDED non-member, and
+    // a decided outcome has no diagnostic field for anything to leak into (its `coding` echo is the
+    // caller's own query, pinned at the payload boundary at the bottom of this file).
+    name: "ValueSet.compose.include[].system, an enumerated code the supplied release does not define (document-derived)",
+    plant: (m) =>
+      probe(() =>
+        expand(
+          loadValueSet({
+            resourceType: "ValueSet",
+            compose: { include: [{ system: m, concept: [{ code: "absent-from-the-release" }] }] },
+          }),
+          { codeSystems: new Map([[m, emptyCodeSystem()]]) },
+        ),
+      ),
+    expectCode: DIAGNOSTIC_CODES.TERM_VALUESET_ENUMERATED_CODE_UNDEFINED,
   },
   {
     // MODEL-ONLY: an enumerated member with no display of its own now carries the SUPPLIED

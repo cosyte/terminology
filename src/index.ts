@@ -37,6 +37,9 @@
  * - {@link expand}: flatten membership over the supplied {@link CodeSystem}s (`include`/`exclude`,
  *   explicit `concept` lists, `is-a`/property `filter`s, referenced value sets), with an honest
  *   `complete` flag: an unresolvable part is a typed `TERM_VALUESET_CANNOT_EXPAND`, never a guess.
+ *   An enumerated code the release you supplied for that component does not define is not a member
+ *   either: it is omitted, the answer stays `complete: true`, and the drop is a typed
+ *   `TERM_VALUESET_ENUMERATED_CODE_UNDEFINED` rather than a silent one.
  * - {@link validateCodeInValueSet}: binding membership, returning a **decided** `result` only when
  *   proven and a typed `undetermined` otherwise (a truncated expansion never reads as complete).
  *

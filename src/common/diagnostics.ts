@@ -19,9 +19,12 @@
  *
  * Read that as the rule, and note what it does **not** say. It does not say no factory takes a
  * `string` parameter. Several do: `malformed(path, fault)` in `conceptmap/load.ts` and
- * `valueset/load.ts`, and `cannotExpand(detail, path)`, `truncated(detail, path)` and
- * `underPath(d, prefix)` in `valueset/`, where `expand.ts` and `validate.ts` each carry their own
- * copy. It says every **argument** reaching them is engine-owned: each `fault` and `detail` is a
+ * `valueset/load.ts`, and `cannotExpand(detail, path)`, `truncated(detail, path)`,
+ * `enumeratedUndefined(detail, path)` and `underPath(d, prefix)` in `valueset/`, where `expand.ts`
+ * and `validate.ts` each carry their own copy of the ones both operations raise
+ * (`enumeratedUndefined` is `expand.ts`'s alone: membership decides that case rather than reporting
+ * it, and a decided outcome carries no diagnostic). It says every **argument** reaching them is
+ * engine-owned: each `fault` and `detail` is a
  * literal at the call site, each `path` and `prefix` is built from indices by the loader that
  * raises it. That distinction is the thing to preserve: an absolute "no factory takes a value
  * parameter" reads as a stronger guarantee than the one the code makes, and those factories are the
@@ -153,6 +156,26 @@ export const DIAGNOSTIC_CODES = {
    * a confident "not a member". The diagnostic's `detail` says which of those it was.
    */
   TERM_VALUESET_EXPANSION_TRUNCATED: "TERM_VALUESET_EXPANSION_TRUNCATED",
+  /**
+   * A `ValueSet.compose` component **enumerated** a code the release supplied for its `system` does
+   * not define, so the code was **not admitted** as a member. The never-fabricate invariant applied
+   * to an extensional selection: enumerating a code is the value set's claim that it exists, and
+   * asserting membership for it while holding the very release that shows it does not is the engine
+   * deciding against its own evidence.
+   *
+   * Raised **only** where the evidence is in hand: a release keyed by the component's `system` that
+   * the component's declared `version` (if any) agrees with. No release for that system, a declared
+   * version the supplied release does not agree with, or a component naming no `system` at all
+   * leaves the engine with no contrary evidence, so every enumerated code is carried and **no
+   * diagnostic is raised**: absence of evidence is not evidence the code is undefined.
+   *
+   * The answer stays **decided**, unlike {@link TERM_VALUESET_CANNOT_EXPAND}: the engine computed
+   * membership on the evidence it was given, so `expand` reports `complete: true` and
+   * `validateCodeInValueSet` reports a decided non-member for the dropped code, rather than a lower
+   * bound or a refusal. One diagnostic is raised per affected component, located by that
+   * component's own index path, however many of its codes were dropped.
+   */
+  TERM_VALUESET_ENUMERATED_CODE_UNDEFINED: "TERM_VALUESET_ENUMERATED_CODE_UNDEFINED",
   /**
    * A UCUM unit expression is **not valid**: it does not parse against the UCUM grammar, or it
    * names an atom absent from the vendored UCUM table. A **first-class typed outcome, never an
