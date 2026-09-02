@@ -656,6 +656,154 @@ describe("validateCodeInValueSet: an active-only value set (compose.inactive: fa
   });
 });
 
+// ── An enumerated code the supplied release does not define ──────────────────────────────────────
+//
+// Membership must never disagree with the expansion. Where `expand` declines to admit an enumerated
+// code because the release supplied for that component does not define it, binding decides a
+// NON-member: not a member (the answer the engine holds evidence against), and not the typed
+// undetermined refusal either (the engine knows the answer, so refusing would be worse than the
+// truth). A decided outcome carries no diagnostics, which is why only `expand` reports this.
+
+describe("validateCodeInValueSet: an enumerated code the release does not define", () => {
+  const SIX = ["code1", "code2", "code3", "code4", "code5", "codeX"];
+  const FIVE = ["code1", "code2", "code3", "code4", "code5"];
+
+  /** A release defining exactly `defines`, optionally declaring a version. */
+  function releaseOf(defines: readonly string[], version?: string): CodeSystem {
+    const resource: Record<string, unknown> = {
+      resourceType: "CodeSystem",
+      url: SIMPLE_CS_URL,
+      concept: defines.map((code) => ({ code })),
+    };
+    if (version !== undefined) resource["version"] = version;
+    return loadCodeSystem({ format: "fhir", resource });
+  }
+
+  /** The value set enumerating all six, optionally pinned to a declared version. */
+  function enumeratedVs(component: Record<string, unknown> = {}): ReturnType<typeof loadValueSet> {
+    return loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: SIX.map((code) => ({ code })), ...component }],
+      },
+    });
+  }
+
+  const withRelease = (
+    defines: readonly string[],
+    version?: string,
+  ): { codeSystems: Map<string, CodeSystem> } => ({
+    codeSystems: new Map([[SIMPLE_CS_URL, releaseOf(defines, version)]]),
+  });
+
+  it("decides a NON-member for a code the usable release does not define", () => {
+    const r = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "codeX" },
+      enumeratedVs(),
+      withRelease(FIVE),
+    );
+    expect(r.undetermined).toBe(false);
+    if (r.undetermined) throw new Error("expected decided");
+    expect(r.result).toBe(false);
+  });
+
+  it("decides a member, unchanged, for a code the usable release does define", () => {
+    for (const code of FIVE) {
+      const r = validateCodeInValueSet(
+        { system: SIMPLE_CS_URL, code },
+        enumeratedVs(),
+        withRelease(FIVE),
+      );
+      if (r.undetermined) throw new Error("expected decided");
+      expect(r.result).toBe(true);
+    }
+  });
+
+  it("never disagrees with the expansion, member by member", () => {
+    const vs = enumeratedVs();
+    for (const code of [...SIX, "never-enumerated"]) {
+      const inExpansion = expand(vs, withRelease(FIVE)).contains.some((c) => c.code === code);
+      const m = validateCodeInValueSet({ system: SIMPLE_CS_URL, code }, vs, withRelease(FIVE));
+      if (m.undetermined) throw new Error("expected decided");
+      expect(m.result).toBe(inExpansion);
+    }
+  });
+
+  it("decides a member where no usable release contradicts the enumeration", () => {
+    // No release at all, a release for another system, a declared version the release disagrees
+    // with, and a release declaring no version to confirm the pin against: no contrary evidence in
+    // any of them, so the value set's own enumeration decides, exactly as before this rule.
+    const unevidenced = [
+      [enumeratedVs(), {}],
+      [enumeratedVs(), { codeSystems: new Map([["http://example.org/other", releaseOf(FIVE)]]) }],
+      [enumeratedVs({ version: "2.0" }), withRelease(FIVE, "1.0")],
+      [enumeratedVs({ version: "2.0" }), withRelease(FIVE)],
+    ] as const;
+    for (const [vs, context] of unevidenced) {
+      const r = validateCodeInValueSet({ system: SIMPLE_CS_URL, code: "codeX" }, vs, context);
+      if (r.undetermined) throw new Error("expected decided");
+      expect(r.result).toBe(true);
+    }
+    // ...and the agreeing release IS evidence: the same query decides `false` against it.
+    const agrees = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "codeX" },
+      enumeratedVs({ version: "2.0" }),
+      withRelease(FIVE, "2.0"),
+    );
+    if (agrees.undetermined) throw new Error("expected decided");
+    expect(agrees.result).toBe(false);
+  });
+
+  it("lets an exclude entry the release does not define exclude nothing", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: FIVE.map((code) => ({ code })) }],
+        exclude: [{ system: SIMPLE_CS_URL, concept: [{ code: "code2" }, { code: "codeX" }] }],
+      },
+    });
+    const kept = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "code1" },
+      vs,
+      withRelease(FIVE),
+    );
+    const removed = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "code2" },
+      vs,
+      withRelease(FIVE),
+    );
+    if (kept.undetermined || removed.undetermined) throw new Error("expected decided");
+    expect(kept.result).toBe(true);
+    expect(removed.result).toBe(false);
+  });
+
+  it("decides a NON-member, never undetermined, when the release defines none of them", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: [{ code: "codeX" }, { code: "codeY" }] }],
+      },
+    });
+    const r = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "codeX" },
+      vs,
+      withRelease(FIVE),
+    );
+    expect(r.undetermined).toBe(false);
+    if (r.undetermined) throw new Error("expected decided");
+    expect(r.result).toBe(false);
+  });
+
+  it("carries the queried coding back and nothing else", () => {
+    const r = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "codeX" },
+      enumeratedVs(),
+      withRelease(FIVE),
+    );
+    expect(r.coding).toStrictEqual({ system: SIMPLE_CS_URL, code: "codeX" });
+  });
+});
+
 // ── The recorded tx-ecosystem membership answers ─────────────────────────────────────────────────
 
 describe("validateCodeInValueSet: the recorded tx-ecosystem answers", () => {

@@ -59,8 +59,9 @@ export interface ConceptRef {
    * This is the value set's **own** display and it always wins. Where the value set supplies none,
    * {@link expand} falls back to the display the supplied {@link CodeSystem} release carries for the
    * same code, again **verbatim**: the engine still synthesizes nothing, so a member whose release
-   * was not supplied, does not carry the code, or carries it with no display comes back with no
-   * display at all.
+   * was not supplied, or which that release carries with no display, comes back with no display at
+   * all. A code a *usable* release does not carry is a membership question rather than a display
+   * one: see {@link ConceptSetComponent.concept}.
    */
   readonly display?: string;
 }
@@ -84,7 +85,17 @@ export interface ConceptSetComponent {
    * declarations agree, not that either is true: a mislabelled release is still trusted.
    */
   readonly version?: string;
-  /** An explicit, enumerated code list (extensional). Mutually exclusive with {@link filter} in FHIR. */
+  /**
+   * An explicit, enumerated code list (extensional). Mutually exclusive with {@link filter} in FHIR.
+   *
+   * An entry is admitted as a member only where the evidence the caller supplied does not
+   * contradict it. Where a release keyed by this component's {@link system} is in hand and the
+   * declared {@link version} (if any) agrees with it, a code that release does not define is **not**
+   * a member: {@link expand} omits it, reporting one typed
+   * {@link DiagnosticCode.TERM_VALUESET_ENUMERATED_CODE_UNDEFINED} for this component while staying
+   * `complete: true`, and {@link validateCodeInValueSet} decides it a non-member. Where no usable
+   * release was supplied, the engine holds no contrary evidence and every enumerated code stands.
+   */
   readonly concept?: readonly ConceptRef[];
   /** Intensional filters over {@link system}. Each code must satisfy **all** filters. */
   readonly filter?: readonly ConceptSetFilter[];
@@ -198,9 +209,17 @@ export interface ExpansionContext {
   readonly valueSets?: ReadonlyMap<string, ValueSet>;
 }
 
-/** A surfaced expansion concern: a part that could not be expanded, or a truncated snapshot. */
+/**
+ * A surfaced expansion concern: a part that could not be expanded, a truncated snapshot, or an
+ * enumerated code the supplied release does not define.
+ */
 export interface ExpansionDiagnostic {
-  /** The stable code (`TERM_VALUESET_CANNOT_EXPAND` / `TERM_VALUESET_EXPANSION_TRUNCATED`). */
+  /**
+   * The stable code (`TERM_VALUESET_CANNOT_EXPAND` / `TERM_VALUESET_EXPANSION_TRUNCATED` /
+   * `TERM_VALUESET_ENUMERATED_CODE_UNDEFINED`). Branch on it: the first two mean the answer is a
+   * lower bound, the third reports a **decided** answer the engine narrowed on the caller's own
+   * evidence.
+   */
   readonly code: DiagnosticCode;
   /** A **value-free** structural description of the concern (never echoes a patient value). */
   readonly detail: string;
@@ -226,6 +245,11 @@ export interface ExpansionDiagnostic {
  * expansion, or a component whose declared {@link ConceptSetComponent.version} disagrees with the
  * supplied release). A `false` here is the never-fabricate contract in action: the `contains` set is a
  * **lower bound**, so it must never be read as exhaustive membership.
+ *
+ * An enumerated code the supplied release does not define does **not** set it: that member was
+ * decided, not left unresolved, so the answer stays `complete: true` and carries a
+ * {@link DiagnosticCode.TERM_VALUESET_ENUMERATED_CODE_UNDEFINED} diagnostic instead. A `complete`
+ * expansion can therefore carry diagnostics: read {@link diagnostics} on both.
  */
 export interface ExpandResult {
   /** Whether the expansion is exhaustive. When `false`, `contains` is a lower bound, not the whole set. */

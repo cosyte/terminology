@@ -671,7 +671,7 @@ describe("expand: an enumerated member's display", () => {
     expect(nth(r.contains, 0).display).toBe("The VS one");
   });
 
-  it("invents nothing: no release, no such code, or no display leaves the member without one", () => {
+  it("invents nothing: no release, or a release carrying no display, leaves the member without one", () => {
     const vs = loadValueSet({
       resourceType: "ValueSet",
       compose: {
@@ -680,23 +680,26 @@ describe("expand: an enumerated member's display", () => {
         ],
       },
     });
-    // No release supplied at all.
+    // No release supplied at all: no evidence about either code, so both are members with no
+    // display. This is the branch the display fallback and the membership rule share.
     const bare = expand(vs, {});
     expect(bare.complete).toBe(true);
     expect(bare.diagnostics).toStrictEqual([]);
     expect(bare.contains.map((c) => c.display)).toStrictEqual([undefined, undefined]);
 
-    // A release that carries one code and not the other, and a code carrying no display of its own.
+    // A release that carries BOTH codes, neither with a display of its own.
     const noDisplayCs = loadCodeSystem({
       format: "fhir",
       resource: {
         resourceType: "CodeSystem",
         url: SIMPLE_CS_URL,
-        concept: [{ code: "code1" }],
+        concept: [{ code: "code1" }, { code: "not-in-release" }],
       },
     });
     const supplied = expand(vs, ctx([SIMPLE_CS_URL, noDisplayCs]));
-    // A missing display is not a missing member: both are still here, and still complete.
+    // A missing display is not a missing member: both are still here, and still complete. Only a
+    // usable release's silence about the CODE removes one, which is a membership question and is
+    // pinned under "an enumerated code no supplied release defines" below.
     expect(codes(supplied)).toStrictEqual(["code1", "not-in-release"]);
     expect(supplied.complete).toBe(true);
     expect(supplied.diagnostics).toStrictEqual([]);
@@ -729,6 +732,258 @@ describe("expand: an enumerated member's display", () => {
   });
 });
 
+// ── An enumerated code the supplied release does not define ──────────────────────────────────────
+//
+// An enumerated entry is admitted only where the evidence the caller supplied does not contradict
+// it. Where a usable release for the component's system is in hand and does not define the code,
+// the code is not a member; where no usable release was supplied, the value set's own enumeration
+// stands untouched. `complete` stays TRUE on both sides of that line: the engine decided the
+// component on evidence, so `contains` is the answer rather than a lower bound.
+
+/** The exact detail the enumerated-evidence rule surfaces; pinned whole, never by substring. */
+const ENUMERATED_UNDEFINED_DETAIL =
+  "enumerated code is not defined by the supplied code system release, so it is not a member";
+
+/** A release under `url` defining exactly `defines`, each with a display, optionally versioned. */
+function releaseOf(
+  defines: readonly string[],
+  version?: string,
+  url: string = SIMPLE_CS_URL,
+): CodeSystem {
+  const resource: Record<string, unknown> = {
+    resourceType: "CodeSystem",
+    url,
+    concept: defines.map((code) => ({ code, display: `The release calls it ${code}` })),
+  };
+  if (version !== undefined) resource["version"] = version;
+  return loadCodeSystem({ format: "fhir", resource });
+}
+
+/** A value set whose single `include` enumerates `enumerates` over {@link SIMPLE_CS_URL}. */
+function enumeratedVs(
+  enumerates: readonly string[],
+  component: Record<string, unknown> = {},
+): ValueSet {
+  return loadValueSet({
+    resourceType: "ValueSet",
+    compose: {
+      include: [
+        { system: SIMPLE_CS_URL, concept: enumerates.map((code) => ({ code })), ...component },
+      ],
+    },
+  });
+}
+
+describe("expand: an enumerated code the supplied release does not define", () => {
+  /** The motivating shape: six enumerated codes, one of which the release does not define. */
+  const SIX = ["code1", "code2", "code3", "code4", "code5", "codeX"];
+  const FIVE = ["code1", "code2", "code3", "code4", "code5"];
+
+  it("returns exactly the five the release defines, and never the sixth", () => {
+    const r = expand(enumeratedVs(SIX), ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    expect(codes(r)).toStrictEqual(FIVE);
+    expect(r.contains).toHaveLength(5);
+    expect(r.contains.some((c) => c.code === "codeX")).toBe(false);
+    // The five that stay are unchanged, displays included: the rule removes a member, not a field.
+    expect(r.contains.map((c) => c.display)).toStrictEqual(
+      FIVE.map((code) => `The release calls it ${code}`),
+    );
+  });
+
+  it("stays complete: the component was decided on evidence, never left unresolved", () => {
+    const r = expand(enumeratedVs(SIX), ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    expect(r.complete).toBe(true);
+  });
+
+  it("raises exactly one diagnostic, under its own stable code and the component's index path", () => {
+    const r = expand(enumeratedVs(SIX), ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    const d = only(r.diagnostics);
+    expect(d.code).toBe("TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
+    // Distinct from both codes that were already here: a caller must be able to tell a decided
+    // answer that dropped a code from an answer that is a lower bound.
+    expect(d.code).not.toBe("TERM_VALUESET_CANNOT_EXPAND");
+    expect(d.code).not.toBe("TERM_VALUESET_EXPANSION_TRUNCATED");
+    expect(d.path).toBe("compose.include[0]");
+  });
+
+  it("raises ONE diagnostic per component however many of its entries are dropped", () => {
+    const r = expand(
+      enumeratedVs([...SIX, "codeY", "codeZ"]),
+      ctx([SIMPLE_CS_URL, releaseOf(FIVE)]),
+    );
+    expect(r.diagnostics).toHaveLength(1);
+    expect(codes(r)).toStrictEqual(FIVE);
+  });
+
+  it("locates every affected component on its own index path", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [
+          { system: SIMPLE_CS_URL, concept: [{ code: "code1" }] },
+          { system: SIMPLE_CS_URL, concept: [{ code: "codeX" }] },
+          { system: SIMPLE_CS_URL, concept: [{ code: "codeY" }] },
+        ],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    expect(r.diagnostics.map((d) => d.path)).toStrictEqual([
+      "compose.include[1]",
+      "compose.include[2]",
+    ]);
+    expect(codes(r)).toStrictEqual(["code1"]);
+    expect(r.complete).toBe(true);
+  });
+
+  it("builds `detail` and `path` from engine-owned strings only", () => {
+    // Every consumer-supplied string in reach carries one marker: the component's `system`, the
+    // dropped code, and the display the value set put on it. None may appear on the diagnostic.
+    const MARKER = "ZqPhI7xK";
+    const system = `http://example.org/${MARKER}/cs`;
+    const code = `code-${MARKER}`;
+    const display = `display ${MARKER}`;
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: { include: [{ system, concept: [{ code, display }] }] },
+    });
+    const r = expand(vs, ctx([system, releaseOf(["defined"], undefined, system)]));
+    const d = only(r.diagnostics);
+    expect(d.detail).toBe(ENUMERATED_UNDEFINED_DETAIL);
+    expect(d.path).toBe("compose.include[0]");
+    // Neither field, and no other field of the diagnostic either.
+    expect(JSON.stringify(d)).not.toContain(MARKER);
+  });
+
+  it("carries every enumerated code, silently, when no release for that system was supplied", () => {
+    // Absence of evidence is not evidence the code is undefined.
+    const bare = expand(enumeratedVs(SIX), {});
+    expect(codes(bare)).toStrictEqual([...SIX].sort());
+    expect(bare.complete).toBe(true);
+    expect(bare.diagnostics).toStrictEqual([]);
+    // A release supplied for a DIFFERENT system is no evidence about this one.
+    const elsewhere = expand(
+      enumeratedVs(SIX),
+      ctx(["http://example.org/other", releaseOf(FIVE, undefined, "http://example.org/other")]),
+    );
+    expect(codes(elsewhere)).toStrictEqual([...SIX].sort());
+    expect(elsewhere.complete).toBe(true);
+    expect(elsewhere.diagnostics).toStrictEqual([]);
+  });
+
+  it("treats a release the component's declared version disagrees with as unusable evidence", () => {
+    const pinned = enumeratedVs(SIX, { version: "2.0" });
+    const disagrees = expand(pinned, ctx([SIMPLE_CS_URL, releaseOf(FIVE, "1.0")]));
+    expect(codes(disagrees)).toStrictEqual([...SIX].sort());
+    expect(disagrees.complete).toBe(true);
+    expect(disagrees.diagnostics).toStrictEqual([]);
+
+    // A release declaring NO version agrees with no declared pin either.
+    const unversioned = expand(pinned, ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    expect(codes(unversioned)).toStrictEqual([...SIX].sort());
+    expect(unversioned.complete).toBe(true);
+    expect(unversioned.diagnostics).toStrictEqual([]);
+
+    // The AGREEING release is usable evidence, and drops the code it does not define.
+    const agrees = expand(pinned, ctx([SIMPLE_CS_URL, releaseOf(FIVE, "2.0")]));
+    expect(codes(agrees)).toStrictEqual(FIVE);
+    expect(agrees.complete).toBe(true);
+    expect(only(agrees.diagnostics).code).toBe("TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
+  });
+
+  it("carries every enumerated code when the component declares no 'system' at all", () => {
+    // `loadValueSet` refuses a `concept` component with no `system`, so this branch is reachable
+    // only from a hand-built value set, which the exported type permits. A release IS supplied
+    // here: what makes it unusable evidence is that the component names no system to key it by.
+    const r = expand(
+      {
+        compose: {
+          include: [{ concept: [{ code: "code1" }, { code: "codeX" }] }],
+          exclude: [],
+        },
+      },
+      ctx([SIMPLE_CS_URL, releaseOf(FIVE)]),
+    );
+    expect(codes(r)).toStrictEqual(["code1", "codeX"]);
+    expect(r.complete).toBe(true);
+    expect(r.diagnostics).toStrictEqual([]);
+  });
+
+  it("lets an exclude entry the release does not define remove nothing at all", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: FIVE.map((code) => ({ code })) }],
+        exclude: [{ system: SIMPLE_CS_URL, concept: [{ code: "codeX" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    // Every include member survives: this is NOT an exclude the engine could not compute, so the
+    // lower-bound wipe that drops every possibly-excluded member must not fire.
+    expect(codes(r)).toStrictEqual(FIVE);
+    expect(r.complete).toBe(true);
+    const d = only(r.diagnostics);
+    expect(d.code).toBe("TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
+    expect(d.path).toBe("compose.exclude[0]");
+  });
+
+  it("still lets an exclude entry the release DOES define remove its member", () => {
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [{ system: SIMPLE_CS_URL, concept: FIVE.map((code) => ({ code })) }],
+        exclude: [{ system: SIMPLE_CS_URL, concept: [{ code: "code2" }, { code: "codeX" }] }],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    expect(codes(r)).toStrictEqual(["code1", "code3", "code4", "code5"]);
+    expect(r.complete).toBe(true);
+    expect(only(r.diagnostics).path).toBe("compose.exclude[0]");
+  });
+
+  it("contributes nothing, completely, when the release defines none of the enumerated codes", () => {
+    const r = expand(enumeratedVs(["codeX", "codeY"]), ctx([SIMPLE_CS_URL, releaseOf(FIVE)]));
+    expect(r.contains).toStrictEqual([]);
+    expect(r.complete).toBe(true);
+    const d = only(r.diagnostics);
+    // Never a cannot-expand: an empty contribution the engine DECIDED is not an unresolved one.
+    expect(d.code).toBe("TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
+    expect(d.code).not.toBe("TERM_VALUESET_CANNOT_EXPAND");
+    expect(d.path).toBe("compose.include[0]");
+  });
+
+  it("agrees with validate, member by member", () => {
+    const vs = enumeratedVs(SIX);
+    const c = (): { codeSystems: Map<string, CodeSystem> } => ctx([SIMPLE_CS_URL, releaseOf(FIVE)]);
+    for (const code of [...SIX, "never-enumerated"]) {
+      const inExpansion = expand(vs, c()).contains.some((x) => x.code === code);
+      const m = validateCodeInValueSet({ system: SIMPLE_CS_URL, code }, vs, c());
+      if (m.undetermined) throw new Error("expected decided");
+      expect(m.result).toBe(inExpansion);
+    }
+  });
+
+  it("keeps an active-only screen and the evidence rule from colliding", () => {
+    // `code2` is retired, `codeX` is undefined, `code1` is active: one is screened out and the
+    // other is not admitted at all, and the two concerns are reported independently.
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        inactive: false,
+        include: [
+          {
+            system: SIMPLE_CS_URL,
+            concept: [{ code: "code1" }, { code: "code2" }, { code: "codeX" }],
+          },
+        ],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
+    expect(codes(r)).toStrictEqual(["code1"]);
+    expect(r.complete).toBe(true);
+    expect(only(r.diagnostics).code).toBe("TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
+  });
+});
+
 // ── The recorded tx-ecosystem answers, replayed through the public API ───────────────────────────
 //
 // Five of the six answers HL7 records that this engine used to disagree with are expansions; the
@@ -757,6 +1012,60 @@ describe("expand: the recorded tx-ecosystem answers", () => {
     });
     const r = expand(vs, ctx([SIMPLE_CS_URL, simpleCs()]));
     expect(only(r.contains).display).toBe("Display 1");
+  });
+
+  it("simple-expand-enum-bad: six enumerated codes, one undefined, an expansion of five", () => {
+    // The case's own description is an enumerated set "including invalid codes", and the recorded
+    // response carries five members, not six. The engine used to return all six as a decided,
+    // complete, diagnostic-free membership, which is a code no supplied system defines asserted
+    // into a clinical binding.
+    const release = loadCodeSystem({
+      format: "fhir",
+      resource: {
+        resourceType: "CodeSystem",
+        url: SIMPLE_CS_URL,
+        concept: [
+          { code: "code1", display: "Display 1" },
+          { code: "code2", display: "Display 2" },
+          { code: "code3", display: "Display 3" },
+          { code: "code4", display: "Display 4" },
+          { code: "code5", display: "Display 5" },
+        ],
+      },
+    });
+    const vs = loadValueSet({
+      resourceType: "ValueSet",
+      compose: {
+        include: [
+          {
+            system: SIMPLE_CS_URL,
+            concept: [
+              { code: "code1" },
+              { code: "code2" },
+              { code: "code3" },
+              { code: "code4" },
+              { code: "code5" },
+              { code: "codeX" },
+            ],
+          },
+        ],
+      },
+    });
+    const r = expand(vs, ctx([SIMPLE_CS_URL, release]));
+    expect(r.contains).toHaveLength(5);
+    expect(codes(r)).toStrictEqual(["code1", "code2", "code3", "code4", "code5"]);
+    expect(r.contains.some((c) => c.code === "codeX")).toBe(false);
+    // The member set and its size change; `complete` stays true and no member is added.
+    expect(r.complete).toBe(true);
+    expect(only(r.diagnostics).code).toBe("TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
+    // expand and validate agree about the dropped code, and neither refuses to answer.
+    const m = validateCodeInValueSet(
+      { system: SIMPLE_CS_URL, code: "codeX" },
+      vs,
+      ctx([SIMPLE_CS_URL, release]),
+    );
+    if (m.undetermined) throw new Error("expected decided");
+    expect(m.result).toBe(false);
   });
 
   it("parameters-expand-enum-hierarchy: the same, through a hierarchical release", () => {

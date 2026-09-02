@@ -16,7 +16,11 @@
  * The mirror of that rule is that a code is never decided a member on evidence the caller did not
  * supply either: a `Coding` carrying no `system` names no code in a system-scoped component, so such
  * a component is a definite non-match, and a value set whose components all name a system decides
- * `false` rather than asserting an unqualified code into it.
+ * `false` rather than asserting an unqualified code into it. Nor is it decided a member against
+ * evidence the caller DID supply: a code an `include` enumerates but the usable release for that
+ * component's `system` does not define is a definite non-member, matching the entry {@link expand}
+ * drops for the same reason. Where no usable release was supplied, the enumeration alone decides,
+ * exactly as before.
  *
  * @packageDocumentation
  */
@@ -145,7 +149,20 @@ function matchComponent(
     // definite non-match on the base.
     baseMatched = false;
   } else if (hasConcept) {
-    baseMatched = concept.some((c) => c.code === target.code);
+    // Mirrors `expandComponent`'s enumerated branch, so membership and expansion agree: an entry a
+    // usable release for this component's `system` does not define is not admitted, so a code
+    // expansion drops is a definite NON-member here rather than a member. No usable release means
+    // no contrary evidence, and the enumeration alone decides, exactly as it did before.
+    //
+    // This branch stays DECIDED where expansion raises a diagnostic. The two are the same answer
+    // read through different result shapes: `ValueSetMemberDecided` carries no diagnostic field, and
+    // an undetermined refusal here would be strictly worse than the truth, which is that the engine
+    // knows this code is not a member. That is why this file keeps no copy of expansion's
+    // `enumeratedUndefined` factory, though it does keep its own copy of the release-usability test.
+    const release = usableRelease(component, system, ctx);
+    baseMatched =
+      concept.some((c) => c.code === target.code) &&
+      (release === undefined || release.concepts.get(target.code) !== undefined);
   } else if (hasFilter || (system !== undefined && !hasVs)) {
     if (system === undefined) {
       diagnostics.push(cannotExpand("intensional filter without a code system 'system'", path));

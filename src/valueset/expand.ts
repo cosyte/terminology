@@ -21,6 +21,15 @@
  * `complete: false`, so the `contains` set is an explicit **lower bound**, never a silently-empty or
  * fabricated membership.
  *
+ * The same rule read the other way bounds an **enumeration**: a `concept` entry is admitted only
+ * where the evidence the caller supplied does not contradict it. Where a usable release for the
+ * component's `system` is in hand and does not define the code, the code is **not** a member, the
+ * answer stays decided and `complete: true` (the engine decided it, on that evidence), and the drop
+ * is surfaced as a typed
+ * {@link ../common/diagnostics.DIAGNOSTIC_CODES.TERM_VALUESET_ENUMERATED_CODE_UNDEFINED} rather
+ * than happening silently. Where no usable release was supplied there is no contrary evidence, so
+ * the value set's own enumeration stands untouched.
+ *
  * @packageDocumentation
  */
 
@@ -68,6 +77,20 @@ function truncated(detail: string, path?: string): ExpansionDiagnostic {
 }
 
 /**
+ * An enumerated entry the supplied release contradicts. `validate.ts` keeps **no** copy of this
+ * factory, unlike the two above: membership answers the same case with a **decided non-member**,
+ * and a decided outcome carries no diagnostic field to report it on.
+ */
+function enumeratedUndefined(detail: string, path?: string): ExpansionDiagnostic {
+  const d: Writable<ExpansionDiagnostic> = {
+    code: "TERM_VALUESET_ENUMERATED_CODE_UNDEFINED",
+    detail,
+  };
+  if (path !== undefined) d.path = path;
+  return Object.freeze(d);
+}
+
+/**
  * The value-free reason a pre-computed expansion is incomplete: **one** sentence for the one
  * `expansion` locus, naming `unclosed` whenever the value set declared itself unbounded so a caller
  * can tell post-coordination from a truncated page. An expansion carrying both markers reports the
@@ -90,6 +113,16 @@ function expansionIncompleteDetail(unclosed: boolean): string {
  */
 const ACTIVITY_UNCHECKABLE_DETAIL =
   "active-only value set: no usable code system release to check whether a selected code is active";
+
+/**
+ * The value-free reason an enumerated entry was not admitted as a member: the release supplied for
+ * the component's own `system` does not define the code. **One** sentence for the whole component,
+ * however many of its entries were dropped, naming neither the code, nor a display, nor a system
+ * URI: a literal this module owns, so nothing consumer-supplied reaches a diagnostic. Not
+ * duplicated in `validate.ts`, which decides the same case rather than reporting it.
+ */
+const ENUMERATED_UNDEFINED_DETAIL =
+  "enumerated code is not defined by the supplied code system release, so it is not a member";
 
 /**
  * The supplied release a component's own selection may be read from: the one keyed by `system`,
@@ -234,21 +267,45 @@ function expandComponent(
   let base: Map<string, Coding> | null = null;
 
   if (hasConcept) {
-    // Extensional: enumerated codes are always fully computable.
+    // Extensional, and its ARITHMETIC is always computable: the codes are written down. Its
+    // EVIDENCE is a different question, and this branch decides both.
+    //
+    // An entry is admitted only where the evidence the caller supplied does not contradict it.
+    // Where a usable release for this component's system is in hand and does not define the code,
+    // the code is NOT a member: enumerating a code is the value set's claim that it exists, and
+    // returning it as a member while holding the very release that shows it does not is the engine
+    // asserting something it has contrary evidence for. `complete` is untouched, because the engine
+    // DID decide this component, on that evidence: `contains` is the answer, not a lower bound. The
+    // drop is reported once per affected component so it is never silent.
+    //
+    // Where no usable release was supplied (none for the `system`, a declared `version` the
+    // supplied release does not agree with, or a component naming no `system` at all), there is no
+    // contrary evidence, so every enumerated code is carried and nothing is reported: absence of
+    // evidence is not evidence the code is undefined, and widening to that case would turn most
+    // legitimate enumerated value sets incomplete.
     //
     // The value set's OWN display wins and is carried verbatim. Where it supplies none, the supplied
     // release's display for that code is carried verbatim too: taking a display off a resource the
     // caller handed in is not fabrication, and the filter and whole-system branches below already do
     // it, so the enumerated branch doing otherwise was an inconsistency between three branches of
-    // one operation rather than a posture. Nothing is invented: no usable release, no such code, or
-    // no display on it, and the member simply carries no display. Membership and completeness are
-    // untouched either way, since a missing display is not a missing member.
+    // one operation rather than a posture. Nothing is invented: no usable release or no display on
+    // the concept, and the member simply carries no display. A missing display is not a missing
+    // member, and only a usable release's silence about the CODE removes one.
     base = new Map();
     const release = usableRelease(component, system, ctx);
+    let anyUndefined = false;
     for (const c of concept) {
-      const display = c.display ?? release?.concepts.get(c.code)?.display;
+      const defined = release?.concepts.get(c.code);
+      if (release !== undefined && defined === undefined) {
+        anyUndefined = true;
+        continue;
+      }
+      const display = c.display ?? defined?.display;
       base.set(codingKey(system, c.code), makeCoding(system, c.code, display, version));
     }
+    // One diagnostic for the one component, however many of its entries the release contradicted:
+    // a component is the locus a caller navigates to, and its entries are not separate concerns.
+    if (anyUndefined) diagnostics.push(enumeratedUndefined(ENUMERATED_UNDEFINED_DETAIL, path));
   } else if (hasFilter || (system !== undefined && !hasVs)) {
     // Intensional filter, or a whole-system include: both need the loaded code system.
     if (system === undefined) {

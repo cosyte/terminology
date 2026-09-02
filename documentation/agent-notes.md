@@ -375,10 +375,12 @@ produced: never an argument that traces back to the caller or the document.
 It read "NO DIAGNOSTIC FACTORY TAKES A VALUE PARAMETER … each is a literal or a frozen-table
 entry", which was flatly false of factories in `src/` that it never touched:
 `malformed(path, fault)` in `conceptmap/load.ts` and `valueset/load.ts`, and `cannotExpand` /
-`truncated` / `underPath` in `valueset/`: remembering that `expand.ts` and `validate.ts` each
-carry their own copy. **Do not write the count down here**: a draft said "four" and the tree has
-seven. Derive it:
-`rg -n '^function (malformed|cannotExpand|truncated|underPath)' src/`.
+`truncated` / `enumeratedUndefined` / `underPath` in `valueset/`: remembering that `expand.ts` and
+`validate.ts` each carry their own copy of the ones both operations raise, and that
+`enumeratedUndefined` is `expand.ts`'s alone (membership decides an undefined enumerated code
+rather than reporting it, and a decided outcome carries no diagnostic). **Do not write the count
+down here**: a draft said "four" and the tree has more than that. Derive it:
+`rg -n '^function (malformed|cannotExpand|truncated|enumeratedUndefined|underPath)' src/`.
 Those are safe (every `fault` and `detail` is a literal at the call
 site, every `path` is index-built), but a guardrail stronger than the code teaches the next reader
 something untrue and gets "fixed" in the wrong direction. Do not restore the absolute form.

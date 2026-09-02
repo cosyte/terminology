@@ -34,9 +34,27 @@ describe("diagnostic + fatal code registries", () => {
         "TERM_TRANSLATE_UNMAPPED",
         "TERM_UCUM_INVALID",
         "TERM_VALUESET_CANNOT_EXPAND",
+        "TERM_VALUESET_ENUMERATED_CODE_UNDEFINED",
         "TERM_VALUESET_EXPANSION_TRUNCATED",
       ]
     `);
+  });
+
+  it("exposes TERM_VALUESET_ENUMERATED_CODE_UNDEFINED, key === value and distinct", () => {
+    // The enumerated-evidence outcome is its own stable code: a caller must be able to tell "this
+    // answer is a lower bound" from "this answer is decided, and one enumerated code was not
+    // admitted", so it is neither of the two value-set codes that were already here.
+    expect(DIAGNOSTIC_CODES.TERM_VALUESET_ENUMERATED_CODE_UNDEFINED).toBe(
+      "TERM_VALUESET_ENUMERATED_CODE_UNDEFINED",
+    );
+    expect(DIAGNOSTIC_CODES.TERM_VALUESET_ENUMERATED_CODE_UNDEFINED).not.toBe(
+      DIAGNOSTIC_CODES.TERM_VALUESET_CANNOT_EXPAND,
+    );
+    expect(DIAGNOSTIC_CODES.TERM_VALUESET_ENUMERATED_CODE_UNDEFINED).not.toBe(
+      DIAGNOSTIC_CODES.TERM_VALUESET_EXPANSION_TRUNCATED,
+    );
+    // ...and it is in the recorded stable code set, not merely on the object.
+    expect(sortedCodeSet(DIAGNOSTIC_CODES)).toContain("TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
   });
 
   it("fatal-code surface is stable", () => {

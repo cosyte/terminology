@@ -41,6 +41,14 @@ or map target.**
   supplied does not agree with) returns `complete: false` with a typed
   `TERM_VALUESET_CANNOT_EXPAND` / `TERM_VALUESET_EXPANSION_TRUNCATED` diagnostic: the `contains` set
   is a **lower bound**, never a silently-empty membership.
+- A code a `compose` component **enumerates** that the release you supplied for that component's
+  system does not define is **not** a member: it is left out of `contains`, and the drop is a typed
+  `TERM_VALUESET_ENUMERATED_CODE_UNDEFINED` located on that component rather than a silent one.
+  Enumerating a code is the value set's claim that it exists, and returning it while holding the
+  very release that shows it does not would be the engine deciding against its own evidence. That
+  answer stays `complete: true`: the engine decided it, so `contains` is the whole of it. Where you
+  supplied no usable release for that system, the engine holds no contrary evidence and every
+  enumerated code stands, unchanged.
 - ValueSet binding (`validateCodeInValueSet`) returns a **decided** `result` only when it can prove
   membership; otherwise a typed `undetermined`: never a fabricated "not a member", because a false
   negative on a binding is a clinical error.
