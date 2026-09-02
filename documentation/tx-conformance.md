@@ -35,9 +35,9 @@ A case outside the selection is not counted as ran, passed or declined. The decl
 | count | value |
 |---|---|
 | ran | 102 |
-| passed | 15 |
+| passed | 20 |
 | declined | 81 |
-| answered differently | 6 |
+| answered differently | 1 |
 
 `ran` is every selected case: each one is passed, declined or answered differently, and the three add up to it by construction.
 
@@ -155,12 +155,7 @@ An `engine-refusal:` reason carries the engine's own typed code. Anything the en
 
 | suite | case | diverges at | recorded | answered |
 |---|---|---|---|---|
-| `simple-cases` | `simple-expand-active` | expansion.contains carries http://hl7.org/fhir/test/CodeSystem/simple#code2, which the recorded response does not | absent | present |
-| `simple-cases` | `simple-expand-enum` | expansion.contains display for http://hl7.org/fhir/test/CodeSystem/simple#code1 | Display 1 | (no display) |
-| `simple-cases` | `simple-expand-enum-bad` | expansion.contains display for http://hl7.org/fhir/test/CodeSystem/simple#code1 | Display 1 | (no display) |
-| `simple-cases` | `simple-expand-repeating-prop` | expansion.contains is missing http://hl7.org/fhir/test/CodeSystem/simple#code3 | present | absent |
-| `parameters` | `parameters-expand-enum-hierarchy` | expansion.contains display for http://hl7.org/fhir/test/CodeSystem/simple#code1 | Display 1 | (no display) |
-| `validation` | `validation-simple-coding-no-system` | the validate-code result parameter | false | true |
+| `simple-cases` | `simple-expand-enum-bad` | expansion.contains carries http://hl7.org/fhir/test/CodeSystem/simple#codeX, which the recorded response does not | absent | present |
 
 ## Omitted from the vendored snapshot
 
