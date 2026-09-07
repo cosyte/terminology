@@ -85,18 +85,47 @@ export function renderReport(run: ConformanceRun): string {
   push(`- suites in scope: ${SUITES_IN_SCOPE.map((s) => `\`${s}\``).join(", ")}`);
   push(`- operations in scope: ${OPERATIONS_IN_SCOPE.map((o) => `\`${o}\``).join(", ")}`);
   push("- excluded: any case the registry marks with a server-specific `mode`");
+  push(
+    `- held out by declaration: ${String(run.excluded.length)} ` +
+      `${run.excluded.length === 1 ? "case" : "cases"}, named below`,
+  );
   push();
-  push("| suite | cases declared | cases selected |");
-  push("|---|---|---|");
+  push("| suite | cases declared | held out by declaration | cases selected |");
+  push("|---|---|---|---|");
   for (const s of run.suites) {
-    push(`| \`${s.name}\` | ${String(s.declared)} | ${String(s.selected)} |`);
+    push(
+      `| \`${s.name}\` | ${String(s.declared)} | ${String(s.excluded)} | ${String(s.selected)} |`,
+    );
   }
-  push(`| **total** | **${String(run.declared)}** | **${String(run.selected)}** |`);
+  push(
+    `| **total** | **${String(run.declared)}** | **${String(run.excluded.length)}** | ` +
+      `**${String(run.selected)}** |`,
+  );
   push();
   push(
     "A case outside the selection is not counted as ran, passed or declined. The declared column is " +
       "here so that a narrowing of the selected set is visible beside the counts it would flatter.",
   );
+  push();
+
+  push("### Held out by declaration");
+  push();
+  if (run.excluded.length === 0) {
+    push("No case is held out. Every case the selection rule matched was run.");
+  } else {
+    push(
+      "A case here is removed from the selection before it is driven, so it is not run and reaches " +
+        "no count. This is a scope decision taken outside the job. It is not a route out of a " +
+        "differing answer: a case that answers differently is a failure, the job fails on it, and " +
+        "nothing moves one into this list.",
+    );
+    push();
+    push("| suite | case | why it is held out |");
+    push("|---|---|---|");
+    for (const e of run.excluded) {
+      push(`| \`${e.suite}\` | \`${e.name}\` | ${e.reason} |`);
+    }
+  }
   push();
 
   push("## Counts");
@@ -110,7 +139,8 @@ export function renderReport(run: ConformanceRun): string {
   push();
   push(
     "`ran` is every selected case: each one is passed, declined or answered differently, and the " +
-      "three add up to it by construction.",
+      "three add up to it by construction. A case held out by declaration is in none of them, " +
+      "which is why the row above the counts says how many there are.",
   );
   push();
 

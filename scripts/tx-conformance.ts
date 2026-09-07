@@ -4,8 +4,9 @@
  * Runs the vendored HL7 terminology ecosystem cases in process (see `test/conformance/tx-runner.ts`
  * for the selection rule and the comparison, and `vendor/tx-ecosystem/NOTICE.md` for the snapshot's
  * origin, pin and licence), prints how many cases it ran, passed and declined, and prints alongside
- * them the suites it drew from with how many cases those suites declare in total, so that a
- * reduction in the selected set shows up in the same output as the counts.
+ * them the suites it drew from, how many cases those suites declare in total, and every case held
+ * out of the selection by declaration, so that a reduction in the selected set shows up in the same
+ * output as the counts.
  *
  * Exit codes: `0` when nothing answered differently, `1` when something did, `2` when the snapshot
  * itself could not be read or the selection matched nothing. A differing answer is never reported as
@@ -49,8 +50,15 @@ function main(): number {
   console.log(`[conformance:tx] suites drawn from: ${suites}`);
   console.log(
     `[conformance:tx] those suites declare ${String(run.declared)} cases in total; ` +
-      `the selection (operation expand or validate-code, no server-specific mode) took ${String(run.selected)}`,
+      "the selection (operation expand or validate-code, no server-specific mode) took " +
+      `${String(run.selected + run.excluded.length)}, of which ${String(run.excluded.length)} ` +
+      `${run.excluded.length === 1 ? "is" : "are"} held out by declaration, leaving ` +
+      `${String(run.selected)}`,
   );
+  for (const e of run.excluded) {
+    console.log(`[conformance:tx] held out by declaration: ${e.suite} / ${e.name}`);
+    console.log(`[conformance:tx]   ${e.reason}`);
+  }
   console.log(
     `[conformance:tx] ran ${String(run.ran)}, passed ${String(run.passed)}, ` +
       `declined ${String(run.declined.length)}, answered differently ${String(run.failed.length)}`,

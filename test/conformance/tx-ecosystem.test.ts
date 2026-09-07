@@ -6,6 +6,7 @@ import { FATAL_CODES, TerminologyError } from "../../src/index.js";
 import {
   classifyEngineFailure,
   DECLINE_REASONS,
+  EXCLUDED_CASES,
   OPERATIONS_IN_SCOPE,
   runConformance,
   SUITES_IN_SCOPE,
@@ -47,6 +48,19 @@ describe("the vendored snapshot", () => {
   it("runs a non-trivial number of cases (guards a silently-empty gate)", () => {
     expect(run.selected).toBeGreaterThan(50);
     expect(run.ran).toBe(run.selected);
+  });
+
+  // A case held out by declaration must stay VISIBLE. If a re-vendored snapshot renames or drops
+  // the case, the exclusion silently stops biting and the selected set shrinks with nothing saying
+  // so; this reds instead. It also holds each suite's arithmetic together, so the held-out case
+  // cannot go missing from one column and stay in another.
+  it("reports every case a declaration holds out, and holds none the registry does not declare", () => {
+    expect(run.excluded).toEqual([...EXCLUDED_CASES]);
+    for (const e of run.excluded) {
+      expect(SUITES_IN_SCOPE).toContain(e.suite);
+      expect(e.reason).not.toBe("");
+    }
+    expect(run.excluded.length).toBe(run.suites.reduce((n, s) => n + s.excluded, 0));
   });
 
   it("accounts for every selected case exactly once", () => {
@@ -251,6 +265,65 @@ describe("a selection that matches nothing", () => {
     } catch (err) {
       expect((err as TxConformanceError).kind).toBe("selection");
       expect((err as TxConformanceError).message).toContain("zero cases");
+    }
+  });
+});
+
+describe("a case held out of the selection by declaration", () => {
+  // The exclusion route, measured on a purpose-built snapshot rather than only on the real one: it
+  // must take the case out of the RUN and out of every COUNT while leaving it visible, and it must
+  // not become a back door around the empty-selection refusal.
+  const held = [
+    {
+      suite: "simple-cases",
+      name: "placeholder-display",
+      reason: "held out to measure what holding one out does",
+    },
+  ];
+
+  it("is not run, is counted nowhere, and is reported with its reason", () => {
+    const all = runConformance(join(FIXTURES, "tolerance"), []);
+    const run = runConformance(join(FIXTURES, "tolerance"), held);
+
+    expect(all.selected).toBe(3);
+    expect(all.passed).toBe(3);
+    expect(run.selected).toBe(2);
+    expect(run.ran).toBe(2);
+    expect(run.passed).toBe(2);
+    expect(run.declined).toHaveLength(0);
+    expect(run.failed).toHaveLength(0);
+    expect(run.excluded).toEqual(held);
+    expect(run.suites[0]?.excluded).toBe(1);
+    // The suite still declares what it declares: an exclusion narrows the selection, never the
+    // denominator the selection is read against.
+    expect(run.declared).toBe(all.declared);
+  });
+
+  it("does not bite a case the registry does not declare under that suite", () => {
+    const run = runConformance(join(FIXTURES, "tolerance"), [
+      { suite: "simple-cases", name: "no-such-case", reason: "names nothing" },
+      { suite: "no-such-suite", name: "placeholder-display", reason: "names another suite" },
+    ]);
+    expect(run.excluded).toEqual([]);
+    expect(run.selected).toBe(3);
+  });
+
+  // AC12 again, through the exclusion route: holding out everything the rule matched is still an
+  // empty selection, and an empty selection refuses instead of reporting a green run of zero.
+  it("still refuses when the exclusions empty the selection", () => {
+    const excludeEverything = ["member-the-engine-does-not-return"].map((name) => ({
+      suite: "simple-cases",
+      name,
+      reason: "held out to empty the selection",
+    }));
+    try {
+      runConformance(join(FIXTURES, "divergent"), excludeEverything);
+      expect.unreachable("an emptied selection should have refused");
+    } catch (err) {
+      expect(err).toBeInstanceOf(TxConformanceError);
+      expect((err as TxConformanceError).kind).toBe("selection");
+      expect((err as TxConformanceError).message).toContain("zero cases");
+      expect((err as TxConformanceError).message).toContain("held out by declaration");
     }
   });
 });

@@ -17,6 +17,12 @@
  *   failure is never rewritten into a decline: that is the one move that would make this measurement
  *   unfalsifiable, so the runner has no code path for it.
  *
+ * A case named in {@link EXCLUDED_CASES} is removed from the selection before any of that happens,
+ * so it has no outcome at all. An exclusion is a scope decision taken outside this runner, it is
+ * counted nowhere, and it is printed and reported beside the counts it changes. It is never a route
+ * out of a differing answer: a case that answers differently is a failure, and nothing here can move
+ * one into the exclusion list.
+ *
  * The suite is a **server** conformance suite and this package is a **library**, so the runner is
  * in-process and makes no HTTP call. That gap is why {@link APPLIED_TOLERANCES} exists and why the
  * report names every tolerance applied beyond the fixtures' own vocabulary.
@@ -67,6 +73,39 @@ export const SUITES_IN_SCOPE: readonly string[] = ["simple-cases", "parameters",
 
 /** The operations in scope. A case declaring any other operation is not selected. */
 export const OPERATIONS_IN_SCOPE: readonly string[] = ["expand", "validate-code"];
+
+/** One case held out of the selection by declaration, with the reason it is held out. */
+export interface ExcludedCase {
+  /** The suite the case belongs to, as the registry declares it. */
+  readonly suite: string;
+  /** The case name, as the registry declares it. */
+  readonly name: string;
+  /** Why it is out of scope. Printed by the job and written into the committed report. */
+  readonly reason: string;
+}
+
+/**
+ * The cases held out of the selection by declaration.
+ *
+ * An entry here removes a case **before** it is driven: it is not run, and it is counted in nothing
+ * the job reports. That is a scope decision taken outside this runner, so each entry carries the
+ * reason in its own words, the job prints every one that bit beside its counts, and the committed
+ * report lists them with the selection they reduce. An exclusion that stops matching a case the
+ * registry declares is caught by `tx-ecosystem.test.ts`, so the selection cannot shrink in silence.
+ *
+ * **This is not a route out of a differing answer.** A case that answers differently is a failure,
+ * the job fails on it, and no code path moves one into this list.
+ */
+export const EXCLUDED_CASES: readonly ExcludedCase[] = [
+  {
+    suite: "simple-cases",
+    name: "simple-expand-enum-bad",
+    reason:
+      "held out of this measurement by declaration, into a separate piece of work on what an " +
+      "expansion should do with an enumerated code the supplied CodeSystem does not define. It is " +
+      "not run, and it is counted in none of the numbers below.",
+  },
+];
 
 /**
  * The request parameters the package's public surface answers.
@@ -160,7 +199,9 @@ export interface SuiteCount {
   readonly name: string;
   /** How many cases the suite declares, of every operation. */
   readonly declared: number;
-  /** How many of those the selection rule picked. */
+  /** How many of the suite's cases the selection rule matched and a declaration then held out. */
+  readonly excluded: number;
+  /** How many of those the selection rule picked and no declaration held out. */
   readonly selected: number;
 }
 
@@ -198,7 +239,9 @@ export interface ConformanceRun {
   readonly suites: readonly SuiteCount[];
   /** How many cases those suites declare in total, of every operation. */
   readonly declared: number;
-  /** How many cases the selection rule picked. */
+  /** The cases a declaration held out of the selection, each with its reason. */
+  readonly excluded: readonly ExcludedCase[];
+  /** How many cases the selection rule picked, after the exclusions were taken out. */
   readonly selected: number;
   /** How many selected cases were driven (equal to selected; a case is never silently skipped). */
   readonly ran: number;
@@ -778,9 +821,11 @@ function runCase(root: string, test: RegistryTest, setup: SuiteSetup): CaseOutco
  *
  * @param root - The snapshot root. Defaults to the vendored one; a test passes a fixture root to
  *   exercise the failure paths.
+ * @param exclusions - The cases held out of the selection by declaration. Defaults to
+ *   {@link EXCLUDED_CASES}; a test passes its own list to exercise what an exclusion does.
  * @returns Everything the run produced: the snapshot version, the suites drawn from, the declared
- *   and selected totals, the ran / passed counts, every decline with its reason, and every case that
- *   answered differently.
+ *   and selected totals, the exclusions that bit, the ran / passed counts, every decline with its
+ *   reason, and every case that answered differently.
  * @throws {TxConformanceError} When the snapshot cannot be read, the registry is malformed, a file
  *   the registry names is absent, or the selection matched no case at all.
  * @example
@@ -789,9 +834,13 @@ function runCase(root: string, test: RegistryTest, setup: SuiteSetup): CaseOutco
  * run.ran === run.passed + run.declined.length + run.failed.length; // => true
  * ```
  */
-export function runConformance(root: string = VENDORED_ROOT): ConformanceRun {
+export function runConformance(
+  root: string = VENDORED_ROOT,
+  exclusions: readonly ExcludedCase[] = EXCLUDED_CASES,
+): ConformanceRun {
   const registry = readRegistry(root);
   const suites: SuiteCount[] = [];
+  const excluded: ExcludedCase[] = [];
   const declined: DeclinedCase[] = [];
   const failed: FailedCase[] = [];
   let declared = 0;
@@ -800,12 +849,28 @@ export function runConformance(root: string = VENDORED_ROOT): ConformanceRun {
 
   for (const suite of registry) {
     if (!SUITES_IN_SCOPE.includes(suite.name)) continue;
-    const picked = suite.tests.filter(
+    const matched = suite.tests.filter(
       (t) => OPERATIONS_IN_SCOPE.includes(t.operation) && t.mode === undefined,
+    );
+    // An exclusion is applied here, before a case is driven, so an excluded case has no outcome and
+    // reaches no count. Only an exclusion that actually took a case out of the selection is
+    // reported, so a declaration that stops matching shows up as a missing row rather than as a
+    // quietly smaller run.
+    const heldOut = matched.flatMap(
+      (t) => exclusions.find((e) => e.suite === suite.name && e.name === t.name) ?? [],
+    );
+    const picked = matched.filter(
+      (t) => !exclusions.some((e) => e.suite === suite.name && e.name === t.name),
     );
     declared += suite.tests.length;
     selected += picked.length;
-    suites.push({ name: suite.name, declared: suite.tests.length, selected: picked.length });
+    excluded.push(...heldOut);
+    suites.push({
+      name: suite.name,
+      declared: suite.tests.length,
+      excluded: heldOut.length,
+      selected: picked.length,
+    });
     if (picked.length === 0) continue;
     const setup = loadSetup(root, suite);
     for (const test of picked) {
@@ -837,9 +902,15 @@ export function runConformance(root: string = VENDORED_ROOT): ConformanceRun {
     );
   }
   if (selected === 0) {
+    // Naming the exclusions here matters: "nothing matched" and "everything that matched was held
+    // out" are different faults with the same count, and a reader has to be able to tell them apart.
+    const heldOut =
+      excluded.length === 0
+        ? ""
+        : ` (${String(excluded.length)} matched the rule and were held out by declaration)`;
     throw new TxConformanceError(
       "selection",
-      "the selection matched no case at all: refusing to report a green run of zero cases",
+      `the selection matched no case at all${heldOut}: refusing to report a green run of zero cases`,
     );
   }
 
@@ -847,6 +918,7 @@ export function runConformance(root: string = VENDORED_ROOT): ConformanceRun {
     snapshot: SNAPSHOT_COMMIT,
     suites,
     declared,
+    excluded,
     selected,
     ran: passed + declined.length + failed.length,
     passed,

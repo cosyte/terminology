@@ -20,26 +20,35 @@ The suite publishes no version field, so the upstream commit is the version thes
 - suites in scope: `simple-cases`, `parameters`, `validation`
 - operations in scope: `expand`, `validate-code`
 - excluded: any case the registry marks with a server-specific `mode`
+- held out by declaration: 1 case, named below
 
-| suite | cases declared | cases selected |
-|---|---|---|
-| `simple-cases` | 21 | 16 |
-| `parameters` | 35 | 32 |
-| `validation` | 56 | 54 |
-| **total** | **112** | **102** |
+| suite | cases declared | held out by declaration | cases selected |
+|---|---|---|---|
+| `simple-cases` | 21 | 1 | 15 |
+| `parameters` | 35 | 0 | 32 |
+| `validation` | 56 | 0 | 54 |
+| **total** | **112** | **1** | **101** |
 
 A case outside the selection is not counted as ran, passed or declined. The declared column is here so that a narrowing of the selected set is visible beside the counts it would flatter.
+
+### Held out by declaration
+
+A case here is removed from the selection before it is driven, so it is not run and reaches no count. This is a scope decision taken outside the job. It is not a route out of a differing answer: a case that answers differently is a failure, the job fails on it, and nothing moves one into this list.
+
+| suite | case | why it is held out |
+|---|---|---|
+| `simple-cases` | `simple-expand-enum-bad` | held out of this measurement by declaration, into a separate piece of work on what an expansion should do with an enumerated code the supplied CodeSystem does not define. It is not run, and it is counted in none of the numbers below. |
 
 ## Counts
 
 | count | value |
 |---|---|
-| ran | 102 |
+| ran | 101 |
 | passed | 20 |
 | declined | 81 |
-| answered differently | 1 |
+| answered differently | 0 |
 
-`ran` is every selected case: each one is passed, declined or answered differently, and the three add up to it by construction.
+`ran` is every selected case: each one is passed, declined or answered differently, and the three add up to it by construction. A case held out by declaration is in none of them, which is why the row above the counts says how many there are.
 
 ## What is compared
 
@@ -153,9 +162,7 @@ An `engine-refusal:` reason carries the engine's own typed code. Anything the en
 
 ## Answered differently
 
-| suite | case | diverges at | recorded | answered |
-|---|---|---|---|---|
-| `simple-cases` | `simple-expand-enum-bad` | expansion.contains carries http://hl7.org/fhir/test/CodeSystem/simple#codeX, which the recorded response does not | absent | present |
+None. Every case that was compared answered what the fixture recorded.
 
 ## Omitted from the vendored snapshot
 
