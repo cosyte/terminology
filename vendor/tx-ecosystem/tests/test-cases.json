@@ -1,0 +1,894 @@
+{
+  "suites": [
+    {
+      "name": "simple-cases",
+      "mode": "general",
+      "description": "basic tests, setting up for the API tests to come",
+      "setup": [
+        "simple/codesystem-simple.json",
+        "simple/valueset-all.json",
+        "simple/valueset-active.json",
+        "simple/valueset-inactive.json",
+        "simple/valueset-enumerated.json",
+        "simple/valueset-enumerated-bad.json",
+        "simple/valueset-filter-isa.json",
+        "simple/valueset-filter-child-of.json",
+        "simple/valueset-filter-property.json",
+        "simple/valueset-filter-regex.json",
+        "simple/valueset-filter-regex2.json",
+        "simple/valueset-filter-regex-prop.json",
+        "simple/valueset-filter-regex-none.json",
+        "simple/valueset-filter-repeating-property.json"
+      ],
+      "tests": [
+        {
+          "name": "simple-expand-all",
+          "description": "Expansion containing all the code system",
+          "operation": "expand",
+          "request": "simple/simple-expand-all-request-parameters.json",
+          "response": "simple/simple-expand-all-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-active",
+          "description": "Expansion containing only the active codes in the code system",
+          "operation": "expand",
+          "request": "simple/simple-expand-active-request-parameters.json",
+          "response": "simple/simple-expand-active-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-inactive",
+          "description": "Expansion containing only the inactive codes in the code system",
+          "operation": "expand",
+          "request": "simple/simple-expand-inactive-request-parameters.json",
+          "response": "simple/simple-expand-inactive-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-enum",
+          "description": "Expansion containing an enumerated set of codes in the code system",
+          "operation": "expand",
+          "request": "simple/simple-expand-enum-request-parameters.json",
+          "response": "simple/simple-expand-enum-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-enum-bad",
+          "description": "Expansion containing an enumerated set of codes in the code system, including invalid codes",
+          "operation": "expand",
+          "request": "simple/simple-expand-enum-bad-request-parameters.json",
+          "response": "simple/simple-expand-enum-bad-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-isa",
+          "description": "Expansion containing a filter on the code system using is-a relationship",
+          "operation": "expand",
+          "request": "simple/simple-expand-isa-request-parameters.json",
+          "response": "simple/simple-expand-isa-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-child-of",
+          "description": "Expansion containing a filter on the code system using child-of relationship. This is testing R5/R4 transformation",
+          "operation": "expand",
+          "request": "simple/simple-expand-child-of-request-parameters.json",
+          "response": "simple/simple-expand-child-of-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-isa-o2",
+          "description": "Expansion containing a filter on the code system using is-a relationship with paging (tx.fhir.org internal test)",
+          "mode": "tx.fhir.org",
+          "operation": "expand",
+          "request": "simple/simple-expand-isa-o2-request-parameters.json",
+          "response": "simple/simple-expand-isa-o2-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-isa-c2",
+          "description": "Expansion containing a filter on the code system using is-a relationship with paging (tx.fhir.org internal test)",
+          "mode": "tx.fhir.org",
+          "operation": "expand",
+          "request": "simple/simple-expand-isa-c2-request-parameters.json",
+          "response": "simple/simple-expand-isa-c2-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-isa-o2c2",
+          "description": "Expansion containing a filter on the code system using is-a relationship with paging (tx.fhir.org internal test)",
+          "mode": "tx.fhir.org",
+          "operation": "expand",
+          "request": "simple/simple-expand-isa-o2c2-request-parameters.json",
+          "response": "simple/simple-expand-isa-o2c2-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-prop",
+          "description": "Expansion containing a filter on the code system using a property value",
+          "operation": "expand",
+          "request": "simple/simple-expand-prop-request-parameters.json",
+          "response": "simple/simple-expand-prop-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-repeating-prop",
+          "description": "A concept may carry several values for one property (CodeSystem.concept.property is 0..*). code3 has dup=alpha and dup=beta; filtering on beta - which is not its first value - must still select it",
+          "operation": "expand",
+          "request": "simple/simple-expand-repeating-prop-request-parameters.json",
+          "response": "simple/simple-expand-repeating-prop-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-repeating-prop-values",
+          "description": "expansion.contains.property is 0..* as well: a concept carrying several values for one property must report all of them, not just one",
+          "operation": "expand",
+          "request": "simple/simple-expand-repeating-prop-values-request-parameters.json",
+          "response": "simple/simple-expand-repeating-prop-values-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-regex",
+          "description": "Expansion containing a filter on the code system using regex on the codes",
+          "operation": "expand",
+          "request": "simple/simple-expand-regex-request-parameters.json",
+          "response": "simple/simple-expand-regex-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-regex2",
+          "description": "Expansion containing a filter on the code system using regex on the codes using a regex known to cause a problem on at least one server",
+          "operation": "expand",
+          "request": "simple/simple-expand-regex2-request-parameters.json",
+          "response": "simple/simple-expand-regex2-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-regexp-prop",
+          "description": "Expansion containing a filter on the code system using regex on the property values of prop",
+          "operation": "expand",
+          "request": "simple/simple-expand-regex-prop-request-parameters.json",
+          "response": "simple/simple-expand-regex-prop-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-regex-none",
+          "description": "Expansion containing a filter on the code system using a valid regex on the codes that matches none of them. The expansion is empty - an include whose filter selects nothing must not be treated as an include with no filter, which would select every code in the code system",
+          "operation": "expand",
+          "request": "simple/simple-expand-regex-none-request-parameters.json",
+          "response": "simple/simple-expand-regex-none-response-valueSet.json"
+        },
+        {
+          "name": "simple-lookup-1",
+          "description": "Check that $lookup works (there's not many tests for $lookup because it's not used much by the tools)",
+          "operation": "lookup",
+          "request": "simple/simple-lookup-request-parameters.json",
+          "response": "simple/simple-lookup-response-parameters.json"
+        },
+        {
+          "name": "simple-lookup-2",
+          "description": "Check that $lookup works (there's not many tests for $lookup because it's not used much by the tools)",
+          "operation": "lookup",
+          "request": "simple/simple-lookup2-request-parameters.json",
+          "response": "simple/simple-lookup2-response-parameters.json"
+        },
+        {
+          "name": "simple-expand-all-count",
+          "description": "Expansion containing all the code system, but only a count",
+          "operation": "expand",
+          "request": "simple/simple-expand-all-count-request-parameters.json",
+          "response": "simple/simple-expand-all-count-response-valueSet.json"
+        },
+        {
+          "name": "simple-expand-contained",
+          "description": "Expansion where the compose refers to a contained value set",
+          "operation": "expand",
+          "request": "simple/simple-expand-contained-request-parameters.json",
+          "response": "simple/simple-expand-contained-response-valueSet.json"
+        }
+      ]
+    },
+    {
+      "name": "parameters",
+      "mode": "general",
+      "description": "Testing out the various expansion parameters that the IG publisher makes use of",
+      "setup": [
+        "simple/codesystem-simple.json",
+        "simple/valueset-all.json",
+        "simple/valueset-active.json",
+        "simple/valueset-inactive.json",
+        "simple/valueset-enumerated.json",
+        "simple/valueset-filter-isa.json",
+        "simple/valueset-filter-property.json",
+        "simple/valueset-filter-regex.json",
+        "extensions/codesystem-extensions.json",
+        "extensions/codesystem-supplement.json",
+        "extensions/valueset-extensions-enumerated.json",
+        "extensions/valueset-extensions-all.json",
+        "extensions/valueset-extensions-all-ns.json"
+      ],
+      "tests": [
+        {
+          "name": "parameters-expand-all-hierarchy",
+          "description": "Expand an entire code system, and check that the code system replicates the hierarchy. Note that for all the hierarchical expansions, the flag 'flat' means that the server is not expected to provide a hierarchical expansion",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-all-hierarchy-request-parameters.json",
+          "response": "parameters/parameters-expand-all-hierarchy-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-all-hierarchy-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-enum-hierarchy",
+          "description": "Expand an enumerated value set - no hierarchy in this case",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-hierarchy-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-hierarchy-response-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-isa-hierarchy",
+          "description": "Expand an is-a value set, and preserve the hierarchy",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-isa-hierarchy-request-parameters.json",
+          "response": "parameters/parameters-expand-isa-hierarchy-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-isa-hierarchy-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-all-active",
+          "description": "expand all the active codes - hierarchy is preserved",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-all-active-request-parameters.json",
+          "response": "parameters/parameters-expand-all-active-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-all-active-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-active-active",
+          "description": "Expand all the active codes, and specify active codes in a parameter",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-active-active-request-parameters.json",
+          "response": "parameters/parameters-expand-active-active-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-active-active-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-inactive-active",
+          "description": "Expand all the codes, including inactive ones, but specify active codes only in a parameter",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-inactive-active-request-parameters.json",
+          "response": "parameters/parameters-expand-inactive-active-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-inactive-active-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-enum-active",
+          "description": "Expand an enumerated value set, with active codes only in a parameter",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-active-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-active-response-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-isa-active",
+          "description": "Expand an is-a value set, only the active codes",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-isa-active-request-parameters.json",
+          "response": "parameters/parameters-expand-isa-active-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-isa-active-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-all-inactive",
+          "description": "expand all the active codes, including inactive codes - hierarchy is preserved",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-all-inactive-request-parameters.json",
+          "response": "parameters/parameters-expand-all-inactive-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-all-inactive-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-active-inactive",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-active-inactive-request-parameters.json",
+          "response": "parameters/parameters-expand-active-inactive-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-active-inactive-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-inactive-inactive",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-inactive-inactive-request-parameters.json",
+          "response": "parameters/parameters-expand-inactive-inactive-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-inactive-inactive-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-enum-inactive",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-inactive-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-inactive-response-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-isa-inactive",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-isa-inactive-request-parameters.json",
+          "response": "parameters/parameters-expand-isa-inactive-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-isa-inactive-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-all-designations",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-all-designations-request-parameters.json",
+          "response": "parameters/parameters-expand-all-designations-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-all-designations-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-enum-designations",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-designations-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-designations-response-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-isa-designations",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-isa-designations-request-parameters.json",
+          "response": "parameters/parameters-expand-isa-designations-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-isa-designations-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-all-definitions",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-all-definitions-request-parameters.json",
+          "response": "parameters/parameters-expand-all-definitions-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-all-definitions-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-enum-definitions",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-definitions-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-definitions-response-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-isa-definitions",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-isa-definitions-request-parameters.json",
+          "response": "parameters/parameters-expand-isa-definitions-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-isa-definitions-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-all-definitions2",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-all-definitions2-request-parameters.json",
+          "response": "parameters/parameters-expand-all-definitions2-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-all-definitions2-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-enum-definitions2",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-definitions2-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-definitions2-response-valueSet.json"
+        },
+        {
+          "description": "specifically to test out http://hl7.org/fhir/StructureDefinition/valueset-concept-definition",
+          "name": "parameters-expand-enum-definitions3",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-definitions3-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-definitions3-response-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-isa-definitions2",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-isa-definitions2-request-parameters.json",
+          "response": "parameters/parameters-expand-isa-definitions2-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-isa-definitions2-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-all-property",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-all-property-request-parameters.json",
+          "response": "parameters/parameters-expand-all-property-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-all-property-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-enum-property",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-enum-property-request-parameters.json",
+          "response": "parameters/parameters-expand-enum-property-response-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-isa-property",
+          "description": "to be provided",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-isa-property-request-parameters.json",
+          "response": "parameters/parameters-expand-isa-property-response-valueSet.json",
+          "response:flat": "parameters/parameters-expand-isa-property-response-flat-valueSet.json"
+        },
+        {
+          "name": "parameters-expand-supplement-none",
+          "description": "Base line for supplement tests",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-supplement-none-request.json",
+          "response": "parameters/parameters-expand-supplement-none-response.json"
+        },
+        {
+          "name": "parameters-expand-supplement-good",
+          "description": "Make sure the useSupplement parameter works",
+          "operation": "expand",
+          "request": "parameters/parameters-expand-supplement-good-request.json",
+          "response": "parameters/parameters-expand-supplement-good-response.json"
+        },
+        {
+          "name": "parameters-expand-supplement-bad",
+          "description": "Make sure the useSupplement parameter fails when it's not valid",
+          "operation": "expand",
+          "http-code": "4xx",
+          "request": "parameters/parameters-expand-supplement-bad-request.json",
+          "response": "parameters/parameters-expand-supplement-bad-response.json"
+        },
+        {
+          "name": "parameters-validate-supplement-none",
+          "description": "Base line for supplement tests - validation",
+          "operation": "validate-code",
+          "request": "parameters/parameters-validate-supplement-none-request.json",
+          "response": "parameters/parameters-validate-supplement-none-response.json"
+        },
+        {
+          "name": "parameters-validate-supplement-good",
+          "description": "Make sure the useSupplement parameter works for validation",
+          "operation": "validate-code",
+          "request": "parameters/parameters-validate-supplement-good-request.json",
+          "response": "parameters/parameters-validate-supplement-good-response.json"
+        },
+        {
+          "name": "parameters-validate-supplement-bad",
+          "description": "Make sure the useSupplement parameter fails when it's not valid - for validation",
+          "operation": "validate-code",
+          "http-code": "4xx",
+          "request": "parameters/parameters-validate-supplement-bad-request.json",
+          "response": "parameters/parameters-validate-supplement-bad-response.json"
+        },
+        {
+          "name": "parameters-lookup-supplement-none",
+          "description": "Base line for supplement tests - validation",
+          "operation": "lookup",
+          "request": "parameters/parameters-lookup-supplement-none-request.json",
+          "response": "parameters/parameters-lookup-supplement-none-response.json"
+        },
+        {
+          "name": "parameters-lookup-supplement-good",
+          "description": "Make sure the useSupplement parameter works for lookup",
+          "operation": "lookup",
+          "request": "parameters/parameters-lookup-supplement-good-request.json",
+          "response": "parameters/parameters-lookup-supplement-good-response.json"
+        },
+        {
+          "name": "parameters-lookup-supplement-bad",
+          "description": "Make sure the useSupplement parameter fails when it's not valid - for lookup",
+          "operation": "lookup",
+          "http-code": "4xx",
+          "request": "parameters/parameters-lookup-supplement-bad-request.json",
+          "response": "parameters/parameters-lookup-supplement-bad-response.json"
+        }
+      ]
+    },
+    {
+      "name": "validation",
+      "mode": "general",
+      "description": "Testing various validation parameter combinations",
+      "setup": [
+        "simple/codesystem-simple.json",
+        "simple/valueset-all.json",
+        "simple/valueset-import-bad.json",
+        "simple/valueset-enumerated.json",
+        "simple/valueset-filter-isa.json",
+        "simple/valueset-filter-property.json",
+        "simple/valueset-filter-regex.json",
+        "simple/valueset-filter-regex-none.json",
+        "language/codesystem-de-multi.json",
+        "language/codesystem-de-single.json",
+        "language/codesystem-en-multi.json",
+        "language/codesystem-en-single.json",
+        "language/valueset-de-multi.json",
+        "language/valueset-de-single.json",
+        "language/valueset-en-multi.json",
+        "language/valueset-en-single.json",
+        "language/valueset-en-enlang-multi.json",
+        "language/valueset-en-en-multi.json",
+        "inactive/valueset-all.json",
+        "inactive/codesystem-inactive.json",
+        "version/codesystem-version-1.json",
+        "version/valueset-all-version-1.json"
+      ],
+      "tests": [
+        {
+          "name": "validation-simple-code-good",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-good-request-parameters.json",
+          "response": "validation/simple-code-good-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-implied-good",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-implied-good-request-parameters.json",
+          "response": "validation/simple-code-implied-good-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-good",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-good-request-parameters.json",
+          "response": "validation/simple-coding-good-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-good",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-good-request-parameters.json",
+          "response": "validation/simple-codeableconcept-good-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-code",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-code-request-parameters.json",
+          "response": "validation/simple-code-bad-code-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-implied-bad-code",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-implied-bad-code-request-parameters.json",
+          "response": "validation/simple-code-implied-bad-code-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-code",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-code-request-parameters.json",
+          "response": "validation/simple-coding-bad-code-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-code-inactive",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-code-inactive-request-parameters.json",
+          "response": "validation/simple-coding-bad-code-inactive-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-code",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-bad-code-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-code-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-valueSet",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "http-code": "4xx",
+          "request": "validation/simple-code-bad-valueSet-request-parameters.json",
+          "response": "validation/simple-code-bad-valueSet-response-outcome.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-valueSet",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "http-code": "4xx",
+          "request": "validation/simple-coding-bad-valueSet-request-parameters.json",
+          "response": "validation/simple-coding-bad-valueSet-response-outcome.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-valueSet",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "http-code": "4xx",
+          "request": "validation/simple-codeableconcept-bad-valueSet-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-valueSet-response-outcome.json"
+        },
+        {
+          "name": "validation-simple-code-bad-import",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-import-request-parameters.json",
+          "response": "validation/simple-code-bad-import-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-import",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-import-request-parameters.json",
+          "response": "validation/simple-coding-bad-import-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-import",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-bad-import-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-import-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-system",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-system-request-parameters.json",
+          "response": "validation/simple-code-bad-system-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-system",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-system-request-parameters.json",
+          "response": "validation/simple-coding-bad-system-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-system2",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-system2-request-parameters.json",
+          "response": "validation/simple-coding-bad-system2-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-system-local",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-system-local-request-parameters.json",
+          "response": "validation/simple-coding-bad-system-local-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-no-system",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-no-system-request-parameters.json",
+          "response": "validation/simple-coding-no-system-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-system",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-bad-system-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-system-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-good-display",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-good-display-request-parameters.json",
+          "response": "validation/simple-code-good-display-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-good-display",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-good-display-request-parameters.json",
+          "response": "validation/simple-coding-good-display-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-good-display",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-good-display-request-parameters.json",
+          "response": "validation/simple-codeableconcept-good-display-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-display-lenient",
+          "description": "a bad display, with lenient display validation - a warning, and the code is valid",
+          "operation": "validate-code",
+          "lenient-display": true,
+          "request": "validation/simple-code-bad-display-request-parameters.json",
+          "response": "validation/simple-code-bad-display-lenient-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-display-notlenient",
+          "description": "a bad display, with strict display validation - an error, and the code is not valid",
+          "operation": "validate-code",
+          "lenient-display": false,
+          "request": "validation/simple-code-bad-display-request-parameters.json",
+          "response": "validation/simple-code-bad-display-not-lenient-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-display-ws",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-display-ws-request-parameters.json",
+          "response": "validation/simple-code-bad-display-ws-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-display",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-display-request-parameters.json",
+          "response": "validation/simple-coding-bad-display-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-display",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-bad-display-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-display-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-display-warning",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-displayW-request-parameters.json",
+          "response": "validation/simple-code-bad-displayW-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-display-warning",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-displayW-request-parameters.json",
+          "response": "validation/simple-coding-bad-displayW-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-display-warning",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-bad-displayW-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-displayW-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-good-language",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-good-language-request-parameters.json",
+          "response": "validation/simple-code-good-language-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-good-language",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-good-language-request-parameters.json",
+          "response": "validation/simple-coding-good-language-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-good-language",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-good-language-request-parameters.json",
+          "response": "validation/simple-codeableconcept-good-language-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-language",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-language-request-parameters.json",
+          "response": "validation/simple-code-bad-language-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-good-regex",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-good-regex-request-parameters.json",
+          "response": "validation/simple-code-good-regex-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-regex",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-regex-request-parameters.json",
+          "response": "validation/simple-code-bad-regex-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-regex-none",
+          "description": "A code that exists in the code system is not in a value set whose only include is a valid regex filter that matches no codes",
+          "operation": "validate-code",
+          "request": "validation/simple-code-regex-none-request-parameters.json",
+          "response": "validation/simple-code-regex-none-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-language",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-language-request-parameters.json",
+          "response": "validation/simple-coding-bad-language-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-language-header",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "Accept-Language": "en, en-AU; q=0.4",
+          "request": "validation/simple-coding-bad-language-header-request-parameters.json",
+          "response": "validation/simple-coding-bad-language-header-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-language-vs",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-language-vs-request-parameters.json",
+          "response": "validation/simple-coding-bad-language-vs-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-language-vslang",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-language-vslang-request-parameters.json",
+          "response": "validation/simple-coding-bad-language-vslang-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-language",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-bad-language-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-language-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-good-language-none",
+          "description": "Validate a code where the display is a valid designation in the code system's default language (en), and the requested displayLanguage (de) has no displays for the code. The display is valid, with an informational message",
+          "operation": "validate-code",
+          "request": "validation/simple-code-good-language-none-request-parameters.json",
+          "response": "validation/simple-code-good-language-none-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-code-bad-language-none",
+          "description": "Validate a code where the display matches no display or designation at all, and the requested displayLanguage (de) has no displays for the code. The display is invalid",
+          "operation": "validate-code",
+          "request": "validation/simple-code-bad-language-none-request-parameters.json",
+          "response": "validation/simple-code-bad-language-none-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-good-language-none",
+          "description": "Validate a Coding where the display is a valid designation in the code system's default language (en), and the requested displayLanguage (de) has no displays for the code. The display is valid, with an informational message",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-good-language-none-request-parameters.json",
+          "response": "validation/simple-coding-good-language-none-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-coding-bad-language-none",
+          "description": "Validate a Coding where the display matches no display or designation at all, and the requested displayLanguage (de) has no displays for the code. The display is invalid",
+          "operation": "validate-code",
+          "request": "validation/simple-coding-bad-language-none-request-parameters.json",
+          "response": "validation/simple-coding-bad-language-none-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-good-language-none",
+          "description": "Validate a CodeableConcept where the coding display is a valid designation in the code system's default language (en), and the requested displayLanguage (de) has no displays for the code. The display is valid, with an informational message",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-good-language-none-request-parameters.json",
+          "response": "validation/simple-codeableconcept-good-language-none-response-parameters.json"
+        },
+        {
+          "name": "validation-simple-codeableconcept-bad-language-none",
+          "description": "Validate a CodeableConcept where the coding display matches no display or designation at all, and the requested displayLanguage (de) has no displays for the code. The display is invalid",
+          "operation": "validate-code",
+          "request": "validation/simple-codeableconcept-bad-language-none-request-parameters.json",
+          "response": "validation/simple-codeableconcept-bad-language-none-response-parameters.json"
+        },
+        {
+          "name": "validation-complex-codeableconcept-full",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/complex-codeableconcept-full-request-parameters.json",
+          "response": "validation/complex-codeableconcept-full-response-parameters.json"
+        },
+        {
+          "name": "validation-complex-codeableconcept-vsonly",
+          "description": "to be provided",
+          "operation": "validate-code",
+          "request": "validation/complex-codeableconcept-vsonly-request-parameters.json",
+          "response": "validation/complex-codeableconcept-vsonly-response-parameters.json"
+        },
+        {
+          "name": "validation-cs-code-good",
+          "description": "to be provided",
+          "operation": "cs-validate-code",
+          "request": "validation/cs-code-good-request-parameters.json",
+          "response": "validation/cs-code-good-response-parameters.json"
+        },
+        {
+          "name": "validation-cs-code-bad-code",
+          "description": "to be provided",
+          "operation": "cs-validate-code",
+          "request": "validation/cs-code-bad-code-request-parameters.json",
+          "response": "validation/cs-code-bad-code-response-parameters.json"
+        },
+        {
+          "name": "validation-contained-good",
+          "description": "Validation where the compose refers to a contained value set (valid code)",
+          "operation": "validate-code",
+          "request": "validation/validate-contained-good-request.json",
+          "response": "validation/validate-contained-good-response.json"
+        },
+        {
+          "name": "validation-contained-bad",
+          "description": "Validation where the compose refers to a contained value set (invalid code)",
+          "operation": "validate-code",
+          "request": "validation/validate-contained-bad-request.json",
+          "response": "validation/validate-contained-bad-response.json"
+        }
+      ]
+    }
+  ]
+}

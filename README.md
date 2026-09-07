@@ -27,7 +27,8 @@ listed with its copyright under [What is bundled](#what-is-bundled).
 > - the **CodeSystem load layer** (RRF / CSV / fixed-width / FHIR JSON) with **`$lookup`** and
 >   **`$validate-code`**;
 > - **ValueSet** binding (`compose` / **`$expand`** / **`$validate-code`**), subsumption read from the
->   release's own hierarchy;
+>   release's own hierarchy, measured against HL7's own terminology ecosystem test cases
+>   ([terminology ecosystem conformance](#terminology-ecosystem-conformance));
 > - **UCUM** unit validation and canonicalization (`validateUcum` / `ucumEqual`, recognition only, **no
 >   magnitude conversion**), gated on the official UCUM functional tests: the **validation** and
 >   **conversion** case kinds, against the suite dated 3-Feb 2021, and no other kind
@@ -181,6 +182,45 @@ fails if the vendored table's declared version or revision-date stops matching t
 here, if the suite's most recent history date stops matching the date named here, if a kind named
 here is not one the tests execute, if a named kind's section carries no case, or if this page and
 `vendor/ucum/NOTICE.md` state different suite dates.
+
+## Terminology ecosystem conformance
+
+The ValueSet layer is measured against **HL7's own FHIR terminology ecosystem test cases**
+(`HL7/fhir-tx-ecosystem-ig`) as well as against tests written here. The claim in full, so a reader
+can tell what was run from what was not:
+
+- **Snapshot: upstream commit `33d37fc0f8efaed5832032f3a73956f66d4d4f23`.** The suite publishes no
+  version field, so the commit is the version, and it is the version these counts were produced
+  against. A pinned copy of the cases sits in the repository with their origin and licence recorded
+  beside them; they are third-party material and are not part of the published package.
+- **Suites in scope: `simple-cases`, `parameters`, `validation`. Operations in scope: `$expand` and
+  ValueSet `$validate-code`.** The suite's other suites and its other operations are not run, and no
+  conformance to them is claimed.
+- **Cases ran: 101. Passed: 20. Declined: 81.** The three add up: every case that ran is exactly one
+  of them. Those three suites declare 112 cases in total; the rest declare a different operation,
+  are marked in the suite for one server's own behaviour, or are held out of the measurement, and
+  none of those is run or counted anywhere above.
+- **A declined case is one this library has no answer for, named rather than counted as a pass.** It
+  asks for a request parameter the public API takes no argument for (`activeOnly`,
+  `displayLanguage`, `includeDesignations` and others), for HTTP or language negotiation that a
+  library call cannot perform, or it is met by this engine's own typed refusal. Every decline is
+  recorded with its case and its reason.
+- **A case that answers differently fails the run, and is never recorded as a decline.** The counts
+  above come from a run in which no case answered differently.
+
+The cases are written for a **server** answering over HTTP, and this package is a library, so they
+are driven in process through the public API and the comparison is narrower than a server's would
+be: an expansion is compared on its membership (system, code and display), a `$validate-code` case
+on its recorded `result`. The recorded responses declare their own tolerances and those are
+honoured as declared; every tolerance applied beyond them is written down beside the counts, on the
+ground that a tolerance nobody can see is indistinguishable from a pass that was not earned.
+
+The package's own test suite reproduces the run and holds these figures to it, so they cannot go
+stale in silence.
+
+**This is a measurement, not an endorsement.** HL7 publishes these cases and reviews outcomes under
+its own process. Nothing here is an approval, a certification or an endorsement of this package by
+HL7 or by anyone else.
 
 ## Navigate the RxNorm drug graph
 

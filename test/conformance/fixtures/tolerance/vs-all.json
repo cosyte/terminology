@@ -1,0 +1,14 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fixture/ValueSet/all",
+  "version": "1.0.0",
+  "name": "FixtureAll",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic"
+      }
+    ]
+  }
+}

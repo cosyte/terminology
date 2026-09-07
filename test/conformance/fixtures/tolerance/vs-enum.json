@@ -1,0 +1,20 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fixture/ValueSet/enum",
+  "version": "1.0.0",
+  "name": "FixtureEnum",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "concept": [
+          {
+            "code": "a",
+            "display": "Alpha"
+          }
+        ]
+      }
+    ]
+  }
+}

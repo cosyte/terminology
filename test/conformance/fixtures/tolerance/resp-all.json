@@ -1,0 +1,34 @@
+{
+  "$optional-properties$": [
+    "id",
+    "compose"
+  ],
+  "resourceType": "ValueSet",
+  "id": "$id$",
+  "url": "http://example.org/fixture/ValueSet/all",
+  "expansion": {
+    "identifier": "$uuid$",
+    "timestamp": "$instant$",
+    "contains": [
+      {
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "code": "a",
+        "display": "Alpha"
+      },
+      {
+        "$optional-properties$": [
+          "display"
+        ],
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "code": "b",
+        "display": "a display the engine never produces"
+      },
+      {
+        "$optional$": true,
+        "system": "http://example.org/fixture/CodeSystem/basic",
+        "code": "c",
+        "display": "Gamma"
+      }
+    ]
+  }
+}

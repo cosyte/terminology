@@ -1,0 +1,22 @@
+{
+  "suites": [
+    {
+      "name": "simple-cases",
+      "mode": "general",
+      "description": "a registry entry naming a file the snapshot does not carry",
+      "setup": [
+        "cs.json",
+        "vs-all.json"
+      ],
+      "tests": [
+        {
+          "name": "response-not-in-the-snapshot",
+          "description": "the response file is absent",
+          "operation": "expand",
+          "request": "req-all.json",
+          "response": "resp-that-is-not-here.json"
+        }
+      ]
+    }
+  ]
+}

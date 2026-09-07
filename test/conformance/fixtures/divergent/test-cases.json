@@ -1,0 +1,22 @@
+{
+  "suites": [
+    {
+      "name": "simple-cases",
+      "mode": "general",
+      "description": "a recorded response the engine does not answer",
+      "setup": [
+        "cs.json",
+        "vs-all.json"
+      ],
+      "tests": [
+        {
+          "name": "member-the-engine-does-not-return",
+          "description": "the recorded expansion carries a member the engine does not",
+          "operation": "expand",
+          "request": "req-all.json",
+          "response": "resp-all.json"
+        }
+      ]
+    }
+  ]
+}
