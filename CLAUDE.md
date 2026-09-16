@@ -71,9 +71,9 @@ incl. `noUncheckedIndexedAccess`) via `@cosyte/tsconfig`, **ES2023** + `NodeNext
 `require`); **Node 22 or newer** (CI matrix 22 + 24); **pnpm@10**; **ESLint 10** + unified
 `typescript-eslint` (type-checked) and Prettier, lint at `--max-warnings=0`; **Vitest 4** + v8
 coverage, per-directory 90 or better, the property-based conformance invariants from
-`@cosyte/test-utils`; CI/CD are thin callers of the reusable `cosyte/.github` workflows; **runtime
-deps ZERO**, Node stdlib only; MIT. **`attw` is a publish gate and the script is
-`scripts/attw.mjs`, not the bare CLI**: see below.
+`@cosyte/test-utils` with the format-specific arbitraries here; CI/CD are thin callers of the
+reusable `cosyte/.github` workflows; **runtime deps ZERO**, Node stdlib only; MIT. **`attw` is a
+publish gate and the script is `scripts/attw.mjs`, not the bare CLI**: see below.
 
 ### Branch protection and Dependabot
 
