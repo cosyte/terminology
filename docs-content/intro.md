@@ -33,10 +33,11 @@ following, with its copyright:
 
 That states what is distributed and under whose copyright. It is not legal advice.
 
-> **Status:** pre-alpha (`0.0.x`), published on npm. This release ships the code-system identity
-> resolver, the ConceptMap `$translate` engine, the CodeSystem `$lookup`/`$validate-code` loaders,
-> ValueSet `$expand`/binding, UCUM validation, the crosswalk resolvers (GEMs + SNOMED→ICD-10-CM),
-> and the RxNorm drug graph.
+> **Status:** `0.1.0`, published on npm. The public API is settled: below `1.0.0` a breaking change
+> ships in a new minor version and is called out in the changelog. This release ships the code-system
+> identity resolver, the ConceptMap `$translate` engine, the CodeSystem `$lookup`/`$validate-code`
+> loaders, ValueSet `$expand`/binding, UCUM validation, the crosswalk resolvers (GEMs +
+> SNOMED→ICD-10-CM), and the RxNorm drug graph.
 
 ## Install
 

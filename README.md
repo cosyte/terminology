@@ -19,8 +19,9 @@ _does_ bundle, including the UCUM unit table, the code-system _identities_ (OID 
 SNOMED CT concepts the crosswalk resolver names and RxNorm's relationship and term-type names, is
 listed with its copyright under [What is bundled](#what-is-bundled).
 
-> **Status:** pre-alpha (`0.0.x`), **published on npm.** The **engine is complete**, every
-> operation below ships today. The surface:
+> **Status:** `0.1.0`, **published on npm.** The public API is settled: below `1.0.0` a breaking
+> change ships in a new minor version, never a patch, and the changelog says what broke. The
+> **engine is complete**, every operation below ships today. The surface:
 >
 > - the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
 >   (`loadConceptMap` / `translate`);
@@ -50,12 +51,15 @@ listed with its copyright under [What is bundled](#what-is-bundled).
 
 ## Install
 
-> **On npm.** `@cosyte/terminology` is **published**, on the pre-alpha `0.0.x` ladder. The command
-> below installs the real package; the registry, not this page, is the authority on the exact version.
+> **On npm.** `@cosyte/terminology` is **published**, on the `0.1.x` line. The command below
+> installs the real package; the registry, not this page, is the authority on the exact version.
 
 ```bash
 npm install @cosyte/terminology
 ```
+
+Runnable programs for the main jobs are in
+[`examples/`](https://github.com/cosyte/terminology/tree/main/examples).
 
 ## Resolve a code system to its canonical URI
 
@@ -63,7 +67,7 @@ npm install @cosyte/terminology
 import { resolveSystem, isUnknownSystem } from "@cosyte/terminology";
 
 const r = resolveSystem("2.16.840.1.113883.6.1"); // OID, mnemonic, or URI
-isUnknownSystem(r) ? "unknown" : r.url; // "http://loinc.org"
+console.log(isUnknownSystem(r) ? "unknown" : r.url); // http://loinc.org
 ```
 
 ## Translate a code through a ConceptMap

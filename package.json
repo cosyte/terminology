@@ -8,9 +8,16 @@
     "healthcare",
     "interoperability",
     "typescript",
-    "code-systems"
+    "code-systems",
+    "conceptmap",
+    "valueset",
+    "ucum",
+    "rxnorm",
+    "loinc",
+    "snomed-ct",
+    "icd-10"
   ],
-  "homepage": "https://github.com/cosyte/terminology#readme",
+  "homepage": "https://docs.cosyte.com/terminology",
   "bugs": {
     "url": "https://github.com/cosyte/terminology/issues"
   },
@@ -79,6 +86,7 @@
     "test": "cosyte-process test",
     "test:watch": "cosyte-process test --watch",
     "test:coverage": "cosyte-process test --coverage",
+    "examples": "tsx scripts/run-examples.ts",
     "clean": "rm -rf dist coverage",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
     "attw": "node scripts/attw.mjs",
