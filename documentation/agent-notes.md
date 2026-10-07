@@ -1118,7 +1118,7 @@ all, which is the safer habit and costs nothing.
 ## No em dash, anywhere
 
 **The rule.** Founder directive 2026-07-24, stated canonically in the knowledgebase brand voice
-document: cosyte never uses the em dash, and the ban names commit messages explicitly, so it reaches
+document: Cosyte never uses the em dash, and the ban names commit messages explicitly, so it reaches
 the tree they describe. Rewrite with a period, a colon, a comma or parentheses. **Never re-encode it**
 (the named HTML entity, both numeric character references, the percent-encoding and both JavaScript
 escapes are banned on the same footing as the literal, and each has its own arm in the gate).
