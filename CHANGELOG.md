@@ -352,7 +352,7 @@
 
 - 9b5b390: The npm `description` no longer carries an em dash (`EMDASH-CONFORMANCE`).
 
-  The brand rule bans U+2014 on every cosyte surface, and this string is the most visible one the
+  The brand rule bans U+2014 on every Cosyte surface, and this string is the most visible one the
   package has: it is the subtitle on the npm package page and the one line shown in every npm search
   result. It now reads with a colon, which is what the rule's own remedy list names first.
 
@@ -428,7 +428,7 @@ in `0.0.4`. It is not a hole to be filled, because publishing a `0.0.3` now woul
 
 The entries below follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the generated
 sections above use the format Changesets writes, which is a version heading and a list of the
-changes that release consumed. Versions follow the cosyte pre-alpha ladder, `0.0.x` until first
+changes that release consumed. Versions follow the Cosyte pre-alpha ladder, `0.0.x` until first
 alpha, rather than [Semantic Versioning](https://semver.org/spec/v2.0.0.html) alone.
 
 ### Fixed
@@ -1497,7 +1497,7 @@ has_ingredient IN`). RxNorm authors no such relationship in any release: the ing
 
 ## [0.0.1] - 2026-07-21
 
-The first pre-alpha release. The package begins its public history at `0.0.x`, per the cosyte version
+The first pre-alpha release. The package begins its public history at `0.0.x`, per the Cosyte version
 ladder (`0.0.x` until first alpha).
 
 ### Security

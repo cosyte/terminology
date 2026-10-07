@@ -24,5 +24,5 @@ pnpm changeset
 ```
 
 The package is on `0.1.x`. Below 1.0, pick **minor** for a breaking change (it is called out in
-the changelog) and **patch** for everything else. See the cosyte version ladder in the
+the changelog) and **patch** for everything else. See the Cosyte version ladder in the
 meta-repo's `documentation/conventions.md`.
