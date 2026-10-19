@@ -19,6 +19,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
 import {
+  existsSync,
   readFileSync,
   writeFileSync,
   mkdtempSync,
@@ -322,6 +323,16 @@ function makeRepo(): string {
   // `commit.gpgsign=false` because a developer box may sign globally and a
   // throwaway repo has no key: the failure is an opaque exit 128 in a helper.
   git(root, ["config", "commit.gpgsign", "false"]);
+  // ▶ `maintenance.auto=false` BECAUSE A COMMIT OTHERWISE LEAVES A WRITER RUNNING
+  // IN `.git`. `git commit` starts `git maintenance run --auto --detach`, and from
+  // git 2.55 the detached child owns `.git/objects/maintenance.lock` and unlinks it
+  // itself, after `commit` has returned. Node 24's `rmSync` stops at the first
+  // entry that vanishes under it, reads that as the whole target being gone, and
+  // returns without an error with the rest of `.git` still in place. The cases
+  // that remove `.git` then ran over this scaffold's committed index and exited 0
+  // on CI. Node 22's `rmSync` keeps walking, which is why only the Node 24 leg
+  // went red.
+  git(root, ["config", "maintenance.auto", "false"]);
   git(root, ["add", "-A"]);
   commit(root, "scaffold");
   return root;
@@ -1694,6 +1705,8 @@ describe("phi-scan: a tracked file the walk did not read is READ, not merely ref
     // FOUND. A caller cannot tell that apart from a real finding.
     const root = makeRepo();
     rmSync(join(root, ".git"), { recursive: true, force: true });
+    // The premise: `rmSync` can return with `.git` still there (see `makeRepo`).
+    expect(existsSync(join(root, ".git"))).toBe(false);
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(2);
@@ -1706,6 +1719,9 @@ describe("phi-scan: a tracked file the walk did not read is READ, not merely ref
     // would make every file untracked and delete the union without saying so.
     const root = makeRepo();
     rmSync(join(root, ".git"), { recursive: true, force: true });
+    // The premise, as above: over a `.git` that survived, `git init` reinitializes
+    // and keeps the scaffold's index.
+    expect(existsSync(join(root, ".git"))).toBe(false);
     git(root, ["init", "-q", "."]);
 
     const r = runIn(root, []);
