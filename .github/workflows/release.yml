@@ -20,9 +20,9 @@ name: Release
 # version PR is open, this workflow re-runs and `changesets/action` moves the branch head as the bot
 # again, dropping the PR back to zero checks. That is not the escape having failed; just repeat it.
 #
-# Do NOT unstick it by deleting or weakening the ruleset. See the branch-protection section of
-# CLAUDE.md. (Fixing this properly for the whole org means giving `changesets/action` a PAT in
-# cosyte/.github, which is not a per-repo change.)
+# Do NOT unstick it by deleting or weakening the ruleset. See "The ruleset blocks the Version
+# Packages PR" in documentation/agent-notes.md. (Fixing this properly for the whole org means
+# giving `changesets/action` a PAT in cosyte/.github, which is not a per-repo change.)
 
 on:
   push:
