@@ -241,9 +241,9 @@ describe("reduce: a caller-built atom cannot corrupt a shipped one", () => {
     expect(valueless.filter((a) => a.base)).toHaveLength(7);
     expect(valueless.filter((a) => !a.special && !a.base)).toEqual([]);
 
-    // Both counts the comments in `reduce.ts` and `CLAUDE.md` cite, pinned apart, because a draft
-    // used 284 for the non-special atoms and it is the count that carries a `value`. They differ by
-    // exactly the 7 base units, which are non-special and carry no `value`.
+    // Both counts the comments in `reduce.ts` and `documentation/agent-notes.md` cite, pinned
+    // apart, because a draft used 284 for the non-special atoms and it is the count that carries a
+    // `value`. They differ by exactly the 7 base units, which are non-special and carry no `value`.
     expect(atoms.filter((a) => !a.special)).toHaveLength(291);
     expect(atoms.filter((a) => a.value)).toHaveLength(284);
     expect(atoms).toHaveLength(312);

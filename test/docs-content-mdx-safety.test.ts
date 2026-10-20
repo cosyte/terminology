@@ -43,10 +43,10 @@ import { describe, expect, it } from "vitest";
  * `docs-content/` reaches MDX, and `<https://x>` renders correctly on GitHub and npm, where those
  * files actually appear. Widening this to the whole repo would be churn that fixes nothing.
  *
- * It reads bytes with `node:fs`, deliberately, not with a `grep` pipeline. `CLAUDE.md` records why
- * that matters here ("THE SCANNER MUST BE THE SCANNER IT THINKS IT IS"): an agent-harness `grep`
- * wrapper can skip a file silently and return an exit status indistinguishable from an honest
- * no-match. A direct read has no such failure mode.
+ * It reads bytes with `node:fs`, deliberately, not with a `grep` pipeline.
+ * `documentation/agent-notes.md` records why that matters here ("The scanner must be the scanner it
+ * thinks it is"): an agent-harness `grep` wrapper can skip a file silently and return an exit
+ * status indistinguishable from an honest no-match. A direct read has no such failure mode.
  */
 
 /** `<scheme://...>` with no whitespace and no nested angle bracket: a CommonMark autolink. */
