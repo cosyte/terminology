@@ -44,7 +44,7 @@ const banner = `/**
  * **do not edit by hand**. The content is UCUM's, reproduced byte-for-byte; only the string wrapper
  * is added. Regenerate with \`pnpm gen:ucum\`.
  *
- * The Unified Code for Units of Measure (UCUM) is copyright ©1999–2024, Regenstrief Institute, Inc.
+ * The Unified Code for Units of Measure (UCUM) is copyright ©1999-2024, Regenstrief Institute, Inc.
  * All rights reserved. Reproduced under the UCUM Copyright Notice and License
  * (https://ucum.org/license); this copy is unmodified. Provided "as is" without warranty of any
  * kind. See \`vendor/ucum/NOTICE.md\`.

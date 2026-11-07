@@ -152,7 +152,7 @@ ucumEqual("Cel", "K"); // false: a special (non-linear) unit is never equated wi
 
 The UCUM table is the official `ucum-essence.xml` (version 2.2), and it **is bundled with this
 package**: embedded verbatim in the published build and parsed at runtime. It is copyright
-©1999–2024 Regenstrief Institute, Inc., reproduced under the UCUM Copyright Notice and License
+©1999-2024 Regenstrief Institute, Inc., reproduced under the UCUM Copyright Notice and License
 (<https://ucum.org/license>); the engine ships no derivative of it. It passes the official UCUM
 functional-test cases it claims, and claims no more than it runs: see
 [UCUM conformance](#ucum-conformance). The full notice ships in the package at
@@ -320,7 +320,7 @@ The engine bundles **no code-system release**. What it _does_ bundle includes th
 with its copyright:
 
 - **The UCUM unit table**: `ucum-essence.xml`, version 2.2, revision-date 2024-06-17. The Unified
-  Code for Units of Measure (UCUM) is copyright ©1999–2024 Regenstrief Institute, Inc., all rights
+  Code for Units of Measure (UCUM) is copyright ©1999-2024 Regenstrief Institute, Inc., all rights
   reserved, and is reproduced **verbatim** under the UCUM Copyright Notice and License
   (<https://ucum.org/license>). It is embedded byte-for-byte in the published build and parsed at
   runtime; no modified or derivative copy is distributed. The UCUM Specification is provided "as is"
