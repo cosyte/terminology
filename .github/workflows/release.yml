@@ -2,27 +2,16 @@ name: Release
 
 # Thin caller of the shared release pipeline: Changesets -> npm publish (provenance auto-enables when
 # this repo is public) -> docs artifacts -> GitHub release -> repository_dispatch to cosyte/docs.
-# Requires the NPM_TOKEN and DOCS_REPO_DISPATCH_TOKEN secrets (passed via `secrets: inherit`).
+# npm authenticates by trusted publishing (OIDC), so there is no npm token: the package's
+# trusted-publisher entry on npmjs.com names this repository and `release.yml` (this file).
+# `secrets: inherit` passes RELEASE_PR_TOKEN (authors the "Version Packages" PR, so its checks run)
+# and DOCS_REPO_DISPATCH_TOKEN (the docs rebuild); store both as repository or organization
+# secrets, not as `release` environment secrets.
 #
-# ▶ THE "Version Packages" PR THIS OPENS WILL SIT BLOCKED UNTIL SOMEONE PUSHES TO IT. That is the
-# expected state, not a broken pipeline. Changesets opens it as `github-actions[bot]` with the
-# default GITHUB_TOKEN, and GitHub does not start workflow runs for events raised by that token, so
-# the PR gets ZERO check runs. The `ci-required-checks` ruleset on `main` requires four contexts, and
-# four contexts that never arrive are pending, not failing, so the PR is unmergeable and nobody can
-# bypass it (`bypass_actors` is empty on purpose). One commit onto `changeset-release/main` fires
-# `pull_request: synchronize` under a real user and produces all four:
-#
-#   gh pr checkout <n> -R cosyte/terminology
-#   git commit --allow-empty -m "chore: run CI on the version PR"
-#   git push
-#
-# Do the push LAST, immediately before merging. If another changeset lands on `main` while the
-# version PR is open, this workflow re-runs and `changesets/action` moves the branch head as the bot
-# again, dropping the PR back to zero checks. That is not the escape having failed; just repeat it.
-#
-# Do NOT unstick it by deleting or weakening the ruleset. See "The ruleset blocks the Version
-# Packages PR" in documentation/agent-notes.md. (Fixing this properly for the whole org means
-# giving `changesets/action` a PAT in cosyte/.github, which is not a per-repo change.)
+# Before RELEASE_PR_TOKEN existed, the "Version Packages" PR was opened with the default
+# GITHUB_TOKEN, got zero check runs and sat blocked until someone pushed a commit to it. That
+# record is "The ruleset blocks the Version Packages PR" in documentation/agent-notes.md. Do not
+# unstick a version PR by deleting or weakening the ruleset.
 
 on:
   push:
@@ -37,7 +26,7 @@ jobs:
     permissions:
       actions: read # the shared workflow reads this caller's environment protection with it
       contents: write # create tags / the GitHub release
-      id-token: write # npm provenance
+      id-token: write # npm trusted publishing and provenance
       pull-requests: write # open the "Version Packages" PR
     uses: cosyte/.github/.github/workflows/release.yml@main
     with:

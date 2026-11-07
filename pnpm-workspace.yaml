@@ -1,66 +1,31 @@
-# THE ONLY PACKAGE HERE IS THE ROOT. This repository publishes one package and
-# has no packages/ directory, so the list names the root and nothing else.
-# pnpm 10 refuses to install against a pnpm-workspace.yaml with no `packages`
-# field ("packages field missing or empty"), so the key is required for the
-# settings below to be readable at all rather than being a claim that this is a
-# multi-package workspace.
-packages:
-  - "."
-
-# ---------------------------------------------------------------------------
-# INSTALL HARDENING. These two settings are the only defence this repository
-# has against a compromised release during the window between its publication
-# and its removal from the registry. Neither is a default: pnpm 10 ships both
-# switched off (minimumReleaseAge defaults to 0 before v11, trustPolicy to
-# off), so every value below is load-bearing and none of it is inherited.
+# Install-time hardening. `packageManager` in package.json pins pnpm 10.34.5, which knows both
+# keys: minimumReleaseAge arrived in pnpm 10.16.0 and trustPolicy in 10.21.0, and an older pnpm
+# ignores them, which is a settings file that decorates rather than defends.
 #
-# The standard that requires them is the umbrella's config/drift-manifest.json
-# (baselines.package.groups.installHardening), and config/scripts/drift-check.js
-# grades this file against it: it reads the required floor out of the manifest
-# rather than out of this file, so the two cannot drift apart.
-#
-# A DECLARATION TODAY, NOT YET AN ENFORCED CONTROL. This repository pins
-# packageManager: pnpm@10.0.0. pnpm added minimumReleaseAge in 10.16.0 and
-# trustPolicy in 10.21.0, so the pinned pnpm does not know either key and
-# ignores it: nothing below defends an install run at the pinned version. The
-# values take effect the day the pin moves past those releases, and they are
-# written now so that the day the pin moves is not also the day someone has to
-# rediscover what the floor was. Moving the pin is a change to every
-# developer's toolchain and is not this file's to make.
-#
-# EVERY EXEMPTION NEEDS A REASON, ON THE LINE ABOVE IT, STARTING `# reason:`,
-# and it is pinned to the exact offending version so that a LATER release of
-# the same package is graded again rather than inheriting the exemption. A
-# lowered floor, a weakened policy or a deleted key is never the remedy for a
-# refused install. The lists are absent rather than empty while nothing is
-# exempted: an empty list is a place for an entry to appear unremarked.
-# ---------------------------------------------------------------------------
-
-# 1440 minutes = 24 hours, the floor the manifest requires of every package
-# repo. pnpm's own rationale for the number: "Since malware is usually detected
-# quickly, delaying updates by 24 hours will most likely prevent you from
-# installing a bad version" (https://pnpm.io/supply-chain-security).
+# minimumReleaseAge: a package version younger than this many minutes is not installable, so a
+# compromised release has to survive a day of public scrutiny before it can reach this tree.
 # @cosyte is exempt by operator decision; every third-party package keeps the floor.
+# trustPolicy: `no-downgrade` refuses a resolution whose trust evidence is weaker than that of an
+# earlier-published version of the same package.
+#
+# Every exemption carries a `# reason:` comment on the line above it. A lowered floor, a weakened
+# policy or a deleted key is never the remedy for a refused install.
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/eslint-config"
-  # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/prettier-config"
-  # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/process"
-  # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/terminology"
-  # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/test-utils"
-  # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/tsconfig"
-  # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/tsup-config"
-  # reason: first-party @cosyte package, exempt from the floor by operator decision
-  - "@cosyte/vitest-config"
-
-# Fail the install when a package's trust evidence is weaker than that of an
-# earlier-published version of the same package (a trusted publisher that
-# becomes provenance-only, or provenance that becomes nothing at all).
+  - "@cosyte/*"
 trustPolicy: no-downgrade
+trustPolicyExclude:
+  # reason: measured 2026-11-07 on pnpm 10.34.5. A from-scratch resolution of this repository's
+  # dependency set reds with ERR_PNPM_TRUST_DOWNGRADE on undici-types, reached as a transitive of
+  # @types/node and pinned at exactly this version by the committed pnpm-lock.yaml. pnpm reports
+  # "Earlier versions had provenance attestation, but this version has no trust evidence": a
+  # publisher who stopped attaching provenance, on a types-only tarball with no runtime code and no
+  # install scripts. hl7 carries the same exemption.
+  - "undici-types@6.21.0"
+  # reason: measured 2026-11-07 on pnpm 10.34.5, same shape, found by the same resolution once
+  # undici-types was excluded. chokidar is a transitive of tsup, pinned at exactly this version by
+  # the committed pnpm-lock.yaml; earlier releases carry a provenance attestation and 4.0.3 carries
+  # none. pnpm's own documentation uses this package and version as its worked example of a
+  # trustPolicyExclude entry (https://pnpm.io/settings/dependency-resolution).
+  - "chokidar@4.0.3"

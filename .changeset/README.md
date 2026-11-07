@@ -23,6 +23,6 @@ Add a changeset for every meaningful change:
 pnpm changeset
 ```
 
-The package is on `0.1.x`. Below 1.0, pick **minor** for a breaking change (it is called out in
-the changelog) and **patch** for everything else. See the Cosyte version ladder in the
-meta-repo's `documentation/conventions.md`.
+The package is on the 0.1 line. Below 1.0, pick **minor** for a breaking change (it is called out
+in the changelog) and **patch** for everything else. The release standard (Changesets writes the
+changelog of every published package) is ST35 in the umbrella's `plans/standards.md`.

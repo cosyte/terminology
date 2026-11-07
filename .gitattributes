@@ -1,0 +1,6 @@
+# Line endings: text files are stored and checked out with LF.
+* text=auto eol=lf
+
+# The terminology ecosystem test cases are a verbatim copy of HL7's upstream files at a pinned
+# commit (vendor/tx-ecosystem/NOTICE.md), 22 of them with CRLF line endings: kept byte for byte.
+vendor/tx-ecosystem/tests/** -text
