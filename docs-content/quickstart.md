@@ -2,6 +2,7 @@
 id: quickstart
 title: Quickstart
 sidebar_position: 1
+description: "Runnable examples: resolve a code system, translate a code, look up and expand, walk the crosswalks, and navigate the RxNorm drug graph."
 ---
 
 # Quickstart
@@ -68,7 +69,7 @@ result.unmapped; // => true
 
 ## Look up a code in a code system
 
-Load a **consumer-supplied** release (RRF, CSV, fixed-width, or a FHIR `CodeSystem` JSON, the engine
+Load a **consumer-supplied** release (RRF, CSV, fixed-width, or a FHIR `CodeSystem` JSON; the engine
 ships no code-system release) and resolve a code to its display and status. An unknown code is a
 typed `{ found: false }`, never a fabricated display.
 
@@ -265,7 +266,7 @@ empty too: an `SCDFP` reaches its basis-of-strength substance(s) by `has_boss`, 
 relation whose targets can be a `PIN` or a plain `IN` and which `ingredientsOf` does not follow, and the other two author no ingredient edge at all.
 
 A concept takes its term type from its **defining** atom, wherever that sits in `RXNCONSO`. `PSN`,
-`SY` and `TMSY` type a *name* rather than a concept, so they never establish one. An `RXCUI` no
+`SY`, and `TMSY` type a *name* rather than a concept, so they never establish one. An `RXCUI` no
 defining atom could type is left out of the graph and reported on `graph.warnings` as
 `TERM_RXNORM_UNTYPED_CONCEPT`, rather than surfacing under a term type it does not have.
 
@@ -358,5 +359,5 @@ approximateMatch(graph, "lisinopril")[0]?.approximate; // => true
 
 ## Next
 
-- [Core Concepts](./concepts-archetype): the engine model and the never-fabricate invariant.
-- **API Reference**: every export, generated from source.
+- [Core concepts](./concepts-archetype): the engine model and the never-fabricate invariant.
+- **API reference**: every export, generated from source.
