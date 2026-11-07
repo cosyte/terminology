@@ -161,8 +161,8 @@ org that depends on it** (one-way, acyclic), via `loadConceptMap` + `translate` 
 parsers do not import it. This line used to say `@cosyte/transform` was the downstream. **It is not,
 and never was**: `transform` declares no dependency on this package in any manifest section, and
 `ccda`, `synth` and `website` mention it only in prose. Re-derive it, do not recall it:
-`grep -l '"@cosyte/terminology"' /workspace/*/package.json`. The authoritative plan is the meta-repo
-`operations/roadmaps/terminology.md`.
+`grep -l '"@cosyte/terminology"' */package.json` from the umbrella checkout's root. The plans are
+the umbrella's `plans/` directory (the standards and their roadmap are `plans/standards.md`).
 
 ## North star and the engine posture
 
@@ -308,6 +308,11 @@ and publish state are independent in this org, so never infer one from the other
   un-requires it, and a renamed job leaves PRs pending rather than failing.
 
 ## The ruleset blocks the Version Packages PR
+
+**Superseded on the release side, kept as the record (2026-11-07).** The shared release workflow now
+opens the "Version Packages" PR with `RELEASE_PR_TOKEN`, so its checks run with no extra push:
+`#90`, the `0.1.1` version PR, had all ten. What follows is how it worked before that token existed,
+and it still applies to any version PR that arrives with zero check runs.
 
 **▶ THE RULESET BLOCKS THE "Version Packages" PR, AND THAT IS EXPECTED. IT NEEDS ONE PUSH.**
 Changesets opens the release PR as `github-actions[bot]` using the default `GITHUB_TOKEN`, and
@@ -659,7 +664,8 @@ has a copy too, and `scaffold-parser.mjs` mints new repos from it, so a defect l
 template is re-minted into every future parser. **Do not write the repo count down here**; a draft
 said "fourteen" and was wrong twice over (`config`'s own script only delegates, and several of the
 manifests are nested: a template, a starter kit, and `@cosyte/test-utils`). Derive it:
-`find /workspace -name package.json -not -path '*/node_modules/*' | xargs grep -l '"attw":'`.
+`find . -name package.json -not -path '*/node_modules/*' | xargs grep -l '"attw":'` from the umbrella
+checkout's root.
 
 ## No internal project bookkeeping: the prefix-keyed gate
 
