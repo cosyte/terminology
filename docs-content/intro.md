@@ -2,6 +2,7 @@
 id: intro
 title: Getting started
 sidebar_position: 1
+description: "A zero-dependency terminology engine for Node.js and TypeScript: FHIR terminology operations over code systems, value sets, and maps you supply."
 ---
 
 # @cosyte/terminology
@@ -12,8 +13,8 @@ healthcare code systems. It is **not a wire parser**; it mirrors the FHIR **Term
 (`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating over **consumer-supplied** FHIR
 resources.
 
-It ships the **engine, and no code-system release**: SNOMED CT, CPT, LOINC, UMLS/RxNorm and VSAC
-value sets are strictly bring-your-own. It is not content-free, though. What is bundled includes the
+It ships the **engine, and no code-system release**: SNOMED CT, CPT, LOINC, UMLS/RxNorm, and
+VSAC value sets are strictly bring-your-own. It is not content-free, though. What is bundled includes the
 following, with its copyright:
 
 - the **UCUM unit table** (`ucum-essence.xml` v2.2), copyright ©1999-2024 Regenstrief Institute, Inc.,
@@ -33,10 +34,10 @@ following, with its copyright:
 
 That states what is distributed and under whose copyright. It is not legal advice.
 
-> **Status:** `0.1.0`, published on npm. The public API is settled: below `1.0.0` a breaking change
+> **Status:** the 0.1 line, published on npm. The public API is settled: below `1.0.0` a breaking change
 > ships in a new minor version and is called out in the changelog. This release ships the code-system
 > identity resolver, the ConceptMap `$translate` engine, the CodeSystem `$lookup`/`$validate-code`
-> loaders, ValueSet `$expand`/binding, UCUM validation, the crosswalk resolvers (GEMs +
+> loaders, ValueSet `$expand`/binding, UCUM validation, the crosswalk resolvers (GEMs and
 > SNOMED→ICD-10-CM), and the RxNorm drug graph.
 
 ## Install
@@ -68,5 +69,5 @@ fabricated target, and a directional map is never silently inverted.
 ## Next
 
 - [Quickstart](./quickstart): resolve a system and translate a code, runnable.
-- [Core Concepts](./concepts-archetype): the engine model and the never-fabricate invariant.
+- [Core concepts](./concepts-archetype): the engine model and the never-fabricate invariant.
 - Read the **API reference** for every export, generated from source.

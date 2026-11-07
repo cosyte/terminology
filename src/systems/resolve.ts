@@ -3,8 +3,8 @@
  *
  * Given a code system named any of the ways the ecosystem names it, whether a canonical URI, an OID
  * (bare or `urn:oid:`-prefixed), or an HL7 v2 mnemonic (`LN`, `SCT`, …), it returns the one canonical
- * {@link SystemIdentity}. This is the piece `@cosyte/transform` pins so a `Coding` off any parser
- * (HL7 v2 CE/CWE, C-CDA, FHIR) can be canonicalized to a single system URI before translation.
+ * {@link SystemIdentity}, so a `Coding` off any parser (HL7 v2 CE/CWE, C-CDA, FHIR) can be
+ * canonicalized to a single system URI before translation.
  *
  * **Never guesses.** An identifier that matches nothing known returns a typed
  * `{ unknown: true, input }`: never a fabricated URI (the never-fabricate invariant, applied to

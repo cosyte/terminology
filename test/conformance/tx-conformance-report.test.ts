@@ -147,7 +147,7 @@ describe("the consumer-facing conformance statement", () => {
   it("claims no approval, certification or endorsement by anyone", () => {
     expect(claim).toContain("This is a measurement, not an endorsement");
     expect(claim).toContain(
-      "Nothing here is an approval, a certification or an endorsement of this package",
+      "Nothing here is an approval, a certification, or an endorsement of this package",
     );
     expect(claim).not.toMatch(/approved|certified|endorsed|accredited|conformant to HL7/i);
   });

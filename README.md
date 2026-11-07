@@ -1,7 +1,7 @@
 <a href="https://cosyte.com">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://cosyte.com/tile/cosyte-lockup-tile-on-dark-1200x300.png">
-    <img alt="Cosyte: a plus mark set in two overlapping rounded squares, one solid and one outlined, beside the Cosyte wordmark" src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
+    <img alt="The Cosyte logo on its own white ground: the icon beside the word Cosyte." src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
   </picture>
 </a>
 
@@ -12,14 +12,14 @@
 
 `@cosyte/terminology` is **not a wire parser**. It mirrors the FHIR **Terminology Module**
 (`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating over **consumer-supplied** FHIR
-resources. It is the sibling engine `@cosyte/transform` and, later, the parsers' code-system
-recognition consume. It ships the **engine, and no code-system release**: SNOMED CT, CPT, LOINC,
-UMLS/RxNorm, and VSAC value sets are strictly bring-your-own. It is not content-free, though: what it
-_does_ bundle, including the UCUM unit table, the code-system _identities_ (OID ↔ canonical URI), the
-SNOMED CT concepts the crosswalk resolver names and RxNorm's relationship and term-type names, is
-listed with its copyright under [What is bundled](#what-is-bundled).
+resources, and `@cosyte/cli` uses it to translate codes in its `map-codes` command. It ships the
+**engine, and no code-system release**: SNOMED CT, CPT, LOINC, UMLS/RxNorm, and VSAC value sets are
+strictly bring-your-own. It is not content-free, though: what it _does_ bundle, including the UCUM
+unit table, the code-system _identities_ (OID ↔ canonical URI), the SNOMED CT concepts the crosswalk
+resolver names, and RxNorm's relationship and term-type names, is listed with its copyright under
+[What is bundled](#what-is-bundled).
 
-> **Status:** `0.1.0`, **published on npm.** The public API is settled: below `1.0.0` a breaking
+> **Status:** the 0.1 line, **published on npm.** The public API is settled: below `1.0.0` a breaking
 > change ships in a new minor version, never a patch, and the changelog says what broke. The
 > **engine is complete**, every operation below ships today. The surface:
 >
@@ -44,19 +44,21 @@ listed with its copyright under [What is bundled](#what-is-bundled).
 >
 > **Bring your own data.** The engine is whole; **no code-system release is bundled.** It runs over
 > the FHIR resources and standard releases _you_ supply: SNOMED CT, CPT, LOINC, UMLS/RxNorm, the CMS
-> GEM files, the NLM complex-map refset and VSAC value sets are all bring-your-own, under whatever
+> GEM files, the NLM complex-map refset, and VSAC value sets are all bring-your-own, under whatever
 > terms their steward sets. The content packs that would change that (RxNorm Prescribable, ICD-10-CM)
 > are not bundled either. For the things that **are** bundled, and under whose copyright, see
 > [What is bundled](#what-is-bundled).
 
 ## Install
 
-> **On npm.** `@cosyte/terminology` is **published**, on the `0.1.x` line. The command below
+> **On npm.** `@cosyte/terminology` is **published**, on the 0.1 line. The command below
 > installs the real package; the registry, not this page, is the authority on the exact version.
 
 ```bash
 npm install @cosyte/terminology
 ```
+
+Node.js 22 or later, tested on 22 and 24.
 
 Runnable programs for the main jobs are in
 [`examples/`](https://github.com/cosyte/terminology/tree/main/examples).
@@ -159,7 +161,7 @@ functional-test cases it claims, and claims no more than it runs: see
 `vendor/ucum/NOTICE.md`: see [What is bundled](#what-is-bundled).
 
 > **Case-sensitive (c/s) mode only.** UCUM's normative interchange mode (the one FHIR/HL7 bind to)
-> is case-sensitive (`m` = metre, `M` = mega, `Pa` = pascal, `pA` = picoampere). The
+> is case-sensitive (`m` = meter, `M` = mega, `Pa` = pascal, `pA` = picoampere). The
 > case-**insensitive** (c/i) spelling variant is **not** supported; a c/i-only string returns a typed
 > `TERM_UCUM_INVALID` (fail-safe, never silently reinterpreted). Magnitude conversion is likewise a
 > deliberate non-goal (recognition and canonicalization only).
@@ -195,18 +197,18 @@ can tell what was run from what was not:
 
 - **Snapshot: upstream commit `33d37fc0f8efaed5832032f3a73956f66d4d4f23`.** The suite publishes no
   version field, so the commit is the version, and it is the version these counts were produced
-  against. A pinned copy of the cases sits in the repository with their origin and licence recorded
+  against. A pinned copy of the cases sits in the repository with their origin and license recorded
   beside them; they are third-party material and are not part of the published package.
 - **Suites in scope: `simple-cases`, `parameters`, `validation`. Operations in scope: `$expand` and
   ValueSet `$validate-code`.** The suite's other suites and its other operations are not run, and no
   conformance to them is claimed.
 - **Cases ran: 101. Passed: 20. Declined: 81.** The three add up: every case that ran is exactly one
   of them. Those three suites declare 112 cases in total; the rest declare a different operation,
-  are marked in the suite for one server's own behaviour, or are held out of the measurement, and
+  are marked in the suite for one server's own behavior, or are held out of the measurement, and
   none of those is run or counted anywhere above.
 - **A declined case is one this library has no answer for, named rather than counted as a pass.** It
   asks for a request parameter the public API takes no argument for (`activeOnly`,
-  `displayLanguage`, `includeDesignations` and others), for HTTP or language negotiation that a
+  `displayLanguage`, `includeDesignations`, and others), for HTTP or language negotiation that a
   library call cannot perform, or it is met by this engine's own typed refusal. Every decline is
   recorded with its case and its reason.
 - **A case that answers differently fails the run, and is never recorded as a decline.** The counts
@@ -214,16 +216,16 @@ can tell what was run from what was not:
 
 The cases are written for a **server** answering over HTTP, and this package is a library, so they
 are driven in process through the public API and the comparison is narrower than a server's would
-be: an expansion is compared on its membership (system, code and display), a `$validate-code` case
+be: an expansion is compared on its membership (system, code, and display), a `$validate-code` case
 on its recorded `result`. The recorded responses declare their own tolerances and those are
-honoured as declared; every tolerance applied beyond them is written down beside the counts, on the
+honored as declared; every tolerance applied beyond them is written down beside the counts, on the
 ground that a tolerance nobody can see is indistinguishable from a pass that was not earned.
 
 The package's own test suite reproduces the run and holds these figures to it, so they cannot go
 stale in silence.
 
 **This is a measurement, not an endorsement.** HL7 publishes these cases and reviews outcomes under
-its own process. Nothing here is an approval, a certification or an endorsement of this package by
+its own process. Nothing here is an approval, a certification, or an endorsement of this package by
 HL7 or by anyone else.
 
 ## Navigate the RxNorm drug graph
@@ -246,7 +248,7 @@ basis-of-strength substances by `has_boss`, a one-to-many relation with a differ
 targets can be a `PIN` or a plain `IN`, and which `ingredientsOf` does not follow. Read the `tty` of
 what comes back rather than assuming it.
 
-A concept is typed by its **defining** atom, whichever line of `RXNCONSO` that sits on. `PSN`, `SY`
+A concept is typed by its **defining** atom, whichever line of `RXNCONSO` that sits on. `PSN`, `SY`,
 and `TMSY` type a _name_ rather than a concept, so they never establish an `RXCUI`'s term type. An
 `RXCUI` no defining atom could type is left out of the graph and reported as
 `TERM_RXNORM_UNTYPED_CONCEPT` on `graph.warnings`, rather than loaded under a synonym's term type:
@@ -294,21 +296,21 @@ _names_, listed under [What is bundled](#what-is-bundled).
 - **Liberal load, conservative assertion.** Malformed input degrades to a typed diagnostic; a 1:many
   mapping returns the full candidate set, never collapsed to one.
 - **Value-free diagnostic messages.** Nothing you configured and nothing your release or resource
-  contained reaches a `message`, `detail`, `reason` or `err.stack` (not a column name, not a
+  contained reaches a `message`, `detail`, `reason`, or `err.stack` (not a column name, not a
   canonical URI, not a unit atom) at any length. What sits beside a message is a locus: a line
   number, a column count, an index path into your own resource (`compose.include[2]`), or a fixed
   token naming which file of a release it came from. The
-  **objects** are a different matter: a typed `unknown`/`unmapped` outcome names the code, unit or
+  **objects** are a different matter: a typed `unknown`/`unmapped` outcome names the code, unit, or
   NDC you asked about, so log the `code` and the locus rather than the whole result: a code _in
   patient context_ can be PHI.
 - **Zero runtime dependencies. Dual ESM + CJS.** Node stdlib only; built with `tsup`, validated with
   `attw`. A release you load is frozen, its indexes included: a code system's concepts, a GEM's or a
-  complex map's entries and a drug graph's concepts, edges and NDCs are each a read-only **view** of a
-  map rather than the map itself, so nothing holding one can add, delete or clear an entry, whichever
+  complex map's entries, and a drug graph's concepts, edges, and NDCs are each a read-only **view** of a
+  map rather than the map itself, so nothing holding one can add, delete, or clear an entry, whichever
   way it tries. A view is not a `Map` instance, so a model carrying one cannot be `structuredClone`d
   or posted to a worker: copy out what you need (`new Map(cs.concepts)`). The bundled unit table is frozen deeply, atom by atom and definition by
   definition, because it is shared with the engine's own reducer; its two lookup maps refuse `set`,
-  `delete` and `clear` by name, and an entry forced past that through `Map.prototype` changes nothing
+  `delete`, and `clear` by name, and an entry forced past that through `Map.prototype` changes nothing
   the engine reads, because `parseUcum` resolves an atom by scanning the frozen atom array rather than
   through a lookup map. The AST and
   the reduction that `parseUcum` and `reduce` hand back are per-call values you own, and mutating one
@@ -335,7 +337,7 @@ with its copyright:
   ICD-10-CM codes, appear in the API documentation examples, which are distributed in the compiled
   declaration files and in the build's sourcemaps. SNOMED CT is copyright
   © International Health Terminology Standards Development Organisation. **No SNOMED CT release or
-  refset is bundled**: you supply the map rows under your own SNOMED CT licence.
+  refset is bundled**: you supply the map rows under your own SNOMED CT license.
 - **The RxNorm relationship and term-type names** the drug-graph API is written against: the
   relationship names in `RELA` / `RELA_INVERSE` (`has_ingredient`, `tradename_of`, …), and the
   term-type codes in `TERM_TYPES`, each with its name as published by the U.S. National Library of
@@ -349,6 +351,8 @@ no claim about whether any particular use of these materials is permitted to you
 
 ## License
 
-MIT © Cosyte: this package's own code. The bundled third-party materials above stay under their own
-copyright and licences; the `LICENSE` file that ships with this package carries the MIT text and a
-third-party notices section naming each of them.
+[MIT](https://github.com/cosyte/terminology/blob/main/LICENSE) © Cosyte LLC: this package's own code.
+The bundled third-party materials above stay under their own copyright and licenses; the `LICENSE` file
+that ships with this package carries the MIT text and a third-party notices section naming each of
+them. The code-system and standards names this package uses belong to their owners: see
+[TRADEMARKS.md](https://github.com/cosyte/terminology/blob/main/TRADEMARKS.md).

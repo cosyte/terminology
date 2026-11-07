@@ -2,6 +2,8 @@
 
 A terminology engine for US healthcare code systems, published on npm under MIT from this public repo, with zero runtime dependencies. It answers the FHIR terminology operations (`$translate`, `$lookup`, `$validate-code`, `$expand`) plus UCUM, CMS GEM and RxNorm queries over code systems, maps and value sets the caller supplies, and ships no code-system release. It is built and gated like the Cosyte parsers but parses no message format; `README.md` is the public description.
 
+@AGENTS.md
+
 ## Gate
 
 From the repo root, in this order. Steps 2 to 9 are the `ci / verify` job (Node 22 and 24); 10 is the `examples` job; 11 and 12 are their own workflows.

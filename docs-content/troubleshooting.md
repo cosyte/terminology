@@ -2,6 +2,7 @@
 id: troubleshooting
 title: Troubleshooting
 sidebar_position: 1
+description: "What an unmapped, unknown, undetermined, or incomplete answer means, and what to do about it."
 ---
 
 # Troubleshooting
@@ -106,13 +107,13 @@ the whole value set.
 
 ## Diagnostics and logs
 
-The `message`, `detail` and `reason` **fields** are **value-free**: nothing you configured and nothing
+The `message`, `detail`, and `reason` **fields** are **value-free**: nothing you configured and nothing
 your release or resource contained reaches one, or an `err.stack`, at any length. The locus beside
 them is a line number, an index path into your own resource, or a fixed token: never a URI or a
 column name. `String(err)` is safe.
 
 **The objects those codes ride on are not the same thing, and this is the part to get right.** A
-`TERM_CODE_UNKNOWN`, `TERM_TRANSLATE_UNMAPPED`, `TERM_CROSSWALK_UNMAPPED`, `TERM_RXNORM_UNKNOWN_RXCUI`
+`TERM_CODE_UNKNOWN`, `TERM_TRANSLATE_UNMAPPED`, `TERM_CROSSWALK_UNMAPPED`, `TERM_RXNORM_UNKNOWN_RXCUI`,
 or `TERM_RXNORM_NDC_UNMAPPED` outcome names **what you asked about** (`input`, `source`, `rxcui`,
 `ndc`, `coding`) because that is how a never-fabricate answer says which thing it refused to guess.
 A loaded model likewise carries the displays and canonical URIs from your release. So
@@ -143,7 +144,7 @@ never the surrounding record.
   without the unconfirmed version stamp: never membership computed from the other release. The
   `ExpansionContext` holds **one release per system URI**, so the engine cannot hold several releases
   and pick the one a component asks for. What is compared is that the two declarations agree, never
-  that either is true: a mislabelled release is still trusted.
+  that either is true: a mislabeled release is still trusted.
 - **Subsumption is the release's own hierarchy**: `is-a` / `descendent-of` read the loaded code
   system's `parent` edges (nested `concept`s or an explicit `parent` property). Subsumption across
   two separate releases is not computed.
@@ -164,12 +165,12 @@ never the surrounding record.
   SNOMED CT concepts the crosswalk resolver names: the map-category concepts and the two gender
   findings (SNOMED CT is copyright © International Health Terminology Standards Development
   Organisation), and RxNorm's relationship and term-type names (`RELA`, `RELA_INVERSE`,
-  `TERM_TYPES`), published by the U.S. National Library of Medicine. Individual SNOMED CT, ICD-10-CM
+  `TERM_TYPES`), published by the U.S. National Library of Medicine. Individual SNOMED CT, ICD-10-CM,
   and RxNorm identifiers also appear in the API documentation examples. The full list, with its
   copyright, is in the package's `LICENSE`. So the UCUM operations and `resolveSystem` work with no
   release at all; `$lookup`,
-  `$validate-code`, `$expand`, `$translate` and the crosswalk and RxNorm resolvers need one you
+  `$validate-code`, `$expand`, `$translate`, and the crosswalk and RxNorm resolvers need one you
   supply.
 
-The **API Reference** always reflects exactly what this release ships: treat it as the source of
+The **API reference** always reflects exactly what this release ships: treat it as the source of
 truth over any prose above.

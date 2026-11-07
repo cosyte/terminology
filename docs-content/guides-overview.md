@@ -2,6 +2,7 @@
 id: guides-overview
 title: Guides
 sidebar_position: 1
+description: "Task-oriented recipes for the common terminology jobs, from canonicalizing a code system to walking the RxNorm drug graph."
 ---
 
 # Guides
@@ -28,5 +29,5 @@ copy-pasteable answer to one real integration question.
   ingredient, a brand to its generic, or an NDC to its `RXCUI`, over a BYO RxNorm RRF release, never
   fabricating an edge.
 
-The [Quickstart](./quickstart) covers the one-line calls, and the **API Reference** documents every
+The [Quickstart](./quickstart) covers the one-line calls, and the **API reference** documents every
 shipped export.

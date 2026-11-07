@@ -34,7 +34,7 @@ describe("LICENSE", () => {
   it("keeps the MIT grant for this package's own code", () => {
     expect(LICENSE).toContain("Permission is hereby granted, free of charge");
     expect(LICENSE).toContain('THE SOFTWARE IS PROVIDED "AS IS"');
-    expect(LICENSE).toContain("Copyright (c) 2026 Cosyte");
+    expect(LICENSE).toContain("Copyright (c) 2026 Cosyte LLC");
   });
 
   it("qualifies that grant with a third-party notices section", () => {

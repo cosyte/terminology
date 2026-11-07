@@ -2,9 +2,10 @@
 id: concepts-archetype
 title: The engine model
 sidebar_position: 1
+description: "How the engine works: your own data, no fabricated codes, no inverted maps, typed outcomes, and frozen releases."
 ---
 
-# Core Concepts
+# Core concepts
 
 `@cosyte/terminology` is a **terminology engine**, not a wire-format parser. It mirrors the FHIR
 **Terminology Module**, the industry's own architecture for keeping terminology a _swappable
@@ -14,8 +15,8 @@ resolvers) speak the FHIR shape every downstream tool already understands.
 
 ## Bring-your-own data, engine-only
 
-The engine ships **no code-system release**. You feed it standard FHIR resources (a `ConceptMap`, and
-later a `CodeSystem`/`ValueSet`), and it answers questions over them. SNOMED CT, CPT, LOINC, the
+The engine ships **no code-system release**. You feed it standard FHIR resources (a `ConceptMap`, a
+`CodeSystem`, a `ValueSet`), and it answers questions over them. SNOMED CT, CPT, LOINC, the
 UMLS/RxNorm release, and VSAC value sets are **strictly consumer-supplied** (a licensing wall, not a
 feature gap). What is bundled, named with its copyright, includes the UCUM unit table (copyright
 ©1999-2024 Regenstrief Institute, Inc., verbatim under [https://ucum.org/license](https://ucum.org/license); notice shipped at
@@ -24,7 +25,7 @@ concepts and the two gender findings; SNOMED CT is copyright © International He
 Standards Development Organisation), the code-system **identities**, the OID ↔ canonical-URI ↔
 mnemonic pairings, which identify the systems rather than listing any system's codes, and RxNorm's
 relationship and term-type names (`RELA`, `RELA_INVERSE`, `TERM_TYPES`), published by the U.S.
-National Library of Medicine. Individual SNOMED CT, ICD-10-CM and RxNorm identifiers also appear in
+National Library of Medicine. Individual SNOMED CT, ICD-10-CM, and RxNorm identifiers also appear in
 the API documentation examples. The full list is in the package's `LICENSE`.
 
 ## The never-fabricate invariant
@@ -66,7 +67,7 @@ throws `TERM_MAP_NOT_INVERTIBLE` rather than fabricate a transpose.
 
 The published reference maps are the library's highest-risk surface, and the stewards say so in as
 many words. CMS: _"GEMs are not crosswalks. They are reference mappings"_; NLM: the SNOMED→ICD-10-CM
-map is _"semi-automated."_ The resolvers honour that.
+map is _"semi-automated."_ The resolvers honor that.
 
 - **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`): CMS **public-domain**. Each entry carries the
   steward's 5-position flags (**approximate | no-map | combination | scenario | choice-list**),
@@ -157,7 +158,7 @@ resource to a typed fatal (`TERM_CONCEPTMAP_MALFORMED`) rather than crashing, bu
 a structurally partial, misleading map. Assertion is **conservative**: a 1:many mapping returns the
 full candidate set (never collapsed to one), and steward advice comments ride through verbatim.
 
-## Stable diagnostic + fatal codes
+## Stable diagnostic and fatal codes
 
 Outcomes carry **stable codes**: `DIAGNOSTIC_CODES` (typed, surfaced, non-throwing outcomes like
 `TERM_TRANSLATE_UNMAPPED`) and `FATAL_CODES` (thrown, like `TERM_CONCEPTMAP_MALFORMED`). Consumers
@@ -170,14 +171,14 @@ _in patient context_ can be PHI, so log the code and the locus rather than the w
 
 ## Immutability
 
-A loaded `ConceptMap`, a `Coding` and a `TranslateResult` are deep-frozen. So is the bundled UCUM
+A loaded `ConceptMap`, a `Coding`, and a `TranslateResult` are deep-frozen. So is the bundled UCUM
 unit table, atom by atom: one table is shared by every caller and by the engine's own reducer, so a
 definition rewritten in place would change what a unit means for the whole process.
 
 An index a **release you load** exposes as a `ReadonlyMap` (the concepts of a code system, a GEM's or
-a complex map's entries, a drug graph's concepts, edges and NDCs) is a **read-only view** of a map
+a complex map's entries, a drug graph's concepts, edges, and NDCs) is a **read-only view** of a map
 rather than the map itself. Reads are exactly a `Map`'s (`get`, `has`, `size`, `keys`, `values`,
-`entries`, `forEach`, iteration, and `new Map(view)`), and adding, deleting or clearing is refused
+`entries`, `forEach`, iteration, and `new Map(view)`), and adding, deleting, or clearing is refused
 whichever way it is attempted. Why it matters is the never-fabricate invariant: without it, whatever
 holds a loaded release could empty a medication's ingredient edges, delete a diagnosis mapping, or add
 a target the steward's file never authored, and the engine would answer from it while `count` went on
@@ -193,13 +194,13 @@ entries either. And a model carrying a view **cannot be structured-cloned**: `st
 uncloneable function. Copy out what the other side needs instead (`new Map(cs.concepts)` clones
 fine). That refusal is deliberate rather than incidental: the alternative made the clone succeed and
 hand back a model whose indexes were empty while its counts still reported the loaded figures. A
-loaded `ConceptMap`, `ValueSet` or unit table carries no view and clones as it always did.
+loaded `ConceptMap`, `ValueSet`, or unit table carries no view and clones as it always did.
 
 The **bundled UCUM table is the exception**, deliberately and as before: `atomByCode` and
-`prefixByCode` are real `Map`s whose `set`, `delete` and `clear` are replaced by a refusal, so an
+`prefixByCode` are real `Map`s whose `set`, `delete`, and `clear` are replaced by a refusal, so an
 entry forced through `Map.prototype` still lands. What that reaches is bounded: `parseUcum` resolves
 an atom by scanning the frozen `atoms` array, never through a lookup map, so a forced entry changes no
-validation, no reduction and no `ucumEqual` answer; only your own `get` is lied to.
+validation, no reduction, and no `ucumEqual` answer; only your own `get` is lied to.
 
 What `parseUcum` and `reduce` hand back is deliberately **not** frozen, because it is yours rather
 than the engine's: both are built per call, and mutating one changes nothing for anyone else.
