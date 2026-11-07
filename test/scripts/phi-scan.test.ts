@@ -61,7 +61,7 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  *     path. Delete that test and a tsx-only breakage ships silently.
  *   - node's type stripping is on by default from **Node 22.18**, while
  *     `engines.node` here is `>=22.0.0`. CI runs the 22 + 24 matrix, both of which
- *     resolve above that, so CI is unaffected; a developer on 22.0–22.17 running
+ *     resolve above that, so CI is unaffected; a developer on 22.0 to 22.17 running
  *     the suite locally would need a newer 22. Stripping is erased-types-only, and
  *     the scanner uses no TypeScript construct that needs emit, which the
  *     tsx-pinned test reds if it ever stops being true.

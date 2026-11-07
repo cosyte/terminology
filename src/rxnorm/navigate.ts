@@ -303,7 +303,7 @@ function jaccard(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
 
 /** Options for {@link approximateMatch}. */
 export interface ApproximateMatchOptions {
-  /** Minimum similarity (`0`–`1`) for a candidate to be returned. Default `0.34`. */
+  /** Minimum similarity (`0` to `1`) for a candidate to be returned. Default `0.34`. */
   readonly minScore?: number;
   /** Maximum number of candidates to return, best-first. Default `20`. */
   readonly limit?: number;

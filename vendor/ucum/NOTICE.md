@@ -10,7 +10,7 @@ travel with the package that carries the UCUM table.
 ## `ucum-essence.xml`: the UCUM unit table
 
 > The Unified Code for Units of Measure (UCUM), also known as the "UCUM Specification," is
-> copyright ©1999–2024, Regenstrief Institute, Inc. All rights reserved.
+> copyright ©1999-2024, Regenstrief Institute, Inc. All rights reserved.
 
 Reproduced verbatim under the UCUM Copyright Notice and License
 (<https://ucum.org/license>), which grants a "worldwide, non-exclusive, no-charge, royalty-free,
@@ -38,7 +38,7 @@ see the License for the full disclaimer.
 
 ## `UcumFunctionalTests.xml`: the UCUM conformance suite
 
-> This file is copyright © 2008–2009 Grahame Grieve and other contributors (Gunther Schadow,
+> This file is copyright © 2008-2009 Grahame Grieve and other contributors (Gunther Schadow,
 > Lloyd Mackenzie, Vladimir Alexiev).
 
 Reproduced verbatim under the Eclipse Public License v1.0

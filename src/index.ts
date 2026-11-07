@@ -84,7 +84,7 @@
  * its copyright:
  *
  * - the **UCUM unit table** (`ucum-essence.xml`, version 2.2, revision-date 2024-06-17): copyright
- *   ©1999–2024 Regenstrief Institute, Inc., all rights reserved, reproduced **verbatim** under the
+ *   ©1999-2024 Regenstrief Institute, Inc., all rights reserved, reproduced **verbatim** under the
  *   UCUM Copyright Notice and License (https://ucum.org/license), embedded byte-for-byte in the
  *   published build and parsed at runtime; no modified or derivative copy is distributed. The UCUM
  *   Specification is provided "as is" **without warranty of any kind**: see the License for the

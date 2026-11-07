@@ -17,9 +17,12 @@
  *  2. EVERY BANNED SPELLING REDS, one case per arm. The arms are not decoration:
  *     the reference sweep of this rule in a sibling repository caught what the
  *     hand sweep missed precisely because a manifest held the named HTML entity
- *     rather than the literal character.
+ *     rather than the literal character. The en dash is banned in the same
+ *     spellings since 2026-11-07, and its arms get the same cases.
  *  3. EVERY NEAR MISS STAYS GREEN. A boundary that does not hold turns this gate
- *     into one people switch off. The hex and decimal references sit one digit
+ *     into one people switch off. The en dash was a near miss here until
+ *     2026-11-07; the horizontal bar and the minus sign stand in for it now,
+ *     because the rule still reaches no other member of the dash family. The hex and decimal references sit one digit
  *     away from different codepoints entirely, the named entity sits inside an
  *     ordinary English word, and the capital-U escape is a real Windows path.
  *     Each was checked as a control alongside its true positive.
@@ -96,6 +99,14 @@ const AMP = "&";
 const NAMED = `${AMP}mdash`;
 const NUM = `${AMP}#`;
 const BS = "\\";
+
+/** U+2013 and its encodings, assembled the same way and for the same reason. */
+const EN_CP = 0x2013;
+const EN = String.fromCodePoint(EN_CP);
+const EN_HEX = EN_CP.toString(16);
+const EN_DEC = String(EN_CP);
+const EN_PCT = [...Buffer.from(EN, "utf8")].map((b) => `%${b.toString(16).toUpperCase()}`).join("");
+const EN_NAMED = `${AMP}ndash`;
 
 interface RunResult {
   code: number;
@@ -195,10 +206,42 @@ describe("check-no-emdash: every banned spelling reds", () => {
   });
 });
 
+describe("check-no-emdash: every banned en dash spelling reds", () => {
+  const cases: [string, string][] = [
+    ["the literal en dash", `a${EN}b`],
+    ["its percent-encoding, upper case", `a${EN_PCT}b`],
+    ["its percent-encoding, lower case", `a${EN_PCT.toLowerCase()}b`],
+    ["its named entity", `a${EN_NAMED};b`],
+    ["its named entity without its semicolon", `a${EN_NAMED} b`],
+    ["its decimal character reference", `a${NUM}${EN_DEC};b`],
+    ["its decimal reference with leading zeros", `a${NUM}0${EN_DEC};b`],
+    ["its decimal reference without its semicolon", `a${NUM}${EN_DEC} b`],
+    ["its hex character reference", `a${NUM}x${EN_HEX};b`],
+    ["its hex reference in upper case", `a${NUM}X${EN_HEX.toUpperCase()};b`],
+    ["its hex reference with leading zeros", `a${NUM}x0${EN_HEX};b`],
+    ["its JavaScript escape", `a${BS}u${EN_HEX}b`],
+    ["its braced JavaScript escape", `a${BS}u{${EN_HEX}}b`],
+  ];
+
+  for (const [label, specimen] of cases) {
+    it(`reds on ${label}`, () => {
+      const r = scanText(specimen);
+      expect(r.code, r.out).toBe(1);
+      expect(r.out).toContain("FAIL");
+      expect(r.out).toContain("en dash");
+    });
+  }
+});
+
 describe("check-no-emdash: every near miss stays green", () => {
   const cases: [string, string][] = [
     ["a hyphen", "a-b"],
-    ["an en dash, which the rule does not reach", `a${String.fromCodePoint(0x2013)}b`],
+    ["a horizontal bar, which the rule does not reach", `a${String.fromCodePoint(0x2015)}b`],
+    ["a minus sign, which the rule does not reach", `a${String.fromCodePoint(0x2212)}1`],
+    ["the en dash named entity inside a longer word", `${EN_NAMED}board`],
+    ["an en dash decimal reference one digit longer", `${NUM}${EN_DEC}0;`],
+    ["an en dash hex reference one digit longer", `${NUM}x${EN_HEX}5;`],
+    ["a Windows path holding the en dash's capital-U name", `C:${BS}Users${BS}U${EN_HEX}${BS}x`],
     ["the named entity inside a longer word", `${NAMED}board`],
     ["a decimal reference one digit longer", `${NUM}${DEC}0;`],
     ["a hex reference one digit longer", `${NUM}x${HEX}5;`],
@@ -444,6 +487,16 @@ describe("check-no-emdash: the refusals, driven through a real scan", () => {
     const r = runGateIn(root);
     expect(r.code, r.out).toBe(1);
     expect(r.out).toContain("could not read");
+  });
+
+  it("reds on an en dash in a tracked file, through the real tree scan", () => {
+    const root = build();
+    writeFileSync(join(root, "filler", "f1.md"), `a range 6${EN}7\n`);
+    git(root, ["add", "-A"]);
+    const r = runGateIn(root);
+    expect(r.code, r.out).toBe(1);
+    expect(r.out).toContain("filler/f1.md:1:");
+    expect(r.out).toContain("the literal en dash");
   });
 
   it("reds on a tracked FILENAME carrying the character, which no content scan sees", () => {

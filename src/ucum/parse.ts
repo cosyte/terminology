@@ -111,7 +111,7 @@ function parseAnnotation(cur: Cursor): ParseFailure | undefined {
       cur.pos = i + 1;
       return undefined;
     }
-    // Annotation text is printable ASCII (0x20–0x7E) except the curly braces: no Unicode.
+    // Annotation text is printable ASCII (0x20 to 0x7E) except the curly braces: no Unicode.
     if (code < 0x20 || code > 0x7e || code === 0x7b /* { */) {
       return { ok: false, reason: "annotation contains a non-ASCII or illegal character" };
     }
