@@ -351,8 +351,8 @@ no claim about whether any particular use of these materials is permitted to you
 
 ## License
 
-[MIT](https://github.com/cosyte/terminology/blob/main/LICENSE) © Cosyte: this package's own code. The
-bundled third-party materials above stay under their own copyright and licenses; the `LICENSE` file
+[MIT](https://github.com/cosyte/terminology/blob/main/LICENSE) © Cosyte LLC: this package's own code.
+The bundled third-party materials above stay under their own copyright and licenses; the `LICENSE` file
 that ships with this package carries the MIT text and a third-party notices section naming each of
 them. The code-system and standards names this package uses belong to their owners: see
 [TRADEMARKS.md](https://github.com/cosyte/terminology/blob/main/TRADEMARKS.md).
