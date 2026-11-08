@@ -249,9 +249,7 @@ export interface PatientContext {
  * single target when the steward flagged otherwise.
  */
 export type ComplexMapGroupResult =
-  | ComplexMapGroupResolved
-  | ComplexMapGroupNoMap
-  | ComplexMapContextRequired;
+  ComplexMapGroupResolved | ComplexMapGroupNoMap | ComplexMapContextRequired;
 
 /** A group that resolved to a concrete ICD-10-CM target via its winning rule. */
 export interface ComplexMapGroupResolved {
