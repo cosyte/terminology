@@ -65,7 +65,7 @@ describe("UCUM properties", () => {
 
   it("validateUcum never throws, even on unicode / control / bracket noise", () => {
     fc.assert(
-      fc.property(fc.fullUnicodeString(), (s) => {
+      fc.property(fc.string({ unit: "binary" }), (s) => {
         expect(() => validateUcum(s)).not.toThrow();
       }),
       { numRuns: 300 },
