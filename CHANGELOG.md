@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+### Patch Changes
+
+- 76f3ce3: An internal tidy in value set expansion, with no change to any result or diagnostic: the factory for the truncated-expansion diagnostic now takes the `expansion` path it is always given, instead of checking for a missing one.
+
 ## 0.1.3
 
 ### Patch Changes
