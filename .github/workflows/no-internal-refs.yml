@@ -32,24 +32,24 @@ name: Public-surface gate
 #
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
 #
-#   The shared ci pipeline is not an option. `terminology`'s `ci` job calls
-#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no arbitrary
-#   repo script. Adding this there would also flip every other caller red on its next run:
+#   The shared ci pipeline is not an option. `terminology`'s `ci` job calls the shared
+#   cosyte/.github ci.yml, which runs a fixed ladder and no arbitrary repo script. Adding this there would also flip every other caller red on its next run:
 #   the measured backlog was 149 internal references across 11 repos, and remediating each
 #   is its own deliberate piece of work. A shared pipeline is the wrong place to land a rule
 #   most of its callers cannot yet satisfy.
 #
 #   Within this repo, keeping it out of ci.yml also keeps it cheap: this job is a checkout
-#   and a handful of greps over 9 markdown/JSON files and 38 source files, while ci.yml
-#   drives the full Node 22 + 24 matrix plus the release-dry-run job.
+#   and a handful of greps over the public markdown, the npm metadata and the source files,
+#   while ci.yml drives the full Node 22, 24, and 26 matrix plus the prepublish job.
 #
 # NO MATRIX, DELIBERATELY. The script is bash + grep + awk with a pinned `LC_ALL`; nothing
 # in it moves between Node majors. The one Node dependency is reading `package.json`, and
 # the script refuses rather than skipping if `node` is absent. Because there is no matrix,
-# this job's check-run context is the bare job id, `no-internal-refs`. READ THE REAL NAME
-# OFF A LIVE CHECK RUN BEFORE REQUIRING IT IN A RULESET, never off this file's `name:`:
-# the workflow is titled "Public-surface gate" and emits the context `no-internal-refs`,
-# and requiring the title would silently protect nothing.
+# the check-run context carries no matrix suffix: it is `no-internal-refs / public-surface`,
+# the caller job id below and then the shared workflow's job id. READ THE REAL NAME OFF A
+# LIVE CHECK RUN BEFORE REQUIRING IT IN A RULESET, never off this file's `name:`: the
+# workflow is titled "Public-surface gate", and requiring the title would silently protect
+# nothing.
 #
 # WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
 # THIS rule says identifiers BELONG in the commit, the PR and the changeset, so a PR-text
@@ -78,12 +78,12 @@ concurrency:
 jobs:
   # The check-run context prefix. See the note above before touching this id.
   no-internal-refs:
-    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
-    # or deleted by anyone who gains write access to the workflow's repository, so a
-    # tag is not an immutable reference and is not a pin. The trailing comment is the
-    # published reference that commit was released as, so the release note stays
-    # findable from here.
-    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    # Called at the published reference, by name, as every shared workflow in this
+    # repository is. The name is a function of the one commit it carries, cosyte/.github
+    # never moves or reuses one, and its release there is immutable, so this line delivers
+    # nothing new until it is edited here. The release notes say what adopting a newer
+    # reference asks of a caller: https://github.com/cosyte/.github/releases
+    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@workflows-2026-11-07-498c7c13c886
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:
