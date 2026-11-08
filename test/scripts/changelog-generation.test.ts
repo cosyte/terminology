@@ -127,10 +127,9 @@
  *
  * Every case runs in a temp directory built from scratch, and every mutation
  * happens there: nothing here writes into the repo, bumps its version, or consumes
- * a real changeset. Unlike `test/scripts/phi-scan.test.ts`, whose temp trees have
- * to sit under `test/` because the walk root is what that file proves, these trees
- * belong in the OS temp directory: they contain a `CHANGELOG.md` and a throwaway
- * `package.json` and have nothing to say to the PHI walk roots.
+ * a real changeset. These trees belong in the OS temp directory: they contain a
+ * `CHANGELOG.md` and a throwaway `package.json` and have nothing to say to the PHI
+ * scan.
  *
  * The temp tree links this repo's Prettier and its Prettier config in, and that is
  * load-bearing rather than tidy: Changesets resolves Prettier from the tree it is

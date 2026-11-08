@@ -45,9 +45,9 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * `test/scripts/attw-gate.test.ts` that ran a real `npm pack` through `attw` carried an explicit 60 s
  * one until that file left with the repo-local attw gate on 2026-11-07, and three groups were added
  * on 2026-08-03: the pair of 200,000-row bulk cases
- * in `test/rxnorm/term-types.test.ts`, the single case in `test/scripts/phi-scan.test.ts` that
- * deliberately pays a `tsx` cold start to pin the real `pnpm phi-scan` entry point, and **all of
- * `test/property/**`**, whose runtime varies with the fast-check draw as well as with the box (this
+ * in `test/rxnorm/term-types.test.ts`, a case that paid a `tsx` cold start to pin the real
+ * `pnpm phi-scan` entry point (it left with the repo-local PHI scanner, for the shared one, on
+ * 2026-11-08), and **all of `test/property/**`**, whose runtime varies with the fast-check draw as well as with the box (this
  * repo pins no seed, by design, see the note above) and which each set 30 s via `vi.setConfig`.
  *
  * With those declared, **every remaining test peaked at 689 ms.**
@@ -83,9 +83,9 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  *
  * **The shared `@cosyte/vitest-config` sets no timeout at all** (checked, not assumed), so removing
  * these returns the repo to the shared standard rather than inventing a second one. If a test here
- * starts failing on time, look for its repeated fixed cost first (the sweep in
- * `test/scripts/phi-scan.test.ts` was paying a `tsx` start-up at 20 call sites, and spawning `node`
- * instead roughly halved that file) and only then give that one test its own budget. Do not put a
+ * starts failing on time, look for its repeated fixed cost first (the repo-local PHI scanner's
+ * tests were paying a `tsx` start-up at 20 call sites, and spawning `node` instead roughly halved
+ * that file) and only then give that one test its own budget. Do not put a
  * number back here.
  */
 export default cosyteVitest({

@@ -44,9 +44,10 @@ since callers pass in values from their own data, none of them may reach a diagn
   on RxNav, never as a closed set.
 - `pnpm attw` runs cosyte-attw, never the bare attw CLI, which exits 0 on a tarball with no types
   (#28).
-- scripts/phi-scan.ts keeps its --staged argv whole (no -M, -C, -B, --find-copies-harder) and every
-  completeness refusal at exit 2: each let a value pass unread under "OK: no hits" (#45). A test's
-  git repo sets user.email, user.name, and maintenance.auto=false, and never merges (#85).
+- The dash, PHI, and internal-refs gates are the shared ones from @cosyte/script-utils; this repo
+  keeps only their inputs under scripts/ (the two .exclude files, phi-allow-list.txt, and
+  internal-refs.json). A test's git repo sets user.email, user.name, and maintenance.auto=false,
+  and never merges (#85).
 - Never key the internal-refs gate on WORD-N or add CM, KG, or ICD as a prefix: CM-1 is a unit
   (#17).
 - Never answer a no-emdash red with an exclusion; count dashes, NUL bytes, and build figures in

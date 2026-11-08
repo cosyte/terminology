@@ -1,0 +1,7 @@
+# What the shared PHI scan (@cosyte/script-utils, `cosyte-phi-scan`, ST34) leaves out of this
+# repository. One literal tracked path per line.
+#
+# The UCUM functional test suite, vendored verbatim from Regenstrief under the UCUM License: its
+# header names the upstream author's own email address, which is attribution rather than PHI, and
+# the license does not let us edit the file. The scan has no verdict about it.
+vendor/ucum/UcumFunctionalTests.xml

@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
  * they stopped **docs.cosyte.com deploying at all**, for every package in the ecosystem. The first
  * push to that repo's `main` after this version published failed outright.
  *
- * WHY A GATE AND NOT A ONE-TIME FIX, in the founder's own framing from `check-no-internal-refs.sh`:
+ * WHY A GATE AND NOT A ONE-TIME FIX, in the founder's own framing for the internal-refs gate:
  * "it needs to not just be a memory note, but something that is addressed in the workflow
  * accordingly. This needs to not happen again." A published release is **immutable** and the docs
  * fetcher re-downloads it forever, so a bad autolink cannot be recalled: cleaning this repo's `main`
@@ -61,8 +61,8 @@ function markdownFiles(): string[] {
 
 describe("docs-content is MDX-safe", () => {
   it("finds markdown to check, so a green result cannot come from an empty sweep", () => {
-    // A gate that silently scans nothing is worse than no gate. `check-no-internal-refs.sh`
-    // carries the same self-test discipline for the same reason.
+    // A gate that silently scans nothing is worse than no gate. The shared internal-refs
+    // gate carries the same self-test discipline for the same reason.
     const files = markdownFiles();
     expect(files.length).toBeGreaterThan(0);
     expect(files).toContain("intro.md");
