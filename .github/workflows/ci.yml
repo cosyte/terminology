@@ -83,7 +83,10 @@ jobs:
       - name: PHI scan (examples)
         run: pnpm phi-scan examples/README.md examples/*.ts
 
-  # The house checks from @cosyte/script-utils.
+  # The house checks from @cosyte/script-utils, and `cosyte-process check` from @cosyte/process: the
+  # five verb scripts and four variants delegate exactly, cosyte-process.config.json is valid, and
+  # the direct `vitest` is exactly the version process runs. `pnpm test` also runs that check
+  # (test/scripts/process-wiring.test.ts), which is what puts it inside the required `ci / verify`.
   standards:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -100,3 +103,4 @@ jobs:
       - run: pnpm check:readme
       - run: pnpm check:claude-card
       - run: pnpm check:catalog
+      - run: pnpm check:process

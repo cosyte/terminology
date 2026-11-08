@@ -7,7 +7,8 @@ queries over code systems, maps, and value sets the caller supplies, and ships n
 
 ## Build and test
 
-Use the pnpm that `packageManager` in `package.json` pins, with Node.js 22 or later.
+Use the pnpm that `packageManager` in `package.json` pins, with Node.js 22.22.2 or later: the
+floor of the tools `@cosyte/process` runs (the published package itself runs on Node.js 22).
 
 ```sh
 pnpm install --frozen-lockfile
@@ -35,6 +36,7 @@ pnpm phi-scan examples/README.md examples/*.ts
 pnpm check:readme
 pnpm check:claude-card
 pnpm check:catalog
+pnpm check:process
 pnpm check:no-emdash
 pnpm check:no-internal-refs
 ```

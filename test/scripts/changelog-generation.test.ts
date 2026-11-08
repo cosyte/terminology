@@ -83,14 +83,14 @@
  *
  *     AND THE HONEST QUALIFIER, MEASURED HERE RATHER THAN INHERITED, BECAUSE IT IS
  *     WHERE THIS REPO DIVERGES FROM TWO OF ITS SIBLINGS. THIS repo's `version`
- *     script runs its own `prettier --write` over `CHANGELOG.md` as a later link in
- *     the chain, so with the pass off that second pass would repair the raw output
- *     and the Version PR would NOT open red. So the reason to leave the pass ON
- *     here is NOT "otherwise CI reds". It is that with the pass off, a canonical
- *     published changelog rests entirely on `CHANGELOG.md` staying inside that one
- *     `prettier --write` argument list, which nothing pins and which two of the
- *     nearest sibling repos do not even have; and that with the pass on it costs
- *     nothing, because the archive is byte identical either way. DO NOT RESYNC THIS
+ *     script ends with `cosyte-process format`, whose globs (cosyte-process.config.json)
+ *     take in `CHANGELOG.md` through `*.{json,md,yml}`, as a later link in the chain,
+ *     so with the pass off that second pass would repair the raw output and the
+ *     Version PR would NOT open red. So the reason to leave the pass ON here is NOT
+ *     "otherwise CI reds". It is that with the pass off, a canonical published
+ *     changelog rests entirely on `CHANGELOG.md` staying inside that one glob list,
+ *     which nothing else pins; and that with the pass on it costs nothing, because
+ *     the archive is byte identical either way. DO NOT RESYNC THIS
  *     VALUE BETWEEN REPOS. Derive it from the repo in front of you, and re-measure
  *     both arms if the `version` script changes.
  *  9. THE SHAPE RULE, and the negative control that explains it. Changesets
@@ -211,6 +211,13 @@ const pkg = JSON.parse(readFileSync(PACKAGE_PATH, "utf8")) as {
   prettier?: unknown;
   scripts?: Record<string, string>;
 };
+/** The `format` globs `cosyte-process format` runs over, from this repo's override file. */
+const processFormatGlobs =
+  (
+    JSON.parse(readFileSync(join(REPO_ROOT, "cosyte-process.config.json"), "utf8")) as {
+      format?: { globs?: string[] };
+    }
+  ).format?.globs ?? [];
 
 /** The two functions Changesets calls on whatever `changelog` names. */
 interface ChangelogFunctions {
@@ -806,11 +813,11 @@ describe("the shape that makes generated output land correctly", () => {
       //
       // STATED HONESTLY, BECAUSE THIS IS WHERE THIS REPO DIVERGES FROM TWO OF ITS SIBLINGS:
       // that raw document is NOT what a Version PR here would carry. This repo's `version`
-      // script runs its own `prettier --write` over `CHANGELOG.md` as a later link, and the
+      // script ends with `cosyte-process format`, whose globs take in `CHANGELOG.md`, and the
       // last assertions below measure that it repairs exactly this. So the argument for
       // leaving the pass ON is not "otherwise CI reds" (that argument is FALSE here), but
       // that with it off, a canonical published changelog rests entirely on `CHANGELOG.md`
-      // staying inside that one argument list, and the archive is byte identical either way
+      // staying inside that one glob list, and the archive is byte identical either way
       // so nothing is bought in exchange.
       const off = runVersion({ changelogBody: changelog, configOverrides: { prettier: false } });
 
@@ -822,10 +829,10 @@ describe("the shape that makes generated output land correctly", () => {
       // trade one-sided: leaving the pass on costs nothing.
       expect(archivedHistory(off.changelog)).toBe(archivedHistory(changelog));
 
-      // The repair the `version` script's later `prettier --write` would perform, applied
+      // The repair the `version` script's later `cosyte-process format` would perform, applied
       // here so the qualifier above is measured and not asserted: it lands on a canonical
       // document, and it still leaves the archive untouched. The last line pins the premise
-      // the qualifier rests on: `CHANGELOG.md` being an argument of that pass at all.
+      // the qualifier rests on: `CHANGELOG.md` being inside that pass at all.
       const options = await prettier.resolveConfig(CHANGELOG_PATH);
       const repaired = await prettier.format(off.changelog, {
         ...options,
@@ -834,7 +841,8 @@ describe("the shape that makes generated output land correctly", () => {
       });
       await expect(formatCheckAccepts(repaired)).resolves.toBe(true);
       expect(archivedHistory(repaired)).toBe(archivedHistory(changelog));
-      expect(pkg.scripts?.["version"] ?? "").toContain("CHANGELOG.md");
+      expect(pkg.scripts?.["version"] ?? "").toMatch(/&&\s*cosyte-process format$/);
+      expect(processFormatGlobs).toContain("*.{json,md,yml}");
     },
   );
 

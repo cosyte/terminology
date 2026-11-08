@@ -11,8 +11,9 @@
  * `typecheck`, `format`) each delegating with a body that is exactly `cosyte-process
  * <verb>`; every RESERVED VARIANT script that is present (`test:watch`, `test:coverage`,
  * `lint:fix`, `format:check`) delegating as `cosyte-process <verb> <modifier>`, with an
- * absent one conforming; and `cosyte-process.config.json` being absent or valid. No other
- * script in `package.json` is graded, which is why this repo's `phi-scan`, `attw`,
+ * absent one conforming; `cosyte-process.config.json` being absent or valid; and (from
+ * @cosyte/process 0.1.7) a direct `vitest` being absent or exactly the version process runs.
+ * No other script in `package.json` is graded, which is why this repo's `phi-scan`, `attw`,
  * `check:no-emdash` and the rest are untouched by it.
  *
  * WHAT EACH CASE IS HERE FOR:
@@ -28,6 +29,11 @@
  *  4. THAT AN ABSENT RESERVED VARIANT IS NOT A VIOLATION, so a consumer carrying none of
  *     the four still passes. This repo carries all four, so without this case the "absent
  *     is conforming" half would be untested here.
+ *  5. THE TOOL PINS THIS REPO KEEPS DIRECTLY ARE PROCESS'S OWN. `vitest` stays a direct
+ *     devDependency because test files import it, and `prettier` because the release's
+ *     `changeset version` resolves Prettier from this repo's root. Both must be exactly the
+ *     version process runs, read from process's own manifest rather than retyped, and a
+ *     fixture whose `vitest` is a caret range must fail the gate (the negative control).
  *
  * The fixtures are throwaway directories in a temp dir, because the check reads the
  * package.json of the directory it is invoked in. Nothing here writes outside the temp dir
@@ -37,7 +43,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -76,14 +82,31 @@ function repoScripts(): Record<string, string> {
 
 let root: string;
 
-function fixture(name: string, scripts: Record<string, string>): string {
+function fixture(
+  name: string,
+  scripts: Record<string, string>,
+  devDependencies?: Record<string, string>,
+): string {
   const dir = join(root, name);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(
-    join(dir, "package.json"),
-    `${JSON.stringify({ name: `fixture-${name}`, version: "0.0.0", scripts }, null, 2)}\n`,
-  );
+  const manifest = { name: `fixture-${name}`, version: "0.0.0", scripts, devDependencies };
+  writeFileSync(join(dir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   return dir;
+}
+
+/** A dependency map read from a manifest, as text parsed here. */
+function depsOf(manifestPath: string, field: "dependencies" | "devDependencies") {
+  const raw: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
+  if (typeof raw !== "object" || raw === null) throw new Error(`${manifestPath} is not an object`);
+  const deps: unknown = (raw as Record<string, unknown>)[field];
+  if (typeof deps !== "object" || deps === null) throw new Error(`${manifestPath}: no ${field}`);
+  return deps as Record<string, string>;
+}
+
+/** The tool versions @cosyte/process pins, from its installed manifest (the real path). */
+function processTools(): Record<string, string> {
+  const dir = realpathSync(join(REPO_ROOT, "node_modules", "@cosyte", "process"));
+  return depsOf(join(dir, "package.json"), "dependencies");
 }
 
 const DELEGATED: Record<string, string> = Object.fromEntries(
@@ -125,5 +148,26 @@ describe("shared-process wiring gate", () => {
     // vacuously by grading a fixture that quietly carried them after all.
     for (const [name] of VARIANTS) expect(Object.hasOwn(DELEGATED, name)).toBe(false);
     expect(check(fixture("minimal", DELEGATED)).code).toBe(0);
+  });
+
+  it("keeps vitest and prettier direct only at exactly the versions process runs", () => {
+    const own = depsOf(join(REPO_ROOT, "package.json"), "devDependencies");
+    const tools = processTools();
+    for (const tool of ["vitest", "prettier"]) {
+      expect(tools[tool], `process pins no ${tool}`).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(own[tool], tool).toBe(tools[tool]);
+    }
+    // The rest of what process runs is never a direct devDependency here.
+    for (const tool of ["tsup", "eslint", "typescript", "@vitest/coverage-v8"]) {
+      expect(Object.hasOwn(own, tool), tool).toBe(false);
+    }
+  });
+
+  it("exits non-zero on a direct vitest that is a range rather than process's pin", () => {
+    const pinned = processTools()["vitest"] ?? "";
+    expect(check(fixture("vitest-exact", DELEGATED, { vitest: pinned })).code).toBe(0);
+    const r = check(fixture("vitest-range", DELEGATED, { vitest: `^${pinned}` }));
+    expect(r.code).not.toBe(0);
+    expect(r.out).toContain("vitest");
   });
 });
