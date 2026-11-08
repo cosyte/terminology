@@ -2118,22 +2118,20 @@ function main(): number {
   // Refuse a bypass that named a path this run does not enumerate.
   //
   // MEASURED ON THE FIRST DRAFT OF THIS SLICE, WHICH CLAIMED ON EVERY SURFACE
-  // DESCRIBING THIS FLAG THAT A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE.
-  // (The places are named in `agent-notes.md` and a tally is deliberately not
-  // written here or there: two drafts of this comment quoted one and both were
-  // wrong, which is this repository's standing rule arriving as a defect in the
-  // commentary of the slice that cites it.) It could, on the staged
-  // route: `parseArgs`'s unconditional seeding lands in `args.paths`, and
+  // DESCRIBING THIS FLAG THAT A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY
+  // MODE. (A tally is deliberately not written here: two drafts of this comment
+  // quoted one and both were wrong.) It could, on the staged route:
+  // `parseArgs`'s unconditional seeding lands in `args.paths`, and
   // `buildTargetsForStaged` never reads that field, so for any path the staged
   // PREDICATE does not enumerate the flag was still validated, still checked
   // against its committed audit entry, and then silently dropped. Three shapes
-  // printed `[phi-scan] OK: no hits` at exit 0, byte-identical to a genuine clean
-  // run: a bypass of a staged file under `test/` (which the predicate does not
-  // admit outside `test/fixtures/`), a bypass of a file that is not staged at
-  // all, and a bypass of a path that does not exist. The same argv in `paths`
-  // mode refused. A flag whose contract changes with the mode is exactly the
-  // shape the seeding fix above was written to remove, and it survived one route
-  // over.
+  // printed `[phi-scan] OK: no hits` at exit 0, byte-identical to a genuine
+  // clean run: a bypass of a staged file under `test/` (which the predicate
+  // does not admit outside `test/fixtures/`), a bypass of a file that is not
+  // staged at all, and a bypass of a path that does not exist. The same argv in
+  // `paths` mode refused. A flag whose contract changes with the mode is
+  // exactly the shape the seeding fix above was written to remove, and it
+  // survived one route over.
   //
   // THE REMEDY IS TO MAKE THE CLAIM TRUE, NOT TO WEAKEN IT TO MATCH, AND IT DOES
   // NOT WIDEN ANY PREDICATE. The staged route's target list is what its own

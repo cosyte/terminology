@@ -78,7 +78,6 @@
     "phi-scan": "tsx scripts/phi-scan.ts",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",
     "check:no-emdash": "node scripts/check-no-emdash.mjs",
-    "check:agent-notes": "cosyte-agent-notes",
     "check:catalog": "cosyte-catalog",
     "check:claude-card": "cosyte-claude-card",
     "check:readme": "cosyte-readme",

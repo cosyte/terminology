@@ -9,9 +9,9 @@ name: Release
 # secrets, not as `release` environment secrets.
 #
 # Before RELEASE_PR_TOKEN existed, the "Version Packages" PR was opened with the default
-# GITHUB_TOKEN, got zero check runs and sat blocked until someone pushed a commit to it. That
-# record is "The ruleset blocks the Version Packages PR" in documentation/agent-notes.md. Do not
-# unstick a version PR by deleting or weakening the ruleset.
+# GITHUB_TOKEN, got zero check runs and sat blocked. A version PR that still arrives with zero
+# check runs needs one commit onto `changeset-release/main` (an empty one will do), pushed last,
+# immediately before merging. Never unstick it by deleting or weakening the ruleset.
 
 on:
   push:

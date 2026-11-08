@@ -6,10 +6,9 @@
 # package description) describes what the software does and what changed. It must never
 # carry our internal bookkeeping: item identifiers (`TERM-4`), "Phase 6" / "roadmap §4.2",
 # sweep and programme names, ADR numbers, internal repo paths, or process commentary about
-# how the artifact came to exist. The rule as this repository keeps it:
-# `documentation/agent-notes.md`, "No internal project bookkeeping: the prefix-keyed gate".
-# The founder's words: "The releases should also not speak on anything regarding phases,
-# etc. That has no relevance to the user consuming it. This goes for readmes and
+# how the artifact came to exist. The rule as this repository keeps it is this header and the
+# traps below. The founder's words: "The releases should also not speak on anything regarding
+# phases, etc. That has no relevance to the user consuming it. This goes for readmes and
 # documentation as well."
 #
 # WHY THIS IS A GATE AND NOT A MEMORY NOTE. Founder, same day: "it needs to not just be
@@ -211,8 +210,7 @@
 #                          not ours to sweep, and sweeping it would be the one edit the
 #                          UCUM License forbids. NOTICE.md is carved OUT of this exclusion
 #                          and scanned (above): it is our prose and it now ships.
-#   * documentation/       the agent-facing narrative relocated out of CLAUDE.md on
-#                          2026-08-04 (`agent-notes.md`). PROSE, but internal by
+#   * documentation/       internal records (`tx-conformance.md`). PROSE, but internal by
 #                          definition and NOT named in package.json's `files`, so no
 #                          consumer receives it. It is one of the places the identifiers,
 #                          phase language and meta-repo paths stripped off the public
@@ -1146,8 +1144,7 @@ fail_with_hits() {
   echo "       When you strip an identifier off the FRONT of a line, repair the head too:" >&2
   echo "       drop a leading orphan parenthetical, strip leading punctuation, recapitalise." >&2
   echo "       Leaving the fragment behind is worse than the text it replaced." >&2
-  echo "       Rule: documentation/agent-notes.md, 'No internal project bookkeeping: the" >&2
-  echo "       prefix-keyed gate'." >&2
+  echo "       Rule: the header of scripts/check-no-internal-refs.sh." >&2
   exit 1
 }
 
