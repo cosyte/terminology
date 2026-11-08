@@ -70,9 +70,13 @@ function cannotExpand(detail: string, path?: string): ExpansionDiagnostic {
   return Object.freeze(d);
 }
 
-function truncated(detail: string, path?: string): ExpansionDiagnostic {
-  const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_EXPANSION_TRUNCATED", detail };
-  if (path !== undefined) d.path = path;
+/** The one `expansion` locus is the only place this is raised, so a path is always given. */
+function truncated(detail: string, path: string): ExpansionDiagnostic {
+  const d: Writable<ExpansionDiagnostic> = {
+    code: "TERM_VALUESET_EXPANSION_TRUNCATED",
+    detail,
+    path,
+  };
   return Object.freeze(d);
 }
 
