@@ -45,24 +45,25 @@ shared check reads every file `git ls-files` lists, resolves every pointer into 
 its headings (slugged the way GitHub slugs them), refuses an empty or blank section, a
 `documentation/agent-notes/` directory and a citation of the umbrella's deleted decision record on
 card budgets, and requires `CLAUDE.md` to write each pointer in one form: the record's full path,
-then `#`, then the anchor. The local gate (2026-08-10 to 2026-11-07) had been derived against the bare spelling this
-tree then used, and refused a tree with no bare pointer in it, so the move to the one form and the
-move to the shared checker are one change. Its design notes (the set reconciliation of the corpus,
-the encoding limit, the refusals) are in git history: `git log -- scripts/check-agent-notes.mjs`.
-`pnpm check:agent-notes` runs the shared check by hand.
+then `#`, then the anchor. The local gate (2026-08-10 to 2026-11-07) had been derived against the
+bare spelling this tree then used, and refused a tree with no bare pointer in it, so the move to the
+one form and the move to the shared checker are one change. Its design notes (the set reconciliation
+of the corpus, the encoding limit, the refusals) are in git history:
+`git log -- scripts/check-agent-notes.mjs`. `pnpm check:agent-notes` runs the shared check through
+its `cosyte-agent-notes` bin.
 
-**WHERE THE TEETH ARE, AND WHY IT IS NOT A FOURTH WORKFLOW.** The blocking path is
-`test/scripts/agent-notes.test.ts`, which runs the shared checker over this tree as a subprocess and
-proves, with a negative control, that it can fail. **A required job gates all of its steps**, so a
-check placed inside the `ci / verify` matrix blocks a merge for as long as that matrix is required,
-on the day it lands and with no ruleset change of its own. A new workflow would have been a new
-context, and a context is requireable only once its workflow has completed on `main`: that is a
-ruleset change, made somewhere nothing in this repository can observe (see "Nothing here can observe
-its own ruleset"), and until it is made the check reports and gates nothing, which is reporting
-dressed as gating. **Whether any given context is required today is deliberately not written down
-here**, for the reason the em-dash section records: a sentence about that ruleset's contents was
-false within six minutes of landing, and nothing static in this repository can observe it. The live
-answer comes from `gh api repos/cosyte/terminology/rulesets`.
+**WHERE IT RUNS, AND WHAT THAT COSTS.** Since 2026-11-07 it runs in CI's `standards` job, beside
+the README and card checks from the same package, and no longer from the suite (it ran from
+`test/scripts/agent-notes.test.ts` briefly on 2026-11-07, and from the deleted local checker's own
+test before that). That gives up the property the suite route had: **a required job gates all of its steps**, so
+a check inside the `ci / verify` matrix blocked a merge from the day it landed, with no ruleset change
+of its own. `standards` is a new context, and a new context gates nothing until a ruleset requires
+it: that is a ruleset change, made somewhere nothing in this repository can observe (see "Nothing
+here can observe its own ruleset"), and until it is made a red `standards` reports and does not
+block. **Whether any given context is required today is deliberately not written down here**, for
+the reason the em-dash section records: a sentence about that ruleset's contents was false within six
+minutes of landing, and nothing static in this repository can observe it. The live answer comes from
+`gh api repos/cosyte/terminology/rulesets`.
 
 **WHAT A GREEN RUN DOES NOT SAY.** Not that every trap in `CLAUDE.md` has a pointer: recognising "a
 trap" is a judgement about prose, and the class no mechanical check can see is the trap phrased as a
@@ -570,27 +571,21 @@ declarations in a later one, so **every** build has an interval where `dist/` ho
 and no `.d.ts`; a concurrent build or `clean` in the same working tree lands `attw` in it. So the
 answer is **not** a lock, a lease or a build queue: the gate must be able to say its own inputs
 were missing, whatever removed them.
-**▶ THE GATE IS DESCRIBED IN `scripts/attw.mjs`'s DOCBLOCK, AND ONLY THERE. DO NOT RESTATE ITS
-RULES HERE.** That file names the two nets, the argument **allow-list** (`--profile` and
-`--no-definitely-typed`; everything else refused, so no spelling has to be enumerated), the
-`.attw.json` refusal no argument guard can reach, and what the preflight deliberately does **not**
-conclude about attw's exit code. Every one of those claims is measured against this repo's pinned
-binary and pinned in `test/scripts/attw-gate.test.ts`. This paragraph used to carry its own copy
-of the rules, and the copy went stale first: it claimed refusal "by option name, wholesale" of a
-three-item list, which a fused `-fjson` walked straight past, and it called `--config-path`
-refused "by inference, not measurement" when the real-file half is measurable in one command.
-A guard described in several files at once drifts in the copies nobody is editing.
+**▶ SINCE 2026-11-07 THE GATE IS THE SHARED ONE**, `@cosyte/script-utils/attw`, which `pnpm attw`
+runs through its `cosyte-attw` bin. Its nets and the arguments it forwards are described in that
+module's docblock and the package README, and are not restated here: a guard described in several
+files at once drifts in the copies nobody is editing. This repository's own wrapper
+(`scripts/attw.mjs`) and its suite (`test/scripts/attw-gate.test.ts`) are gone, and their history is
+in git (`git log -- scripts/attw.mjs`). The local wrapper graded attw's default profile, and so does
+the shared gate with no `scripts/attw.exclude`. Before the wrapper was deleted, the shared gate was
+run on this tree three ways: a full build passed, and both shapes of the failure above, `rm -f
+dist/index.d.*ts` and `rm -rf dist`, exited 1.
 **What belongs here and nowhere else:** do not cite `0.0.1`'s missing `vendor/ucum/NOTICE.md` as
 an instance of the post-check's case, which a draft of this entry did: `attw` analyses types, so
-it never saw that file and neither net would catch it.
-**This is a per-repo script and every sibling now carries its own copy**, ported from this one
-during the 2026-08-03 drain, so a fix here is not a fix there. `config/scripts/parser-template/`
-has a copy too, and `scaffold-parser.mjs` mints new repos from it, so a defect left in the
-template is re-minted into every future parser. **Do not write the repo count down here**; a draft
-said "fourteen" and was wrong twice over (`config`'s own script only delegates, and several of the
-manifests are nested: a template, a starter kit, and `@cosyte/test-utils`). Derive it:
-`find . -name package.json -not -path '*/node_modules/*' | xargs grep -l '"attw":'` from the umbrella
-checkout's root.
+it never saw that file and no net would catch it.
+**A fix to the gate is one change in cosyte/config and a version bump here**, not a port: the
+per-repo copies that the 2026-08-03 drain spread across the siblings, and the template's, are what
+the shared gate replaced.
 
 ## No internal project bookkeeping: the prefix-keyed gate
 
