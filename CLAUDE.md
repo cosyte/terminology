@@ -10,13 +10,14 @@ RxNorm queries, over data the caller supplies. It ships no code-system release.
 
 Required: `ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)`, `ci / actionlint`,
 `codeql / analyze (javascript-typescript)`, `no-internal-refs / public-surface`, and
-`no-emdash / tracked-files`. CI also runs Node 26, `examples`, `pr-title`, and the dash check on PR
-text, and `pnpm test` runs the agent-notes check. In CI's order:
+`no-emdash / tracked-files`. CI also runs Node 26, `examples`, `standards`, `pr-title`, and the dash
+check on PR text. In CI's order:
 
 ```sh
 pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm format:check
 pnpm phi-scan && pnpm test && pnpm test:coverage && pnpm build && pnpm attw
 pnpm examples && pnpm phi-scan examples/README.md examples/*.ts
+pnpm check:readme && pnpm check:claude-card && pnpm check:agent-notes
 pnpm check:no-emdash && pnpm check:no-internal-refs
 ```
 
@@ -45,13 +46,12 @@ since callers pass in values from their own data, none of them may reach a diagn
   documentation/agent-notes.md#the-rxnorm-edge-direction-convention-and-the-authored-topology
 - Type an RxNorm concept only by a defining atom (370659 once loaded as TMSY); check pairings on
   RxNav, never as a closed set: documentation/agent-notes.md#a-concept-is-typed-by-a-defining-atom
-- `pnpm attw` runs scripts/attw.mjs, never bare attw, which exits 0 on a tarball with no types.
+- `pnpm attw` runs cosyte-attw, never the bare attw CLI, which exits 0 on a tarball with no types.
   documentation/agent-notes.md#the-attw-gate
 - scripts/phi-scan.ts keeps its --staged argv whole (no -M, -C, -B, --find-copies-harder) and every
-  completeness refusal at exit 2: each let a value pass unread under "OK: no hits".
+  completeness refusal at exit 2: each let a value pass unread under "OK: no hits". A test's git
+  repo sets user.email, user.name, and maintenance.auto=false, and never merges (#85).
   documentation/agent-notes.md#the-phi-scan-staged-route-states-its-own-enumeration
-- A test's throwaway git repo passes -c user.email and -c user.name, never runs git merge, and sets
-  maintenance.auto=false: a runner has no committer identity, and the writer flaked Node 24 (#85).
 - Never key the internal-refs gate on WORD-N or add CM, KG, or ICD as a prefix: CM-1 is a unit.
   documentation/agent-notes.md#no-internal-project-bookkeeping-the-prefix-keyed-gate
 - Never answer a no-emdash red with an exclusion; count dashes, NUL bytes, and build figures in

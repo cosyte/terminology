@@ -42,8 +42,9 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * budget next to the work, where the number can be justified by what that test does.
  *
  * Every test whose cost is not fixed now declares its own budget: the cases in
- * `test/scripts/attw-gate.test.ts` that run a real `npm pack` through `attw` have carried an explicit
- * 60 s one all along, and three groups were added on 2026-08-03: the pair of 200,000-row bulk cases
+ * `test/scripts/attw-gate.test.ts` that ran a real `npm pack` through `attw` carried an explicit 60 s
+ * one until that file left with the repo-local attw gate on 2026-11-07, and three groups were added
+ * on 2026-08-03: the pair of 200,000-row bulk cases
  * in `test/rxnorm/term-types.test.ts`, the single case in `test/scripts/phi-scan.test.ts` that
  * deliberately pays a `tsx` cold start to pin the real `pnpm phi-scan` entry point, and **all of
  * `test/property/**`**, whose runtime varies with the fast-check draw as well as with the box (this
@@ -70,9 +71,9 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * a 5 s ceiling over a ~117 ms `node` spawn (~33x). Halving the ceiling still bought headroom,
  * because the trim shrank the thing being measured faster than the ceiling shrank.
  *
- * **Measure before bounding, in both directions.** The argument-refusal cases in `attw-gate` look
- * like they belong with the slow ones and do not: the wrapper rejects the flag before it ever invokes
- * `attw`, so they run no `npm pack` and finish in ~200 ms. And the case that actually came closest to
+ * **Measure before bounding, in both directions.** The argument-refusal cases in `attw-gate` looked
+ * like they belonged with the slow ones and did not: the wrapper rejected the flag before it ever
+ * invoked `attw`, so they ran no `npm pack` and finished in ~200 ms. And the case that actually came closest to
  * the removed ceiling (9,318 ms against 10,000 ms under load, on correct code) was an `attw` case
  * that already had its own 60 s budget, so the global was never what stood between it and a false red.
  *
