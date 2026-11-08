@@ -53,3 +53,7 @@ since callers pass in values from their own data, none of them may reach a diagn
   python3 or od, not grep, which skips binary files.
 - A change under src/ adds a changeset (`pnpm changeset`); its summary becomes CHANGELOG.md, which
   is never hand-edited (#48).
+- Dependabot never edits `pnpm.overrides`: when a bump makes an override redundant, delete it by
+  hand, or the stale pin stays and can force its version on a later install (#7, #104).
+- Fork PR CI is unproven: none has run here, and a first-time contributor's workflows wait for a
+  maintainer's approval. Tell no contributor a fork PR is fine until someone has watched one pass.
