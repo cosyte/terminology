@@ -2360,16 +2360,16 @@ describe("phi-scan: a run must read EVERY target it enumerated, not just one of 
 
 describe("phi-scan: a bypass that matches no target refuses instead of being ignored", () => {
   // THE FIRST DRAFT OF THE PER-TARGET TIER CLAIMED, ON EVERY SURFACE THAT
-  // DESCRIBES THIS FLAG (the places are named in `documentation/agent-notes.md`,
-  // and no tally is written: two drafts quoted one and both were wrong), THAT A
-  // BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. IT COULD. `parseArgs`
-  // seeds `args.paths`, and `buildTargetsForStaged` never reads that field, so
-  // on the staged route a bypass naming anything the pre-commit PREDICATE does
-  // not enumerate was still validated, still checked against its committed
-  // audit entry, and then silently dropped: `[phi-scan] OK: no hits` at exit 0,
-  // byte-identical to a genuine clean run. The remedy makes the claim true
-  // rather than weakening it, and it widens no predicate: what a commit is
-  // SCANNED for is unchanged, and an ordinary commit carries no such flag.
+  // DESCRIBES THIS FLAG (no tally is written: two drafts quoted one and both
+  // were wrong), THAT A BYPASS COULD NO LONGER REACH EXIT 0 IN ANY MODE. IT
+  // COULD. `parseArgs` seeds `args.paths`, and `buildTargetsForStaged` never
+  // reads that field, so on the staged route a bypass naming anything the
+  // pre-commit PREDICATE does not enumerate was still validated, still checked
+  // against its committed audit entry, and then silently dropped: `[phi-scan]
+  // OK: no hits` at exit 0, byte-identical to a genuine clean run. The remedy
+  // makes the claim true rather than weakening it, and it widens no predicate:
+  // what a commit is SCANNED for is unchanged, and an ordinary commit carries
+  // no such flag.
 
   it("STAGED: a bypass of a staged path the predicate does not enumerate refuses (exit 2)", () => {
     // `test/leak.ts` is staged and is under a scan root, but `--staged` admits

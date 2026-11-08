@@ -5,9 +5,8 @@ name: Public-surface gate
 # (`roadmap §4.1`), ADR numbers, meta-repo paths and process commentary belong in the
 # changeset, CHANGELOG.md, the commit, the PR and the roadmap, never in README.md,
 # docs-content/, the npm description, a JSDoc block a consumer's editor renders, or a
-# diagnostic message a consumer reads in their logs. The rule is written out in this
-# repository's `documentation/agent-notes.md` ("No internal project bookkeeping: the
-# prefix-keyed gate"); `scripts/check-no-internal-refs.sh` is what enforces it.
+# diagnostic message a consumer reads in their logs. `scripts/check-no-internal-refs.sh`
+# enforces it and writes the rule out in full in its header.
 #
 # WHY A GATE AND NOT A NOTE. The founder, on the sweep that removed 149 of these across the
 # ecosystem: "it needs to not just be a memory note, but something that is addressed in the

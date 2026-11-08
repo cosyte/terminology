@@ -34,7 +34,6 @@ pnpm examples
 pnpm phi-scan examples/README.md examples/*.ts
 pnpm check:readme
 pnpm check:claude-card
-pnpm check:agent-notes
 pnpm check:catalog
 pnpm check:no-emdash
 pnpm check:no-internal-refs

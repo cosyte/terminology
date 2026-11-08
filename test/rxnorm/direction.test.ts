@@ -13,7 +13,8 @@
  * the convention turns it red**, in both directions: the authored traversal must produce the target,
  * and the unauthored reverse traversal must produce an honest empty result rather than the target.
  * Each relation family is pinned twice (forward and reverse) so a global flip cannot trade one green
- * assertion for another.
+ * assertion for another. The property suite cannot stand in for this file: it checks navigation
+ * against the loaded graph's own edges, which stay self-consistent when the load flips.
  *
  * The **topology** of the synthetic release below is the topology RxNorm actually authors, not a
  * convenient sketch of it. In particular `has_ingredient` runs `SCDC ⟶ IN` and `SBD ⟶ BN`; RxNorm

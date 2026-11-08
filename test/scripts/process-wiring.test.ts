@@ -5,9 +5,7 @@
  * check is invocable as `pnpm check:process`, but a check that lives only in its own
  * workflow is a check whose context is in no ruleset, which reports and blocks nothing.
  * Running it from the suite puts it inside `ci / verify`, which the `ci-required-checks`
- * ruleset requires, so wiring drift fails the build rather than being noticed later. (The
- * agent-notes check ran from the suite for the same reason until 2026-11-07; it now runs with
- * the other house checks from `@cosyte/script-utils` in CI's `standards` job.)
+ * ruleset requires, so wiring drift fails the build rather than being noticed later.
  *
  * WHAT THE CHECK GRADES, and nothing else: the five verb scripts (`build`, `test`, `lint`,
  * `typecheck`, `format`) each delegating with a body that is exactly `cosyte-process
