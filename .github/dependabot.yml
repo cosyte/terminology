@@ -44,6 +44,13 @@ updates:
       # on the 22 line. A newer major type-checks calls that Node 22 does not have.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # @cosyte/process owns the tool versions. vitest stays a direct devDependency only because
+      # test files import it (typecheck needs its types), and prettier only because the release's
+      # `changeset version` resolves Prettier from this repo's root; both are pinned to exactly the
+      # versions process runs, and `cosyte-process check` and test/scripts/process-wiring.test.ts
+      # fail on a mismatch. They move when process does, never on their own.
+      - dependency-name: "vitest"
+      - dependency-name: "prettier"
 
   # GitHub Actions: the actions this repository pins by SHA in its own jobs (the `examples` job in
   # ci.yml). The shared workflows are called at one published `workflows-*` reference, which a
