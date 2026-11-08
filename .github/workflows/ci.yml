@@ -25,9 +25,9 @@ jobs:
   #     ci / actionlint
   # The `ci /` prefix is the caller job id below; `verify` / `actionlint` are the job ids in the
   # shared pipeline; the matrix suffix is `node` then `os`. Rename the job below, change the Node
-  # matrix, or rename a job upstream in cosyte/.github, and the required contexts stop being emitted
-  # -- which does not fail a PR, it leaves it PENDING and unmergeable forever. Update the ruleset in
-  # the same change.
+  # matrix, or rename a job upstream in cosyte/.github, and the required contexts stop being emitted:
+  # that does not fail a PR, it leaves it PENDING and unmergeable forever. Update the ruleset in the
+  # same change.
   #
   # ▶ AND: a required JOB gates all of its STEPS. `verify` runs typecheck, lint, format:check, the
   # PHI scan, tests, the gating coverage run, build, attw and the dual ESM/CJS smoke as steps inside
@@ -43,14 +43,21 @@ jobs:
   # at a terminal; CI needs no separate step for it.
   #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
-  # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an
-  # examples smoke, a starter-kit build) are added on top of this caller, never instead of it.
+  # dual ESM/CJS smoke, actionlint) on the shared default Node matrix, 22, 24, and 26: we claim only
+  # the Node lines CI runs. Repo-specific extra jobs (an examples smoke, for one) are added on top of
+  # this caller, never instead of it.
+  #
+  # Every shared workflow in this repository is called at one published reference,
+  # `workflows-2026-11-07-498c7c13c886`, by name. It names one commit of cosyte/.github and never
+  # another (its release there is immutable), so nothing upstream reaches this pipeline until a
+  # change here moves every caller to a newer reference together. Its release notes say what a
+  # caller adopting it must act on: https://github.com/cosyte/.github/releases
   # The template ships a PHI scanner (scripts/phi-scan.ts), so the shared pipeline's optional
   # PHI-scan step is switched on. NOTE: the scaffolded scanner is a STARTER, and it detects only
   # cross-cutting SSN/email shapes until you add structured, field-level detection for this
   # standard's PHI (see the STARTER banner in scripts/phi-scan.ts).
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@main
+    uses: cosyte/.github/.github/workflows/ci.yml@workflows-2026-11-07-498c7c13c886
     with:
       run-phi-scan: true
 

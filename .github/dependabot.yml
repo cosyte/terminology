@@ -1,27 +1,29 @@
 version: 2
 
-# Nothing watched this repo's dependencies until CONSUMER-TIER-CI-BASELINE / DEPENDABOT-PR-QUEUE.
-# `@cosyte/terminology` is PUBLIC and PUBLISHED on npm (0.0.1), so "zero open Dependabot PRs"
-# here meant "nothing is looking", not "nothing is stale".
+# `@cosyte/terminology` is public and published on npm, so a quiet Dependabot queue here has to
+# mean "nothing is stale", never "nothing is looking".
 #
-# Two ecosystems, because the repo has exactly two dependency surfaces. Swept, not assumed:
+# Two ecosystems, because the repo has exactly two dependency surfaces:
 #   npm             package.json + pnpm-lock.yaml at the root, the ONLY manifest in the repo
 #   github-actions  .github/workflows/*.yml
 # There is no third. No Dockerfile, no Terraform, no submodules of its own, no pnpm workspace,
 # no second package.json, no Python/Go/Rust manifest. The only other tracked non-source trees
-# are `vendor/ucum/` (verbatim UCUM release data, not a package) and `scripts/` (repo-local
-# TypeScript + shell, no manifest of their own).
+# are `vendor/` (verbatim UCUM release data and the terminology ecosystem snapshot, not
+# packages) and `scripts/` (repo-local TypeScript and shell, no manifest of their own).
+#
+# Every update proposes a Conventional Commits title, `chore(deps): ...` or
+# `chore(deps-dev): ...`, because the squash merge makes the pull request title the commit that
+# lands, and the PR title check requires the form.
 
 updates:
-  # npm. This package ships ZERO runtime dependencies by design -- `dependencies` is `{}` and
-  # stays that way (the zero-dep rule). So everything Dependabot can see here is a
-  # devDependency, and one group is the whole tree. The `npm` ecosystem covers pnpm:
-  # Dependabot infers the package manager from the lockfile, which is `pnpm-lock.yaml`.
+  # npm. This package ships ZERO runtime dependencies by design: `dependencies` is `{}` and stays
+  # that way. So everything Dependabot can see here is a devDependency, and one group is the whole
+  # tree. The `npm` ecosystem covers pnpm: Dependabot infers the package manager from the
+  # lockfile, which is `pnpm-lock.yaml`.
   #
   # NOTE: package.json carries `pnpm.overrides` pinning esbuild and js-yaml above advisory
-  # ranges (SCAFFOLD-OVERRIDES-DRIFT). Dependabot does not manage those overrides -- if it
-  # proposes a bump that makes one redundant, the override is removed by hand, not silently
-  # left to pin a version backwards.
+  # ranges. Dependabot does not manage those overrides: if it proposes a bump that makes one
+  # redundant, the override is removed by hand, not silently left to pin a version backwards.
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -34,16 +36,23 @@ updates:
     # minimumReleaseAge holds every install to. Security updates are not delayed.
     cooldown:
       default-days: 1
+    commit-message:
+      prefix: chore
+      include: scope
 
-  # Keep GitHub Actions references current. Stated honestly: all four workflows in this repo
-  # are today THIN CALLERS of `cosyte/.github/.github/workflows/*.yml@main`, and `@main` is a
-  # branch ref, so Dependabot has nothing to bump in them right now -- the pinned action SHAs
-  # live upstream in `cosyte/.github`, which has its own config. This entry is here so that the
-  # first repo-local job with a pinned `uses:` (the shape `hl7` already has) is watched from the
-  # moment it lands, rather than being remembered about later.
+  # GitHub Actions: the actions this repository pins by SHA in its own jobs (the `examples` job in
+  # ci.yml). The shared workflows are called at one published `workflows-*` reference, which a
+  # change here moves for every caller at once.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
     cooldown:
       default-days: 1
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      # From v1.75.0 this action installs actionlint by piping a script from a fork to bash. The
+      # shared CI runs the official rhysd/actionlint release, checked by its SHA-256, instead.
+      - dependency-name: "reviewdog/action-actionlint"

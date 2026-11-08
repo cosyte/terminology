@@ -14,10 +14,10 @@ name: Em-dash gate
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml. Same two reasons this repo's
 # `no-internal-refs.yml` gives, and the second is the deciding one here:
 #
-#   The shared ci pipeline is not an option. This repo's `ci` job calls
-#   cosyte/.github/.github/workflows/ci.yml@main, which runs a FIXED ladder (typecheck,
-#   lint, format:check, phi-scan, test, coverage, build, attw, dual ESM/CJS smoke) and no
-#   arbitrary repo script. It does NOT run `pnpm check:no-emdash`.
+#   The shared ci pipeline is not an option. This repo's `ci` job calls the shared
+#   cosyte/.github ci.yml, which runs a FIXED ladder (typecheck, lint, format:check,
+#   phi-scan, test, coverage, build, attw, dual ESM/CJS smoke) and no arbitrary repo
+#   script. It does NOT run `pnpm check:no-emdash`.
 #
 #   The shared GATE workflow this file now calls is a different thing from that pipeline:
 #   it carries no pattern, no allow-list and no file selection of its own. It prepares the
@@ -27,7 +27,8 @@ name: Em-dash gate
 #   The trigger differs. The messages job below needs the `edited` activity type, which is
 #   not a default: without it, a title or body edited after the last push is never
 #   re-checked, and this repo squash-merges, so the PR title and body ARE the commit
-#   message that lands on `main`. But ci.yml's triggers drive the full Node 22 + 24 matrix.
+#   message that lands on `main`. But ci.yml's triggers drive the full Node 22, 24, and 26
+#   matrix.
 #   Re-running all of that every time someone fixes a typo in a PR description is a large
 #   cost for no extra safety.
 #
@@ -99,12 +100,12 @@ concurrency:
 jobs:
   # The check-run context prefix. See the note above before touching this id.
   no-emdash:
-    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
-    # or deleted by anyone who gains write access to the workflow's repository, so a
-    # tag is not an immutable reference and is not a pin. The trailing comment is the
-    # published reference that commit was released as, so the release note stays
-    # findable from here.
-    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    # Called at the published reference, by name, as every shared workflow in this
+    # repository is. The name is a function of the one commit it carries, cosyte/.github
+    # never moves or reuses one, and its release there is immutable, so this line delivers
+    # nothing new until it is edited here. The release notes say what adopting a newer
+    # reference asks of a caller: https://github.com/cosyte/.github/releases
+    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@workflows-2026-11-07-498c7c13c886
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:

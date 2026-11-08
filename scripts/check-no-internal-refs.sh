@@ -6,8 +6,8 @@
 # package description) describes what the software does and what changed. It must never
 # carry our internal bookkeeping: item identifiers (`TERM-4`), "Phase 6" / "roadmap §4.2",
 # sweep and programme names, ADR numbers, internal repo paths, or process commentary about
-# how the artifact came to exist. Source of truth: the meta-repo's
-# `documentation/conventions.md`, "No internal project bookkeeping on a public surface".
+# how the artifact came to exist. The rule as this repository keeps it:
+# `documentation/agent-notes.md`, "No internal project bookkeeping: the prefix-keyed gate".
 # The founder's words: "The releases should also not speak on anything regarding phases,
 # etc. That has no relevance to the user consuming it. This goes for readmes and
 # documentation as well."
@@ -1146,8 +1146,8 @@ fail_with_hits() {
   echo "       When you strip an identifier off the FRONT of a line, repair the head too:" >&2
   echo "       drop a leading orphan parenthetical, strip leading punctuation, recapitalise." >&2
   echo "       Leaving the fragment behind is worse than the text it replaced." >&2
-  echo "       Rule: documentation/conventions.md, 'No internal project bookkeeping on a" >&2
-  echo "       public surface'." >&2
+  echo "       Rule: documentation/agent-notes.md, 'No internal project bookkeeping: the" >&2
+  echo "       prefix-keyed gate'." >&2
   exit 1
 }
 
