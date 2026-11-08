@@ -101,3 +101,4 @@ jobs:
       - run: pnpm check:readme
       - run: pnpm check:claude-card
       - run: pnpm check:agent-notes
+      - run: pnpm check:catalog

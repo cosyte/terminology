@@ -17,7 +17,7 @@ check on PR text. In CI's order:
 pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm format:check
 pnpm phi-scan && pnpm test && pnpm test:coverage && pnpm build && pnpm attw
 pnpm examples && pnpm phi-scan examples/README.md examples/*.ts
-pnpm check:readme && pnpm check:claude-card && pnpm check:agent-notes
+pnpm check:readme && pnpm check:claude-card && pnpm check:agent-notes && pnpm check:catalog
 pnpm check:no-emdash && pnpm check:no-internal-refs
 ```
 
