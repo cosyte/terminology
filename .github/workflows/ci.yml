@@ -48,7 +48,7 @@ jobs:
   # this caller, never instead of it.
   #
   # Every shared workflow in this repository is called at one published reference,
-  # `workflows-2026-11-07-498c7c13c886`, by name. It names one commit of cosyte/.github and never
+  # `workflows-2026-11-08-c0db8d8e5927`, by name. It names one commit of cosyte/.github and never
   # another (its release there is immutable), so nothing upstream reaches this pipeline until a
   # change here moves every caller to a newer reference together. Its release notes say what a
   # caller adopting it must act on: https://github.com/cosyte/.github/releases
@@ -56,7 +56,7 @@ jobs:
   # `cosyte-phi-scan` from @cosyte/script-utils (ST34): the cross-cutting SSN and email floor over
   # the whole repository, with scripts/phi-allow-list.txt and scripts/phi-scan.exclude.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
+    uses: cosyte/.github/.github/workflows/ci.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
     with:
       run-phi-scan: true
 
