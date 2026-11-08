@@ -1,28 +1,23 @@
 # scripts/phi-allow-list.txt
 #
 # PHI-scan allow-list: the positive declaration that a fixture's identifiers
-# are synthetic. `scripts/phi-scan.ts` reads this file; any realistic-PHI-shaped
-# token NOT covered here is a hit. Byte-strict wire formats cannot carry an
-# inline `# synthetic: true` header (the header segment must be the first bytes),
-# so this allow-list is the synthetic-fixture declaration mechanism: the same
-# approach every sibling `@cosyte/*` parser uses.
+# are synthetic. The shared PHI scan (`pnpm phi-scan`, `cosyte-phi-scan` from
+# @cosyte/script-utils) reads this file; any realistic-PHI-shaped token NOT
+# covered here is a hit.
 #
 # Format: `<TAG> <value>` per line. `#` comments and blank lines are ignored.
 #   NAME <token>          synthetic person-name word, matched case-insensitively
-#   DOB <value>           synthetic date of birth (normalize as your detector does)
+#   DOB <value>           synthetic date of birth
 #   ID <value>            synthetic id matching an SSN / MRN / member-id shape
-#   EMAILDOMAIN <domain>  reserved / test email domain that is allowed to appear
+#   EMAILDOMAIN <domain>  email domain that is allowed to appear
 #
-# NOTE: the floor is SSN + email shapes, and it consumes EMAILDOMAIN and ID.
+# The shared scan carries the cross-cutting floor (SSN and email shapes, raw and
+# in an escape-decoded view of source literals), and it consumes EMAILDOMAIN and ID.
 #   EMAILDOMAIN is GLOBAL: it switches the email detector off for that domain
-#   across the whole corpus, so prefer a per-file bypass over widening it.
-#   ID is a WHOLE-VALUE match on the dashed-SSN check, never a pattern. It is
-#   also the remedy for a false positive from the escape-decoded source-literal
-#   view (see decodeSourceLiterals in scripts/phi-scan.ts), which is the reason
-#   it is wired up at all.
-# NAME / DOB are still loaded and unused: they are ready for the structured,
-# field-level detectors you MUST add to scripts/phi-scan.ts before relying on
-# this as a real PHI gate: see the STARTER banner in that file.
+#   across the whole repository.
+#   ID is a WHOLE-VALUE match on the dashed-SSN check, never a pattern.
+# NAME and DOB are read by field-level detectors, and this repository has none:
+# its data is code systems, not patient records.
 #
 # To add a new synthetic fixture: reuse the tokens below, or append new ones here
 # and commit. Adding a token is a reviewed, intentional act: never silent.
@@ -33,12 +28,5 @@ EMAILDOMAIN example.org
 EMAILDOMAIN example.net
 EMAILDOMAIN example.test
 
-# --- Synthetic person-name tokens (example: extend for your fixtures) ---
-# NAME DOE
-# NAME JOHN
-
-# --- Synthetic dates of birth (example: normalize to your detector's format) ---
-# DOB 19800115
-
-# --- Synthetic ids: SSN / MRN / member-id shapes (example) ---
-# ID MRN12345
+# --- Our own domain: the author address in package.json ---
+EMAILDOMAIN cosyte.com

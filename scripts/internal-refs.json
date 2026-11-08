@@ -1,0 +1,163 @@
+{
+  "$comment": "The public-surface gate's axes for @cosyte/terminology, read by `cosyte-internal-refs` (pnpm check:no-internal-refs), the shared gate in @cosyte/script-utils. This file adds detection and never subtracts. The two extra rules carry this repository's former phase and slice rules as they were, so the shared gate reads at least what the former scripts/check-no-internal-refs.sh read: its `roadmap §4.1` citations, and the phase and slice phrasings the shared rules now let through.",
+  "$prefixes": "Keyed on our own programme prefixes, never on a WORD-N shape: this package's subject matter is hyphenated code-system tokens (ICD-10-CM, RFC-4180) and UCUM units with negative exponents (CM-1, OHM-1, KG-1.S-2). CM, KG, ICD and OHM must never become prefixes.",
+  "projectPrefixes": [
+    "PARSERS-PUBLIC",
+    "DOCS-CONTENT",
+    "KNOWLEDGEBASE",
+    "TERMINOLOGY",
+    "PATHWAYS",
+    "TRANSFORM",
+    "WEBSITE",
+    "STAGING",
+    "SUPPLY",
+    "NCPDP",
+    "ASSETS",
+    "EMDASH",
+    "README",
+    "CONFIG",
+    "DICOM",
+    "SYNTH",
+    "DEID",
+    "CCDA",
+    "ASTM",
+    "MLLP",
+    "FHIR",
+    "CREW",
+    "DOCS",
+    "PERF",
+    "SYNC",
+    "VERSION",
+    "PUBLIC",
+    "HL7",
+    "X12",
+    "IAC",
+    "CLI",
+    "KB",
+    "PW",
+    "PUB",
+    "CI",
+    "REAL",
+    "TERM",
+    "WF",
+    "VERIFY"
+  ],
+  "standardsDesignations": [
+    "NCPDP-(?:SCRIPT|TELECOM|D\\.\\d|F\\d)",
+    "HL7-(?:V2|V3|CDA|FHIR|OMG)",
+    "FHIR-R\\d[A-Z]?",
+    "DICOM-(?:SR|RT|SEG|DIR|PS\\d)",
+    "X12-\\d{3}[A-Z]?",
+    "X12-\\d{6}",
+    "CCDA-R\\d(?:\\.\\d)?",
+    "ASTM-E\\d+"
+  ],
+  "$surface": "What a consumer reads: README.md, LICENSE, docs-content/ (docs.cosyte.com), and vendor/ucum/NOTICE.md, our prose that ships in the tarball. The rest of vendor/ is UCUM's verbatim text. CHANGELOG.md is where identifiers belong, and dist/ is built from src/, whose doc comments and string literals are scanned below.",
+  "surfacePaths": [
+    "README.md",
+    "LICENSE",
+    "docs-content",
+    "vendor/ucum/NOTICE.md"
+  ],
+  "accountedTarballFiles": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "sourceDocComments": {
+    "enabled": true,
+    "paths": [
+      "src/*.ts",
+      "src/**/*.ts"
+    ]
+  },
+  "sourceStringLiterals": {
+    "enabled": true,
+    "paths": [
+      "src/*.ts",
+      "src/**/*.ts"
+    ]
+  },
+  "extraRules": [
+    {
+      "id": "terminology-phase-and-roadmap-section",
+      "name": "phase, wave or roadmap-section language",
+      "pattern": {
+        "source": "\\b(?:roadmap[ ]?§?[ ]?phases?\\b[ ]?[A-Za-z0-9]*|roadmap[ ]?§[ ]?\\d|(?<!study )(?<!clinical )(?<!trial )(?<!acute )(?<!chronic )(?<!luteal )(?<!follicular )(?<!liquid )(?<!gas )phases?[ -](?!of\\b|with\\b|in\\b|out\\b|the\\b|and\\b|is\\b|for\\b|to\\b|(?:I{1,3}|IV)\\s+(?:trial|stud|clinical|oncolog))[A-Za-z0-9]+[a-z]?\\b|wave \\d+\\b|the \\w+ and final phase\\b|documentation residual\\b|(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|twenty-first|twenty-second|twenty-third|twenty-fourth|\\d+(?:st|nd|rd|th)) (?:slice|wave)\\b)",
+        "flags": "i"
+      },
+      "positives": [
+        "Phase 5b closes it (Phase W, Phase-5 and the thirteenth slice landed earlier, in wave 2), and later phases follow, per the map (roadmap §4.1) and (roadmap §Phase 7)",
+        "Grounded on the map (roadmap §4.1)",
+        "Added in Phase 6 and reworked in phase 7b",
+        "The connect-phase socket, and the phase was named"
+      ],
+      "negatives": [
+        "A Phase III oncology trial and a Phase II study; the clinical phases of a treatment programme; the acute phase reactant, a LOINC analyte class; luteal phase and follicular phase, both SNOMED CT findings; the liquid phase of a specimen; the reader stays in phase with the release and is out of phase",
+        "Grounded firsthand on the NLM RxNorm Technical Documentation (§12.7) and the UMLS Reference Manual, and on the map (§10 #4)",
+        "No RxNorm content is bundled; supply a release. A Phase III trial and the acute phase reactant are the reader vocabulary, and the loader stays in phase with the release."
+      ]
+    },
+    {
+      "id": "terminology-slice",
+      "name": "internal jargon (\"slice\")",
+      "pattern": {
+        "source": "\\b(?:this|that|another|previous|next|final|current)\\s+(?:(?!(?:of|in|on|between|per|for|to|with|at)\\s)[\\w-]+\\s+){0,2}slices?\\b(?!\\s+(?:thickness|location|spacing|position|interval|order|number|index|gap|count|data|pixel|orientation|plane|direction|width|vector|sensitivity|progression|factor))",
+        "flags": "i"
+      },
+      "positives": [
+        "This slice adds the GEM flag decoder and the final slice removes it",
+        "Added by the final slice of the engine",
+        "this slice in the volume"
+      ],
+      "negatives": [
+        "The consumer supplies the field slices, and the slice holding the concept code may be empty when the slice is entirely past the line end; code.slice(0, 3) and line.slice(start, end) are TypeScript; the slice thickness and the number of slices are DICOM attributes; and the phase of the clinical study and the phase of illness are the reader words this rule must not touch",
+        "The consumer supplies the field slices; the slice holding the concept code is trimmed, and the reader takes the slices as a parameter. A line too short to contain the code slice is skipped, and the text is empty when the slice is entirely past the line end."
+      ]
+    }
+  ],
+  "extraSamples": {
+    "internal-identifier": {
+      "positives": [
+        "Item TERMINOLOGY-6 is done, and TERM-4 and DEID-8 with it",
+        "TERMINOLOGY-6 shipped this graph loader"
+      ],
+      "negatives": [
+        "Code systems ICD-9, ICD-9-CM, ICD-10, ICD-10-CM and ICD-10-PCS; the CSV reader is RFC-4180; UCUM expressions OHM-1, CM-1, KG-1.S-2 and 10*-3; the GEM directions 9-to-10 and 10-to-9; SNOMED CT, LOINC, RxNorm and UMLS; RxNorm term types SCD, SBD, SCDC, SCDF, SCDFP, SBDFP, SCDGP, PIN, BPCK and DF; RELA names has_ingredient, has_boss and consists_of; standards designations HL7-V2, FHIR-R4, DICOM-SR, NCPDP-SCRIPT, X12-837P, CCDA-R2.1 and ASTM-E1394; FHIR-shaped resources, SNOMED-defined hierarchies and docs-content/ layout",
+        "TERM_CODESYSTEM_MALFORMED and TERM_VALUESET_CANNOT_EXPAND and TERM_CROSSWALK_CONTEXT_REQUIRED and TERM_RXNORM_UNTYPED_CONCEPT and TERM_MAP_NOT_INVERTIBLE, ICD-10-CM and ICD-9-CM and ICD-10-PCS, RFC-4180, OHM-1 and CM-1 and KG-1.S-2, SCD and SBD and SCDC and SCDFP and BPCK and PIN, has_ingredient and has_boss and consists_of, http://hl7.org/fhir/sid/icd-10-cm and http://snomed.info/sct and http://unitsofmeasure.org, ./rela.js and ../codesystem/rrf.js"
+      ]
+    },
+    "adr-reference": {
+      "positives": [
+        "Decided in ADR 0018, restated in ADR-0021, and recorded in docs/adr/0001-x.md",
+        "Ratified in docs/adr/0001-identity-resolver.md",
+        "Behaviour fixed by ADR 0018"
+      ],
+      "negatives": [
+        "ADR is not a term type, and 0018 alone is a code"
+      ]
+    },
+    "internal-repo-path": {
+      "positives": [
+        "Roadmap operations/roadmaps/terminology.md and documentation/decisions/0015-x.md",
+        "See operations/roadmaps/terminology.md"
+      ],
+      "negatives": [
+        "Terminology operations are documented in the README, and documentation for the API is generated"
+      ]
+    },
+    "traceability-marker": {
+      "positives": [
+        "Repeating [S-TERM], and Open-question #12 resolves the edge direction",
+        "Traced as [S-TERM]"
+      ],
+      "negatives": [
+        "A character range like [S-Z], a value set written [SNOMED], an RXCUI written #2647752, and open questions about the release"
+      ]
+    },
+    "internal-jargon": {
+      "negatives": [
+        "The consumer supplies the field slices; the slice holding the concept code is trimmed, and the reader takes the slices as a parameter. A line too short to contain the code slice is skipped, and the text is empty when the slice is entirely past the line end."
+      ]
+    }
+  }
+}

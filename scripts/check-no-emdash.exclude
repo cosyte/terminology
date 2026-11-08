@@ -1,0 +1,10 @@
+# What the shared em and en dash gate (@cosyte/script-utils, `cosyte-no-emdash`, ST34) leaves out of
+# this repository. One entry per line, anchored at the repository root; an entry that matches no
+# tracked path is refused.
+#
+# THE CHANGELOG ARCHIVE, AND ONLY THE ARCHIVE. Everything above "Released before this file was
+# generated" is written by the release from a changeset and is scanned for both dashes like any
+# other file. Below that heading is the hand-written history from before changelog generation: it
+# is already in published tarballs, test/scripts/changelog-generation.test.ts holds it byte for
+# byte, and it carries both dashes, so it is not read. If the heading disappears, the gate refuses.
+CHANGELOG.md unread below ## Released before this file was generated

@@ -52,10 +52,9 @@ jobs:
   # another (its release there is immutable), so nothing upstream reaches this pipeline until a
   # change here moves every caller to a newer reference together. Its release notes say what a
   # caller adopting it must act on: https://github.com/cosyte/.github/releases
-  # The template ships a PHI scanner (scripts/phi-scan.ts), so the shared pipeline's optional
-  # PHI-scan step is switched on. NOTE: the scaffolded scanner is a STARTER, and it detects only
-  # cross-cutting SSN/email shapes until you add structured, field-level detection for this
-  # standard's PHI (see the STARTER banner in scripts/phi-scan.ts).
+  # The shared pipeline's optional PHI-scan step is switched on. `pnpm phi-scan` runs
+  # `cosyte-phi-scan` from @cosyte/script-utils (ST34): the cross-cutting SSN and email floor over
+  # the whole repository, with scripts/phi-allow-list.txt and scripts/phi-scan.exclude.
   ci:
     uses: cosyte/.github/.github/workflows/ci.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
     with:
@@ -63,8 +62,8 @@ jobs:
 
   # The runnable programs under examples/. They import the package by name, which resolves through
   # its own `exports` to `dist/`, so the build comes first. Each example checks its own output and
-  # exits non-zero on a mismatch. They sit outside the PHI scanner's default roots, so they are
-  # scanned here by path. Not a required context.
+  # exits non-zero on a mismatch. The PHI step below also names them by path, so
+  # examples/README.md, which the sweep skips as Markdown, is read too. Not a required context.
   examples:
     runs-on: ubuntu-latest
     timeout-minutes: 15
