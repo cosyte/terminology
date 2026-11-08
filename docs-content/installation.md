@@ -14,7 +14,7 @@ per-condition type declarations, so it works from either module system without c
 
 ## Prerequisites
 
-- **Node.js 22 or later, tested on 22 and 24.**
+- **Node.js 22 or later, tested on 22, 24, and 26.**
 - A package manager: `pnpm`, `npm`, or `yarn`.
 
 ## Install

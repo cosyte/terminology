@@ -7,8 +7,22 @@
 
 # @cosyte/terminology
 
-> A **zero-dependency terminology engine** for US healthcare code systems: FHIR-shaped, BYO-data,
-> and it **never fabricates a code**.
+> A zero-dependency, FHIR-shaped terminology engine for US healthcare code systems that never fabricates a code.
+
+[![npm version](https://img.shields.io/npm/v/@cosyte/terminology.svg)](https://www.npmjs.com/package/@cosyte/terminology)
+[![CI](https://img.shields.io/github/actions/workflow/status/cosyte/terminology/ci.yml?branch=main&label=CI)](https://github.com/cosyte/terminology/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cosyte/terminology/blob/main/LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org)
+
+Terminology engine for US healthcare code systems in Node.js and TypeScript: FHIR `$translate`,
+`$lookup`, `$validate-code`, and `$expand` over code systems, value sets, and maps you supply.
+
+## Why this exists
+
+A wrong code, map, or value-set binding does not fail loudly: it becomes a different clinical
+meaning in whatever consumes the answer, and the output still looks valid. So this engine never
+fabricates and never inverts. An unknown or unmapped code comes back as a typed result rather than a
+guess, and a directional map is read only in its authored direction.
 
 `@cosyte/terminology` is **not a wire parser**. It mirrors the FHIR **Terminology Module**
 (`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating over **consumer-supplied** FHIR
@@ -19,51 +33,56 @@ unit table, the code-system _identities_ (OID ↔ canonical URI), the SNOMED CT 
 resolver names, and RxNorm's relationship and term-type names, is listed with its copyright under
 [What is bundled](#what-is-bundled).
 
-> **Status:** the 0.1 line, **published on npm.** The public API is settled: below `1.0.0` a breaking
-> change ships in a new minor version, never a patch, and the changelog says what broke. The
-> **engine is complete**, every operation below ships today. The surface:
->
-> - the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
->   (`loadConceptMap` / `translate`);
-> - the **CodeSystem load layer** (RRF / CSV / fixed-width / FHIR JSON) with **`$lookup`** and
->   **`$validate-code`**;
-> - **ValueSet** binding (`compose` / **`$expand`** / **`$validate-code`**), subsumption read from the
->   release's own hierarchy, measured against HL7's own terminology ecosystem test cases
->   ([terminology ecosystem conformance](#terminology-ecosystem-conformance));
-> - **UCUM** unit validation and canonicalization (`validateUcum` / `ucumEqual`, recognition only, **no
->   magnitude conversion**), gated on the official UCUM functional tests: the **validation** and
->   **conversion** case kinds, against the suite dated 3-Feb 2021, and no other kind
->   ([UCUM conformance](#ucum-conformance));
-> - the **crosswalk resolvers**: the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
->   public-domain) and the NLM **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` /
->   `applyComplexMap`, BYO: no SNOMED CT refset bundled), never inverted;
-> - the **RxNorm drug graph** (`loadRxNormGraph` + `ingredientsOf` / `genericFor` / `brandsFor` /
->   `doseFormsOf` / `consistsOf` / `resolveNdc` / `approximateMatch`) over a **BYO** RxNorm RRF release,
->   edges read in RxNorm's documented direction and never inverted, an absent `RXCUI`/NDC typed, never
->   fabricated.
->
-> **Bring your own data.** The engine is whole; **no code-system release is bundled.** It runs over
-> the FHIR resources and standard releases _you_ supply: SNOMED CT, CPT, LOINC, UMLS/RxNorm, the CMS
-> GEM files, the NLM complex-map refset, and VSAC value sets are all bring-your-own, under whatever
-> terms their steward sets. The content packs that would change that (RxNorm Prescribable, ICD-10-CM)
-> are not bundled either. For the things that **are** bundled, and under whose copyright, see
-> [What is bundled](#what-is-bundled).
+## Status
+
+**The 0.1 line, published on npm.** The public API is settled: below `1.0.0` a breaking change ships
+in a new minor version, never a patch, and the changelog says what broke. The **engine is
+complete**: every operation below ships today. The surface:
+
+- the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
+  (`loadConceptMap` / `translate`);
+- the **CodeSystem load layer** (RRF / CSV / fixed-width / FHIR JSON) with **`$lookup`** and
+  **`$validate-code`**;
+- **ValueSet** binding (`compose` / **`$expand`** / **`$validate-code`**), subsumption read from the
+  release's own hierarchy, measured against HL7's own terminology ecosystem test cases
+  ([terminology ecosystem conformance](#terminology-ecosystem-conformance));
+- **UCUM** unit validation and canonicalization (`validateUcum` / `ucumEqual`, recognition only, **no
+  magnitude conversion**), gated on the official UCUM functional tests: the **validation** and
+  **conversion** case kinds, against the suite dated 3-Feb 2021, and no other kind
+  ([UCUM conformance](#ucum-conformance));
+- the **crosswalk resolvers**: the CMS **ICD-9↔ICD-10 GEMs** (`loadGems` / `applyGem`,
+  public-domain) and the NLM **SNOMED CT → ICD-10-CM complex map** (`loadComplexMap` /
+  `applyComplexMap`, BYO: no SNOMED CT refset bundled), never inverted;
+- the **RxNorm drug graph** (`loadRxNormGraph` + `ingredientsOf` / `genericFor` / `brandsFor` /
+  `doseFormsOf` / `consistsOf` / `resolveNdc` / `approximateMatch`) over a **BYO** RxNorm RRF release,
+  edges read in RxNorm's documented direction and never inverted, an absent `RXCUI`/NDC typed, never
+  fabricated.
+
+**Bring your own data.** The engine is whole; **no code-system release is bundled.** It runs over the
+FHIR resources and standard releases _you_ supply: SNOMED CT, CPT, LOINC, UMLS/RxNorm, the CMS GEM
+files, the NLM complex-map refset, and VSAC value sets are all bring-your-own, under whatever terms
+their steward sets. The content packs that would change that (RxNorm Prescribable, ICD-10-CM) are not
+bundled either. For the things that **are** bundled, and under whose copyright, see
+[What is bundled](#what-is-bundled).
 
 ## Install
-
-> **On npm.** `@cosyte/terminology` is **published**, on the 0.1 line. The command below
-> installs the real package; the registry, not this page, is the authority on the exact version.
 
 ```bash
 npm install @cosyte/terminology
 ```
 
-Node.js 22 or later, tested on 22 and 24.
+Node.js 22 or later, tested on 22, 24, and 26.
 
-Runnable programs for the main jobs are in
-[`examples/`](https://github.com/cosyte/terminology/tree/main/examples).
+The package is published on the 0.1 line, and the command above installs the real package; the
+registry, not this page, is the authority on the exact version.
 
-## Resolve a code system to its canonical URI
+## Usage
+
+The guides and the full API reference are at
+[docs.cosyte.com/terminology](https://docs.cosyte.com/terminology). Runnable programs for the main
+jobs are in [`examples/`](https://github.com/cosyte/terminology/tree/main/examples).
+
+### Resolve a code system to its canonical URI
 
 ```ts
 import { resolveSystem, isUnknownSystem } from "@cosyte/terminology";
@@ -72,7 +91,7 @@ const r = resolveSystem("2.16.840.1.113883.6.1"); // OID, mnemonic, or URI
 console.log(isUnknownSystem(r) ? "unknown" : r.url); // http://loinc.org
 ```
 
-## Translate a code through a ConceptMap
+### Translate a code through a ConceptMap
 
 ```ts
 import { loadConceptMap, translate } from "@cosyte/terminology";
@@ -114,7 +133,7 @@ if (result.unmapped) {
 When at least one target does assert a relationship, the source is translated exactly as before and
 any `disjoint` row rides along in `result.matches`, in its declared position.
 
-## Look up a code in a code system
+### Look up a code in a code system
 
 ```ts
 import { loadCodeSystem, lookup, validateCode } from "@cosyte/terminology";
@@ -134,7 +153,7 @@ if (hit.found) {
 validateCode(cs, "2160-0").valid; // $validate-code: true iff present; never a guessed true
 ```
 
-## Validate and compare UCUM units
+### Validate and compare UCUM units
 
 Recognition and canonicalization only: **no magnitude conversion** (`5 mg/dL` → `mmol/L` needs the
 analyte's molar mass, a clinical computation this engine refuses).
@@ -166,69 +185,7 @@ functional-test cases it claims, and claims no more than it runs: see
 > `TERM_UCUM_INVALID` (fail-safe, never silently reinterpreted). Magnitude conversion is likewise a
 > deliberate non-goal (recognition and canonicalization only).
 
-### UCUM conformance
-
-The claim in full, so a reader can tell what was run from what was not. UCUM permits a qualified
-claim where an implementation does not cover every kind of case, and asks that the most recent date
-in the suite's own history be quoted:
-
-- **Case kinds claimed: validation, conversion.** Every `validation` case is executed and its
-  expected `valid` outcome asserted. The `conversion` cases are executed for **commensurability
-  only**: source and destination must reduce to the same dimension. The converted magnitude is not
-  asserted, because magnitude conversion is a deliberate non-goal of this engine.
-- **Case kinds not claimed: displayNameGeneration, multiplication.** Those cases are not executed and
-  no conformance to them is claimed.
-- **Suite date: 3-Feb 2021.** The most recent history entry in the vendored
-  `UcumFunctionalTests.xml`, which is the file the cases are read from.
-- **Table: `ucum-essence.xml` version 2.2, revision-date 2024-06-17.** The unit-table release this
-  claim is made against, and the one embedded in the published build.
-
-The package's own test suite holds the claim to those files, so it cannot go stale in silence. It
-fails if the vendored table's declared version or revision-date stops matching the release named
-here, if the suite's most recent history date stops matching the date named here, if a kind named
-here is not one the tests execute, if a named kind's section carries no case, or if this page and
-`vendor/ucum/NOTICE.md` state different suite dates.
-
-## Terminology ecosystem conformance
-
-The ValueSet layer is measured against **HL7's own FHIR terminology ecosystem test cases**
-(`HL7/fhir-tx-ecosystem-ig`) as well as against tests written here. The claim in full, so a reader
-can tell what was run from what was not:
-
-- **Snapshot: upstream commit `33d37fc0f8efaed5832032f3a73956f66d4d4f23`.** The suite publishes no
-  version field, so the commit is the version, and it is the version these counts were produced
-  against. A pinned copy of the cases sits in the repository with their origin and license recorded
-  beside them; they are third-party material and are not part of the published package.
-- **Suites in scope: `simple-cases`, `parameters`, `validation`. Operations in scope: `$expand` and
-  ValueSet `$validate-code`.** The suite's other suites and its other operations are not run, and no
-  conformance to them is claimed.
-- **Cases ran: 101. Passed: 20. Declined: 81.** The three add up: every case that ran is exactly one
-  of them. Those three suites declare 112 cases in total; the rest declare a different operation,
-  are marked in the suite for one server's own behavior, or are held out of the measurement, and
-  none of those is run or counted anywhere above.
-- **A declined case is one this library has no answer for, named rather than counted as a pass.** It
-  asks for a request parameter the public API takes no argument for (`activeOnly`,
-  `displayLanguage`, `includeDesignations`, and others), for HTTP or language negotiation that a
-  library call cannot perform, or it is met by this engine's own typed refusal. Every decline is
-  recorded with its case and its reason.
-- **A case that answers differently fails the run, and is never recorded as a decline.** The counts
-  above come from a run in which no case answered differently.
-
-The cases are written for a **server** answering over HTTP, and this package is a library, so they
-are driven in process through the public API and the comparison is narrower than a server's would
-be: an expansion is compared on its membership (system, code, and display), a `$validate-code` case
-on its recorded `result`. The recorded responses declare their own tolerances and those are
-honored as declared; every tolerance applied beyond them is written down beside the counts, on the
-ground that a tolerance nobody can see is indistinguishable from a pass that was not earned.
-
-The package's own test suite reproduces the run and holds these figures to it, so they cannot go
-stale in silence.
-
-**This is a measurement, not an endorsement.** HL7 publishes these cases and reviews outcomes under
-its own process. Nothing here is an approval, a certification, or an endorsement of this package by
-HL7 or by anyone else.
-
-## Navigate the RxNorm drug graph
+### Navigate the RxNorm drug graph
 
 Load a **bring-your-own** RxNorm RRF release and walk the ingredient / brand / clinical-drug /
 dose-form graph. Relationships are read in RxNorm's documented direction (`RELA` is the relationship
@@ -282,6 +239,72 @@ ingredientsOf(graph, "99999999"); // { found: false, code: "TERM_RXNORM_UNKNOWN_
 The engine ships **no** RxNorm release; you supply it (the public-domain Current Prescribable
 Content subset, or the full BYO release). What it does ship is RxNorm's relationship and term-type
 _names_, listed under [What is bundled](#what-is-bundled).
+
+## Conformance
+
+Each claim below is stated in full and held to a fresh run by the package's own test suite.
+
+### UCUM conformance
+
+The claim in full, so a reader can tell what was run from what was not. UCUM permits a qualified
+claim where an implementation does not cover every kind of case, and asks that the most recent date
+in the suite's own history be quoted:
+
+- **Case kinds claimed: validation, conversion.** Every `validation` case is executed and its
+  expected `valid` outcome asserted. The `conversion` cases are executed for **commensurability
+  only**: source and destination must reduce to the same dimension. The converted magnitude is not
+  asserted, because magnitude conversion is a deliberate non-goal of this engine.
+- **Case kinds not claimed: displayNameGeneration, multiplication.** Those cases are not executed and
+  no conformance to them is claimed.
+- **Suite date: 3-Feb 2021.** The most recent history entry in the vendored
+  `UcumFunctionalTests.xml`, which is the file the cases are read from.
+- **Table: `ucum-essence.xml` version 2.2, revision-date 2024-06-17.** The unit-table release this
+  claim is made against, and the one embedded in the published build.
+
+The package's own test suite holds the claim to those files, so it cannot go stale in silence. It
+fails if the vendored table's declared version or revision-date stops matching the release named
+here, if the suite's most recent history date stops matching the date named here, if a kind named
+here is not one the tests execute, if a named kind's section carries no case, or if this page and
+`vendor/ucum/NOTICE.md` state different suite dates.
+
+### Terminology ecosystem conformance
+
+The ValueSet layer is measured against **HL7's own FHIR terminology ecosystem test cases**
+(`HL7/fhir-tx-ecosystem-ig`) as well as against tests written here. The claim in full, so a reader
+can tell what was run from what was not:
+
+- **Snapshot: upstream commit `33d37fc0f8efaed5832032f3a73956f66d4d4f23`.** The suite publishes no
+  version field, so the commit is the version, and it is the version these counts were produced
+  against. A pinned copy of the cases sits in the repository with their origin and license recorded
+  beside them; they are third-party material and are not part of the published package.
+- **Suites in scope: `simple-cases`, `parameters`, `validation`. Operations in scope: `$expand` and
+  ValueSet `$validate-code`.** The suite's other suites and its other operations are not run, and no
+  conformance to them is claimed.
+- **Cases ran: 101. Passed: 20. Declined: 81.** The three add up: every case that ran is exactly one
+  of them. Those three suites declare 112 cases in total; the rest declare a different operation,
+  are marked in the suite for one server's own behavior, or are held out of the measurement, and
+  none of those is run or counted anywhere above.
+- **A declined case is one this library has no answer for, named rather than counted as a pass.** It
+  asks for a request parameter the public API takes no argument for (`activeOnly`,
+  `displayLanguage`, `includeDesignations`, and others), for HTTP or language negotiation that a
+  library call cannot perform, or it is met by this engine's own typed refusal. Every decline is
+  recorded with its case and its reason.
+- **A case that answers differently fails the run, and is never recorded as a decline.** The counts
+  above come from a run in which no case answered differently.
+
+The cases are written for a **server** answering over HTTP, and this package is a library, so they
+are driven in process through the public API and the comparison is narrower than a server's would
+be: an expansion is compared on its membership (system, code, and display), a `$validate-code` case
+on its recorded `result`. The recorded responses declare their own tolerances and those are
+honored as declared; every tolerance applied beyond them is written down beside the counts, on the
+ground that a tolerance nobody can see is indistinguishable from a pass that was not earned.
+
+The package's own test suite reproduces the run and holds these figures to it, so they cannot go
+stale in silence.
+
+**This is a measurement, not an endorsement.** HL7 publishes these cases and reviews outcomes under
+its own process. Nothing here is an approval, a certification, or an endorsement of this package by
+HL7 or by anyone else.
 
 ## The invariants this engine is built on
 
@@ -348,6 +371,29 @@ with its copyright:
 
 This section states what is distributed and under whose copyright. It is not legal advice, and makes
 no claim about whether any particular use of these materials is permitted to you.
+
+## Support
+
+Questions, bug reports, and an answer the engine got wrong go in
+[GitHub issues](https://github.com/cosyte/terminology/issues), with the smallest synthetic code
+system, map, or value set that reproduces it. Use synthetic data only: a code in patient context can
+be PHI. [SUPPORT.md](https://github.com/cosyte/.github/blob/main/SUPPORT.md) says where to ask what.
+
+## Security
+
+Report a vulnerability privately, never in a public issue, and with no real patient data in it:
+through GitHub private vulnerability reporting on this repository, or by email to
+[security@cosyte.com](mailto:security@cosyte.com). Our
+[security policy](https://github.com/cosyte/.github/blob/main/SECURITY.md) says how.
+
+## Contributing
+
+For anything that changes what the engine answers, open an issue first, so the behavior can be agreed
+before it is written; typo, link, and test fixes can go straight to a pull request. A contribution
+clears the gate CI runs, listed in
+[AGENTS.md](https://github.com/cosyte/terminology/blob/main/AGENTS.md), and a change a consumer would
+notice adds a changeset (`pnpm changeset`), whose summary becomes the changelog entry. See
+[CONTRIBUTING](https://github.com/cosyte/.github/blob/main/CONTRIBUTING.md).
 
 ## License
 

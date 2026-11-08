@@ -1,7 +1,7 @@
 {
   "name": "@cosyte/terminology",
   "version": "0.1.2",
-  "description": "Terminology engine for US healthcare code systems in Node.js and TypeScript: FHIR $translate, $lookup, $validate-code and $expand over code systems, value sets and maps you supply.",
+  "description": "Terminology engine for US healthcare code systems in Node.js and TypeScript: FHIR $translate, $lookup, $validate-code, and $expand over code systems, value sets, and maps you supply.",
   "keywords": [
     "terminology",
     "fhir",
@@ -77,7 +77,7 @@
     "phi-scan": "tsx scripts/phi-scan.ts",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",
     "check:no-emdash": "node scripts/check-no-emdash.mjs",
-    "check:agent-notes": "node scripts/check-agent-notes.mjs",
+    "check:agent-notes": "node node_modules/@cosyte/script-utils/agent-notes.js",
     "check:process": "cosyte-process check",
     "lint": "cosyte-process lint",
     "lint:fix": "cosyte-process lint --fix",
@@ -104,6 +104,7 @@
     "@cosyte/eslint-config": "^0.1",
     "@cosyte/prettier-config": "^0.1",
     "@cosyte/process": "^0.1",
+    "@cosyte/script-utils": "^0.1.3",
     "@cosyte/test-utils": "^0.1",
     "@cosyte/tsconfig": "^0.1",
     "@cosyte/tsup-config": "^0.1",
