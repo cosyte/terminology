@@ -379,6 +379,9 @@ Questions, bug reports, and an answer the engine got wrong go in
 system, map, or value set that reproduces it. Use synthetic data only: a code in patient context can
 be PHI. [SUPPORT.md](https://github.com/cosyte/.github/blob/main/SUPPORT.md) says where to ask what.
 
+Need a terminology integration built, or hosted and run for you? See our
+[integration services](https://cosyte.com/integration-services).
+
 ## Security
 
 Report a vulnerability privately, never in a public issue, and with no real patient data in it:
