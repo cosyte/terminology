@@ -3,33 +3,24 @@ import { cosyteVitest } from "@cosyte/vitest-config";
 /**
  * Vitest config for @cosyte/terminology from the shared @cosyte/vitest-config standard.
  *
- * Per-directory >= 90 coverage gates, on **every** source directory. This is a terminology
- * **engine**, not a wire parser, so the layout is `common/` (value types + diagnostics), `systems/`
- * (the code-system identity resolver), `conceptmap/` (the $translate engine), `codesystem/`,
- * `valueset/`, `ucum/`, `crosswalk/` (diagnosis-code translation: GEMs, SNOMED -> ICD-10-CM) and
- * `rxnorm/` (the drug graph).
+ * Coverage is gated at 100% for lines, branches, functions and statements, across `src/` as a whole
+ * and on **every** source directory on its own, so a well-covered directory cannot carry a poorly
+ * covered one. This is a terminology **engine**, not a wire parser, so the layout is `common/` (value
+ * types + diagnostics), `systems/` (the code-system identity resolver), `conceptmap/` (the $translate
+ * engine), `codesystem/`, `valueset/`, `ucum/`, `crosswalk/` (diagnosis-code translation: GEMs,
+ * SNOMED -> ICD-10-CM) and `rxnorm/` (the drug graph, whose edge-direction convention a wrong branch
+ * would silently invert; it is pinned per relation family in `test/rxnorm/direction.test.ts`).
  *
- * `rxnorm/` used to be missing from the list, and it is the highest-clinical-risk directory in the
- * package: the drug graph, whose documented edge-direction convention a wrong branch would silently
- * invert. It is gated as of now, at 97.02% branches / 100% lines, functions and statements, with the
- * direction convention pinned per relation family in `test/rxnorm/direction.test.ts` (forward and
- * reverse, so an inversion cannot trade one green assertion for another).
+ * A threshold here only rises. A line no input through the public API can reach carries an inline
+ * `v8 ignore` comment naming its reason, never a lowered number: mostly a `noUncheckedIndexedAccess`
+ * fallback on an index a check just above has proven in range. A sparse or forged array, a missing
+ * optional field, or an object a caller builds by hand IS reachable and gets a test instead.
  *
- * The remaining 2.98% of `rxnorm/` branches are three arms that cannot be reached from any input:
- * two `?? ""` fallbacks in `load.ts` guarding cells the row-length check has already proven present,
- * and a divide-by-zero guard in `navigate.ts` whose zero case the function returns before. They are
- * artifacts of `noUncheckedIndexedAccess`, not untested behaviour, which is why the floor stays at
- * the standard 90 rather than being pushed to 100.
- *
- * **The figure used to move run to run (85.14 / 86.13), and the reason matters.** fast-check draws a
- * fresh random seed every run and this repo pins none, so any arm reached *only* by a property test's
- * generated input is covered by chance. On the old code exactly one arm was in that state often
- * enough to show (the duplicate-target skip in `follow()`); several more were being hit by the draw
- * almost every time, invisibly, including the never-fabricate guard for an edge into a concept the
- * caller's release did not load. Every arm reachable from an input now has a deterministic test, and
- * that is checked rather than assumed: `vitest run --coverage --exclude 'test/property/**'` reports
- * the same `rxnorm` figures as the full suite, so nothing here rests on the draw. Re-run that
- * comparison before trusting this number again. Do NOT pin the fast-check seed to hold the figure
+ * **Every arm is covered by a deterministic test, not by a fast-check draw.** fast-check draws a fresh
+ * random seed every run and this repo pins none, so an arm reached *only* by a property test's
+ * generated input is covered by chance, and the figure would move run to run. That is checked rather
+ * than assumed: `vitest run --coverage --exclude 'test/property/**'` reports the same 100% as the full
+ * suite. Re-run that comparison after adding a branch. Do NOT pin the fast-check seed to hold a figure
  * still: that costs the property tests the exploration they exist for. Cover the arm instead.
  *
  * **THERE IS DELIBERATELY NO GLOBAL `testTimeout` HERE, AND RESTORING ONE IS A REGRESSION.** This
@@ -88,17 +79,26 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * that file) and only then give that one test its own budget. Do not put a
  * number back here.
  */
+const COVERAGE_DIRS = [
+  "common",
+  "systems",
+  "conceptmap",
+  "codesystem",
+  "valueset",
+  "ucum",
+  "crosswalk",
+  "rxnorm",
+];
+
+/** Every metric at 100. */
+const FULL = { lines: 100, branches: 100, functions: 100, statements: 100 };
+
 export default cosyteVitest({
-  coverageDirs: [
-    "common",
-    "systems",
-    "conceptmap",
-    "codesystem",
-    "valueset",
-    "ucum",
-    "crosswalk",
-    "rxnorm",
-  ],
+  coverageDirs: COVERAGE_DIRS,
+  coverageThresholds: {
+    ...FULL,
+    ...Object.fromEntries(COVERAGE_DIRS.map((dir) => [`src/${dir}/**`, FULL])),
+  },
   test: {
     globals: false,
     environment: "node",

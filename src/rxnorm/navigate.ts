@@ -298,7 +298,9 @@ function jaccard(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
   let inter = 0;
   for (const t of a) if (b.has(t)) inter++;
   const union = a.size + b.size - inter;
-  return union === 0 ? 0 : inter / union;
+  /* v8 ignore if -- unreachable: both sets are non-empty here, so the union is at least 1 */
+  if (union === 0) return 0;
+  return inter / union;
 }
 
 /** Options for {@link approximateMatch}. */

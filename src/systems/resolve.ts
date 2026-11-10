@@ -39,6 +39,7 @@ const byMnemonic = new Map<string, SystemIdentity>();
 
 for (const id of SYSTEM_IDENTITIES) {
   byUrl.set(id.url.toLowerCase(), id);
+  /* v8 ignore else -- unreachable: every entry of the frozen SYSTEM_IDENTITIES seed table carries an OID */
   if (id.oid !== undefined) byOid.set(id.oid, id);
   for (const m of id.mnemonics) byMnemonic.set(m.toLowerCase(), id);
 }

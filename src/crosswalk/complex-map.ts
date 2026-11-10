@@ -235,19 +235,16 @@ function evaluateConjunct(clause: string, context: PatientContext): RuleMatch {
     const bound = Number(ageMatch[2]);
     if (context.ageYears === undefined || !Number.isFinite(bound)) return "unknown";
     const age = context.ageYears;
-    const ok =
-      op === "<="
-        ? age <= bound
-        : op === ">="
-          ? age >= bound
-          : op === "<"
-            ? age < bound
-            : op === ">"
-              ? age > bound
-              : op === "="
-                ? age === bound
-                : undefined;
-    if (ok === undefined) return "unknown";
+    let ok: boolean;
+    if (op === "<=") ok = age <= bound;
+    else if (op === ">=") ok = age >= bound;
+    else if (op === "<") ok = age < bound;
+    else if (op === ">") ok = age > bound;
+    else {
+      /* v8 ignore else -- unreachable: the capture group is (<=|>=|<|>|=), so op is one of the five */
+      if (op === "=") ok = age === bound;
+      else return "unknown";
+    }
     return ok ? "match" : "no-match";
   }
   // An `IFA` predicate we cannot interpret: never assume it true or false.

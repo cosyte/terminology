@@ -62,6 +62,14 @@ describe("resolveSystem(): grounded identities", () => {
       if (id.oid !== undefined) expect(expectResolved(resolveSystem(id.oid)).url).toBe(id.url);
     }
   });
+
+  it("every identity in the registry carries an OID that resolves to it", () => {
+    // The resolver's OID index rests on this (its build marks a missing OID as unreachable).
+    for (const id of SYSTEM_IDENTITIES) {
+      expect(id.oid).toMatch(/^[0-2](?:\.(?:0|[1-9]\d*))+$/);
+      expect(expectResolved(resolveSystem(`urn:oid:${String(id.oid)}`)).url).toBe(id.url);
+    }
+  });
 });
 
 describe("resolveSystem(): HL7 v2 table family (structural)", () => {

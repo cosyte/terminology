@@ -132,6 +132,25 @@ describe("parseFhirCodeSystem via loadCodeSystem", () => {
     expect(r.properties).toHaveLength(0);
   });
 
+  it("skips a property entry that is not an object and keeps the well-formed ones", () => {
+    const cs = loadCodeSystem({
+      format: "fhir",
+      resource: {
+        resourceType: "CodeSystem",
+        concept: [
+          {
+            code: "A",
+            property: ["inactive", null, 7, ["x"], { code: "kind", valueString: "lab" }],
+          },
+        ],
+      },
+    });
+    const r = lookup(cs, "A");
+    if (!r.found) throw new Error("expected found");
+    expect(r.properties).toStrictEqual([{ code: "kind", value: "lab" }]);
+    expect(cs.warnings).toStrictEqual([]);
+  });
+
   it("throws TERM_CODESYSTEM_MALFORMED on the wrong resourceType", () => {
     try {
       loadCodeSystem({ format: "fhir", resource: { resourceType: "ValueSet" } });

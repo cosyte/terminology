@@ -64,9 +64,9 @@ function makeCoding(
   return coding(init);
 }
 
-function cannotExpand(detail: string, path?: string): ExpansionDiagnostic {
-  const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_CANNOT_EXPAND", detail };
-  if (path !== undefined) d.path = path;
+/** Every caller names the component or reference it could not expand, so a path is always given. */
+function cannotExpand(detail: string, path: string): ExpansionDiagnostic {
+  const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_CANNOT_EXPAND", detail, path };
   return Object.freeze(d);
 }
 
@@ -85,12 +85,12 @@ function truncated(detail: string, path: string): ExpansionDiagnostic {
  * factory, unlike the two above: membership answers the same case with a **decided non-member**,
  * and a decided outcome carries no diagnostic field to report it on.
  */
-function enumeratedUndefined(detail: string, path?: string): ExpansionDiagnostic {
+function enumeratedUndefined(detail: string, path: string): ExpansionDiagnostic {
   const d: Writable<ExpansionDiagnostic> = {
     code: "TERM_VALUESET_ENUMERATED_CODE_UNDEFINED",
     detail,
+    path,
   };
-  if (path !== undefined) d.path = path;
   return Object.freeze(d);
 }
 
@@ -193,7 +193,9 @@ function screenActive(
  */
 function underPath(d: ExpansionDiagnostic, prefix: string): ExpansionDiagnostic {
   const out: Writable<ExpansionDiagnostic> = { code: d.code, detail: d.detail };
-  out.path = d.path === undefined ? prefix : `${prefix}/${d.path}`;
+  /* v8 ignore if -- unreachable: every diagnostic this module raises carries a path, as each factory requires one */
+  if (d.path === undefined) out.path = prefix;
+  else out.path = `${prefix}/${d.path}`;
   return Object.freeze(out);
 }
 
