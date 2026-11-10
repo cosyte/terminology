@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isJsonObject, getString, getArray } from "../../src/index.js";
+import { isJsonObject, getString, getArray, getBoolean, getNumber } from "../../src/index.js";
 
 describe("isJsonObject()", () => {
   it("accepts a plain object", () => {
@@ -35,5 +35,36 @@ describe("getArray()", () => {
     expect(getArray({ group: "x" }, "group")).toBeUndefined();
     expect(getArray({}, "group")).toBeUndefined();
     expect(getArray(undefined, "group")).toBeUndefined();
+  });
+});
+
+describe("getBoolean()", () => {
+  it("reads a boolean, never coercing a string or number", () => {
+    expect(getBoolean({ inactive: true }, "inactive")).toBe(true);
+    expect(getBoolean({ inactive: false }, "inactive")).toBe(false);
+    expect(getBoolean({ inactive: "true" }, "inactive")).toBeUndefined();
+    expect(getBoolean({ inactive: 0 }, "inactive")).toBeUndefined();
+    expect(getBoolean({}, "inactive")).toBeUndefined();
+  });
+
+  it("answers undefined for a source that is not a JSON object", () => {
+    expect(getBoolean(null, "inactive")).toBeUndefined();
+    expect(getBoolean([true], "0")).toBeUndefined();
+    expect(getBoolean("inactive", "length")).toBeUndefined();
+  });
+});
+
+describe("getNumber()", () => {
+  it("reads a finite number only", () => {
+    expect(getNumber({ total: 3 }, "total")).toBe(3);
+    expect(getNumber({ total: Number.NaN }, "total")).toBeUndefined();
+    expect(getNumber({ total: Number.POSITIVE_INFINITY }, "total")).toBeUndefined();
+    expect(getNumber({ total: "3" }, "total")).toBeUndefined();
+  });
+
+  it("answers undefined for a source that is not a JSON object", () => {
+    expect(getNumber(undefined, "total")).toBeUndefined();
+    expect(getNumber([3], "0")).toBeUndefined();
+    expect(getNumber("abc", "length")).toBeUndefined();
   });
 });

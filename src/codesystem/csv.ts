@@ -199,16 +199,20 @@ export function parseCsvSource(source: CsvSource): {
     source.columns.status !== undefined
       ? requireHeader(header, source.columns.status, "status")
       : undefined;
-  const propIdx: { name: string; index: number }[] = (source.columns.properties ?? []).map((n) => ({
-    name: n,
-    index: requireHeader(header, n, "property"),
-  }));
+  // Iterated, never mapped: `map` skips a hole in a sparse list and leaves it in the result, where it
+  // later read as an entry with no index. Iteration reads a hole as `undefined`, which names no column
+  // and so takes the same typed fatal as any other absent property column.
+  const propIdx: { name: string; index: number }[] = [];
+  for (const n of source.columns.properties ?? []) {
+    propIdx.push({ name: n, index: requireHeader(header, n, "property") });
+  }
   const needCols =
     Math.max(codeIdx, displayIdx, statusIdx ?? 0, ...propIdx.map((p) => p.index)) + 1;
 
   const concepts = new Map<string, Concept>();
 
   for (let r = 1; r < rows.length; r++) {
+    /* v8 ignore next -- the `?? []` is unreachable: r < rows.length and parseCsvRows only pushes rows, so rows[r] is defined */
     const cells = rows[r] ?? [];
     const lineNo = r + 1;
     if (cells.length < needCols) {
@@ -221,6 +225,7 @@ export function parseCsvSource(source: CsvSource): {
       );
       continue;
     }
+    /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
     const code = (cells[codeIdx] ?? "").trim();
     if (code === "") {
       warnings.push(
@@ -235,14 +240,17 @@ export function parseCsvSource(source: CsvSource): {
     if (concepts.has(code)) continue; // first row per code wins
 
     const out: Writable<Concept> = { code, properties: [] };
+    /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
     const display = (cells[displayIdx] ?? "").trim();
     if (display !== "") out.display = display;
     if (statusIdx !== undefined) {
+      /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
       const rawStatus = (cells[statusIdx] ?? "").trim();
       out.status = makeStatus(statusMap(rawStatus), rawStatus);
     }
     const props: Property[] = [];
     for (const p of propIdx) {
+      /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
       const value = (cells[p.index] ?? "").trim();
       if (value !== "") props.push(Object.freeze({ code: p.name, value }));
     }

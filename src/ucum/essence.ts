@@ -42,13 +42,11 @@ function readValue(block: string): { factor: number; unit: string } | undefined 
  * compiles. The two lookup maps refuse `set` / `delete` / `clear`; a `Map` cannot be made immutable
  * in place, so that is the direct route and not every route (see {@link sealLookup}).
  *
- * The three `?? ""` capture-group fallbacks below cannot be reached from any input, so this function
- * does not report 100% branch coverage and is not meant to. They used to carry `v8 ignore` hints,
- * which is **the wrong tool twice over**: this repo's coverage provider does not honour one (measured,
- * the hinted branches were reported uncovered either way, with and without a `--` reason and under
- * `--coverage.experimentalAstAwareRemapping`), and an ignore is an assertion about reachability that
- * the next reader inherits without a way to check it. The package's posture is that an unreachable
- * `noUncheckedIndexedAccess` artifact stays visibly uncovered under a directory floor of 90.
+ * The five `?? ""` capture-group fallbacks below cannot be reached from any input: `matchAll` yields
+ * every capture group of a match, and none of these groups is optional. Each carries a `v8 ignore`
+ * hint naming that reason. An earlier coverage provider did not honour the hints, so they were
+ * removed for a while; the current one does (measured on the line itself), and the coverage gate is
+ * 100%, so an unreachable line is named where it stands rather than left uncovered.
  *
  * @param xml - The essence XML (the vendored verbatim document, or a test fragment).
  * @returns The parsed {@link UcumEssence} model, frozen.
@@ -68,9 +66,9 @@ export function parseEssence(xml: string): UcumEssence {
   const atoms: UcumAtom[] = [];
 
   for (const m of xml.matchAll(/<prefix\b([^>]*)>([\s\S]*?)<\/prefix>/g)) {
-    // `matchAll` always yields both capture groups; each `?? ""` is a `noUncheckedIndexedAccess`
-    // fallback with no input that reaches it, so both stay uncovered (see `parseEssence`'s docblock).
+    /* v8 ignore next -- the `?? ""` is unreachable: matchAll yields every capture group, and group 1 is not optional */
     const openTag = m[1] ?? "";
+    /* v8 ignore next -- the `?? ""` is unreachable: matchAll yields every capture group, and group 2 is not optional */
     const body = m[2] ?? "";
     const code = attr(openTag, "Code");
     // A prefix's `<value>` carries only a `value` attribute (no `Unit`): read it directly.
@@ -81,7 +79,7 @@ export function parseEssence(xml: string): UcumEssence {
   }
 
   for (const m of xml.matchAll(/<base-unit\b([^>]*)>/g)) {
-    // Same unreachable `noUncheckedIndexedAccess` fallback as above.
+    /* v8 ignore next -- the `?? ""` is unreachable: matchAll yields every capture group, and group 1 is not optional */
     const openTag = m[1] ?? "";
     const code = attr(openTag, "Code");
     if (code === undefined) continue;
@@ -96,8 +94,9 @@ export function parseEssence(xml: string): UcumEssence {
   }
 
   for (const m of xml.matchAll(/<unit\b([^>]*)>([\s\S]*?)<\/unit>/g)) {
-    // Same unreachable `noUncheckedIndexedAccess` fallbacks as above.
+    /* v8 ignore next -- the `?? ""` is unreachable: matchAll yields every capture group, and group 1 is not optional */
     const openTag = m[1] ?? "";
+    /* v8 ignore next -- the `?? ""` is unreachable: matchAll yields every capture group, and group 2 is not optional */
     const body = m[2] ?? "";
     const code = attr(openTag, "Code");
     if (code === undefined) continue;
