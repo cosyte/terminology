@@ -82,8 +82,8 @@ lookup(labs, "NOPE").found; // => false
 
 ## What you did
 
-You turned three spellings of a system into one URI, translated a code through a map you supplied,
-and looked a code up in a release you supplied. In each step an answer the engine could not prove
+You turned two spellings of LOINC, its OID and its mnemonic, into one URI, translated a code
+through a map you supplied, and looked a code up in a release you supplied. In each step an answer the engine could not prove
 came back as a typed result rather than a guess.
 
 ## Next

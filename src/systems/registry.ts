@@ -42,8 +42,10 @@ export interface SystemIdentity {
 
 /**
  * The seed identity table. Order is irrelevant; {@link resolveSystem} builds its lookup indexes from
- * it. Each entry is one system whose URI, OID and mnemonics were grounded firsthand against the FHIR
- * R4 terminology-systems registry (and its ICD page) and HL7 Table 0396.
+ * it. Each entry is one system whose URI and OID were grounded firsthand against the FHIR R4
+ * terminology-systems registry (and its ICD page). Its mnemonics are its HL7 Table 0396 mnemonic
+ * and, for some systems, other accepted short aliases (such as `LOINC` or `CPT`) that are not
+ * Table 0396 codes.
  */
 export const SYSTEM_IDENTITIES: readonly SystemIdentity[] = Object.freeze(
   [

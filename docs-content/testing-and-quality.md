@@ -29,7 +29,7 @@ it says so in a typed result rather than guessing.
 | Guards on what must never happen | a caller's value in an error message, a stack or a warning (each position a caller controls that we have identified is tried); a loaded model or the bundled UCUM table that can be changed after loading; an RxNorm edge read in the wrong direction, for each family of relationships; a `LICENSE` that drifts from the list of bundled content | a leak through a position nobody enumerated |
 | Coverage gate | code no test runs: lines, branches, functions and statements, held at a floor for the source as a whole and for each source folder on its own, so a well-covered folder cannot carry a poorly covered one | a test that runs code without checking what it does |
 | Mutation testing | a test that runs code but would not notice it changing | not set up on this package yet; the numbers below say "not measured" until it is |
-| Fuzzing | malformed input crashing a reader: the property-based tests feed every reader arbitrary text and every resource loader arbitrary JSON, and check that each returns a frozen model or throws a `TerminologyError` | an input shape the generators do not produce; there is no coverage-guided fuzzer on this package |
+| Fuzzing | malformed input crashing a reader: the property-based tests feed the release readers (RRF, CSV, fixed-width, the GEMs, the RF2 complex map and RxNorm) arbitrary text and the FHIR resource loaders (`CodeSystem`, `ConceptMap` and `ValueSet`) arbitrary JSON, and check that each returns a frozen model or throws a `TerminologyError` | an input shape the generators do not produce; there is no coverage-guided fuzzer on this package |
 | Doc samples | a page that no longer matches the code: every TypeScript sample on these pages runs against the built package with its stated values checked, and compiles against the package's types; every `@example` import in the source names a real export; the example programs run in CI; a link between pages that does not resolve, and a CommonMark autolink (which breaks the docs site's build), are refused | prose that is wrong beside a sample that is right |
 | PHI scan | a realistic patient identifier in a fixture or a staged file, against a declared allow list of synthetic values | anything in Markdown, which it does not read, so the samples on these pages are kept synthetic by review; it detects after a write, it does not prevent one |
 | CodeQL | known classes of security flaw in the source | a flaw in what the code means rather than how it is written |
@@ -43,9 +43,10 @@ release formats with made-up identifiers, and the two vendored conformance suite
   24 and 26, and again every night on `main`. A floor that is not met fails the run. The two
   conformance suites and the doc samples are part of the suite.
 - **The property-based tests** draw a fresh random seed on every run, so each run explores new
-  inputs; a failure reports the seed that found it. Each property sets its own number of cases. The
-  fixed tests alone reach the same coverage as the whole suite (checked by running the coverage gate
-  with `test/property` excluded), so the coverage figure does not depend on what a draw reaches.
+  inputs; a failure reports the seed that found it. Most properties set their own number of cases;
+  the few that do not run fast-check's default of 100. The fixed tests alone reach the same coverage
+  as the whole suite (checked by running the coverage gate with `test/property` excluded), so the
+  coverage figure does not depend on what a draw reaches.
 - **The PHI scan** runs on every commit (a pre-commit hook) and in CI.
 - **CodeQL** runs on every pull request, on `main`, and weekly.
 

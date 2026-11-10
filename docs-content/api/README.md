@@ -4063,8 +4063,10 @@ map. Recognised by URI only; **no SNOMED CT refset or release is bundled**.
 > `const` **SYSTEM\_IDENTITIES**: readonly [`SystemIdentity`](#systemidentity)[]
 
 The seed identity table. Order is irrelevant; [resolveSystem](#resolvesystem) builds its lookup indexes from
-it. Each entry is one system whose URI, OID and mnemonics were grounded firsthand against the FHIR
-R4 terminology-systems registry (and its ICD page) and HL7 Table 0396.
+it. Each entry is one system whose URI and OID were grounded firsthand against the FHIR R4
+terminology-systems registry (and its ICD page). Its mnemonics are its HL7 Table 0396 mnemonic
+and, for some systems, other accepted short aliases (such as `LOINC` or `CPT`) that are not
+Table 0396 codes.
 
 ***
 
@@ -5955,8 +5957,9 @@ r.resolved && r.status; // => "active"
 
 Resolve a code-system identifier to its canonical [SystemIdentity](#systemidentity).
 
-Accepts, in order of attempt: a canonical URI (case-insensitive), an HL7 v2 Table 0396 mnemonic
-(case-insensitive), a bare or `urn:oid:`-prefixed OID, and an HL7 v2 table's OID or
+Accepts, in order of attempt: a canonical URI (case-insensitive), a mnemonic listed in
+[SYSTEM\_IDENTITIES](#system_identities) (an HL7 v2 Table 0396 mnemonic or another accepted alias,
+case-insensitive), a bare or `urn:oid:`-prefixed OID, and an HL7 v2 table's OID or
 `terminology.hl7.org` URI (resolved structurally from the table number). The `v2-XXXX` mnemonic a
 v2 table identity carries is not accepted as input on its own. Whitespace is trimmed. An empty or
 unrecognized identifier yields a typed [UnknownSystem](#unknownsystem): the resolver **never** invents a URI.

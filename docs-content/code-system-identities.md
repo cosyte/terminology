@@ -23,9 +23,11 @@ accepts. URIs and mnemonics are matched in any letter case; an OID is accepted b
 | NDC                     | `http://hl7.org/fhir/sid/ndc`                 | `2.16.840.1.113883.6.69`   | `NDC`                          |
 | CVX (CDC Vaccine Codes) | `http://hl7.org/fhir/sid/cvx`                 | `2.16.840.1.113883.12.292` | `CVX`                          |
 
-The URIs and OIDs come from the FHIR R4 terminology-systems registry and its ICD page; the mnemonics
-come from HL7 table 0396. ICD-9-CM and ICD-10-PCS are not listed: their OIDs could not be pinned to
-one primary source, so they are left out rather than guessed. The crosswalk resolvers still name
+The URIs and OIDs come from the FHIR R4 terminology-systems registry and its ICD page. The HL7
+table 0396 mnemonics are `LN`, `SCT`, `I10C`, `RXNORM`, `UCUM`, `C4`, `NDC` and `CVX`; the others
+(`LOINC`, `SNOMEDCT`, `SNOMED`, `ICD10CM` and `CPT`) are accepted short aliases, not table 0396
+codes. ICD-9-CM and ICD-10-PCS are not listed: their OIDs could not be pinned to one primary
+source, so they are left out rather than guessed. The crosswalk resolvers still name
 ICD-9-CM by its URI, `http://hl7.org/fhir/sid/icd-9-cm` (`ICD9CM_SYSTEM`).
 
 ## HL7 v2 tables
