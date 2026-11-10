@@ -62,7 +62,7 @@
  *     nothing.
  *  8. THE PRETTIER PASS IS LEFT ON HERE, AND THAT IS DERIVED FROM THIS REPO'S OWN
  *     CONFIG RATHER THAN COPIED FROM A SIBLING. Changesets runs the document it
- *     writes through Prettier unless `"prettier": false` turns the pass off, and
+ *     writes through Prettier unless `"format": false` turns the pass off, and
  *     the right answer differs per repo: four sibling repos reached it three
  *     different ways. THIS REPO HAS NO `.prettierignore` AT ALL AND ITS
  *     `format:check` GLOBS `"*.{json,md,yml}"`, so `CHANGELOG.md` is inside the
@@ -203,7 +203,7 @@ const PROBE_BODY = `${PROBE_SUMMARY}\n\n${ARCHIVE_HEADING}\n`;
 const changelog = readFileSync(CHANGELOG_PATH, "utf8");
 const config = JSON.parse(readFileSync(CONFIG_PATH, "utf8")) as {
   changelog?: unknown;
-  prettier?: unknown;
+  format?: unknown;
 };
 const pkg = JSON.parse(readFileSync(PACKAGE_PATH, "utf8")) as {
   name?: string;
@@ -293,7 +293,13 @@ function runVersion(opts: {
   writeFileSync(join(dir, "CHANGELOG.md"), opts.changelogBody);
   writeFileSync(
     join(dir, ".changeset", "config.json"),
-    JSON.stringify({ ...config, ...(opts.configOverrides ?? {}) }),
+    // Changesets 3 no longer versions a `private` package unless it is opted in, and the
+    // throwaway package below is private on purpose. `tag: false` keeps it untagged.
+    JSON.stringify({
+      ...config,
+      privatePackages: { version: true, tag: false },
+      ...(opts.configOverrides ?? {}),
+    }),
   );
   writeFileSync(
     join(dir, ".changeset", "probe.md"),
@@ -513,9 +519,9 @@ describe("changelog generation is on", () => {
     // The discriminator, derived from this repo rather than inherited from a sibling: there is
     // no `.prettierignore` at all, and `format:check` globs root markdown, so `CHANGELOG.md` is
     // inside this repo's own formatting gate. A repo whose `.prettierignore` lists `*.md` needs
-    // `"prettier": false` instead; the two behavioural cases below are what make that a
+    // `"format": false` instead; the two behavioural cases below are what make that a
     // measurement rather than a preference.
-    expect(config.prettier).toBeUndefined();
+    expect(config.format).toBeUndefined();
     expect(existsSync(join(REPO_ROOT, ".prettierignore"))).toBe(false);
     expect(pkg.scripts?.["format:check"] ?? "").toBe("cosyte-process format --check");
   });
@@ -806,10 +812,12 @@ describe("the shape that makes generated output land correctly", () => {
     { timeout: 90_000 },
     async () => {
       // The setting proved load-bearing rather than assumed, in the direction that applies
-      // HERE. `"prettier": false` is the right answer in a sibling whose `.prettierignore`
-      // lists `*.md`; it is the wrong answer in this repo. With the pass off the generator
-      // writes `## <version>` and `### Patch Changes` on adjacent lines with no blank line
-      // between them, which this repo's Prettier config rejects.
+      // HERE. `"format": false` (named `"prettier": false` before Changesets 3) is the right
+      // answer in a sibling whose `.prettierignore` lists `*.md`; it is the wrong answer in
+      // this repo. With the pass off the generator writes a line holding only the bullet's
+      // two-space indent where the summary has a blank line, which this repo's Prettier
+      // config rejects. (Before Changesets 3 it also wrote `## <version>` and
+      // `### Patch Changes` on adjacent lines; it now puts a blank line between them.)
       //
       // STATED HONESTLY, BECAUSE THIS IS WHERE THIS REPO DIVERGES FROM TWO OF ITS SIBLINGS:
       // that raw document is NOT what a Version PR here would carry. This repo's `version`
@@ -819,12 +827,12 @@ describe("the shape that makes generated output land correctly", () => {
       // that with it off, a canonical published changelog rests entirely on `CHANGELOG.md`
       // staying inside that one glob list, and the archive is byte identical either way
       // so nothing is bought in exchange.
-      const off = runVersion({ changelogBody: changelog, configOverrides: { prettier: false } });
+      const off = runVersion({ changelogBody: changelog, configOverrides: { format: false } });
 
       expect(headings(off.changelog).slice(0, 2)).toEqual(["# Changelog", `## ${off.version}`]);
       await expect(formatCheckAccepts(off.changelog)).resolves.toBe(false);
-      // Named concretely rather than left as "something is off": the two headings collide.
-      expect(off.changelog).toContain(`## ${off.version}\n### Patch Changes`);
+      // Named concretely rather than left as "something is off": a whitespace-only line.
+      expect(off.changelog).toContain("\n  \n");
       // The archived history is byte identical in BOTH arms, which is what makes the
       // trade one-sided: leaving the pass on costs nothing.
       expect(archivedHistory(off.changelog)).toBe(archivedHistory(changelog));
