@@ -41,8 +41,9 @@ export interface SystemIdentity {
 }
 
 /**
- * The seed identity table. Order is irrelevant; lookup indexes are built from it in
- * {@link ../systems/resolve}. Each entry is one firsthand-grounded system (see the module doc).
+ * The seed identity table. Order is irrelevant; {@link resolveSystem} builds its lookup indexes from
+ * it. Each entry is one system whose URI, OID and mnemonics were grounded firsthand against the FHIR
+ * R4 terminology-systems registry (and its ICD page) and HL7 Table 0396.
  */
 export const SYSTEM_IDENTITIES: readonly SystemIdentity[] = Object.freeze(
   [

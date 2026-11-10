@@ -9,7 +9,7 @@
  * `consists_of`, …). The graph these form is the whole point: resolve a drug to its
  * components and through them to its ingredient, a branded drug to its generic, a drug to its dose
  * form. Note that the ingredient edge is authored on the component rather than on the `SCD` itself
- * (see {@link ../rxnorm/navigate.ingredientsOf}).
+ * (see {@link ingredientsOf}).
  *
  * **The direction convention is a documented medication-safety trap**, and it
  * is grounded here firsthand on the NLM RxNorm Technical Documentation (§12.7) and the UMLS Reference
@@ -39,7 +39,7 @@
  * `PSN` / `SY` / `TMSY` are Appendix 5's **synonym** term types: each labels an alternate *name* on
  * some other concept rather than a concept of its own, so they are part of this vocabulary but can
  * never appear as a loaded {@link RxNormConcept.tty}. See
- * {@link ../rxnorm/tty.isSynonymTermType}.
+ * {@link isSynonymTermType}.
  */
 export type TermType =
   | "IN"
@@ -121,9 +121,9 @@ export interface NdcResolution {
 /**
  * The temporal status of an NDC↔RXCUI mapping (RxNav `getNDCStatus`: `ACTIVE` / `OBSOLETE` / `ALIEN`
  * / `UNKNOWN`). An NDC found in the loaded release's `RXNSAT` attributes is `active` **as of that
- * release**; `obsolete` / `alien` come from the RxNav NDC-history data (a differential / BYO source,
- * not the base RRF concept files) and are surfaced only when the caller supplies them: the engine
- * **never fabricates** a non-current status.
+ * release**; `obsolete` / `alien` come from the RxNav NDC-history data (a differential source, not
+ * the base RRF concept files), which {@link loadRxNormGraph} does not read, so every resolution it
+ * returns today is `active`. The engine **never fabricates** a non-current status.
  */
 export type NdcStatus = "active" | "obsolete" | "alien" | "unknown";
 
@@ -137,7 +137,7 @@ export interface NdcUnmapped {
   readonly ndc: string;
 }
 
-/** The result of {@link ../rxnorm/navigate.resolveNdc}: a resolution or a typed absence. */
+/** The result of {@link resolveNdc}: a resolution or a typed absence. */
 export type NdcResult = NdcResolution | NdcUnmapped;
 
 /**
@@ -198,7 +198,7 @@ export interface RxNormLoadWarning {
   /**
    * The stable diagnostic code for the skip. `TERM_RXNORM_MALFORMED_ROW` is a structurally unusable
    * row; `TERM_RXNORM_UNTYPED_CONCEPT` is an `RXCUI` no defining atom could type. Both are in the
-   * package-wide {@link ../common/diagnostics.DIAGNOSTIC_CODES} registry, which documents each.
+   * package-wide {@link DIAGNOSTIC_CODES} registry, which documents each.
    */
   readonly code: "TERM_RXNORM_MALFORMED_ROW" | "TERM_RXNORM_UNTYPED_CONCEPT";
   /** Which source file the fault was in. */
@@ -225,7 +225,7 @@ export interface RxNormLoadWarning {
 export interface RxNormGraph {
   /** The release version (e.g. `"RXNORM_2026AA"`), when supplied: mappings are release-scoped. */
   readonly version?: string;
-  /** Concepts keyed by `RXCUI` (first `SAB=RXNORM` atom per `RXCUI` wins). Each frozen. */
+  /** Concepts keyed by `RXCUI`, each typed by its first **defining** `SAB=RXNORM` atom. Each frozen. */
   readonly concepts: ReadonlyMap<string, RxNormConcept>;
   /** Directed edges indexed by `subject` `RXCUI`, each list in file order. Each list frozen. */
   readonly edges: ReadonlyMap<string, readonly RxNormEdge[]>;

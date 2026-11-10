@@ -15,7 +15,7 @@
  * type. `ET` is in neither table; the appendix describes it only in prose, as "a small number of
  * concepts with TTY=ET, a term type reserved for entry terms for dose forms". Those are concepts in
  * their own right rather than synonyms carried on another, so `ET` counts as defining here. See
- * {@link isSynonymTermType} and {@link ../rxnorm/load.loadRxNormGraph}.
+ * {@link isSynonymTermType} and {@link loadRxNormGraph}.
  *
  * @packageDocumentation
  */
@@ -26,7 +26,7 @@ import type { TermType } from "./types.js";
  * The drug-graph term types (`RXNCONSO.TTY`), each mapped to its **verbatim Appendix 5 name** (`ET`
  * excepted: the appendix publishes no Name for it, so the UMLS expansion "Entry Term" is used).
  * Encoded as an identity fact; a concept's `TTY` is carried verbatim on its
- * {@link ../rxnorm/types.RxNormConcept}, never re-labeled.
+ * {@link RxNormConcept}, never re-labeled.
  *
  * The keys are the full Appendix 5 vocabulary, defining and synonym alike. Only the **defining** ones
  * can appear on a loaded concept (see {@link isSynonymTermType}).
@@ -98,7 +98,7 @@ export function asTermType(tty: string): TermType | undefined {
  *
  * Appendix 5 defines each as a *"synonym of another TTY"*: it labels an alternate **name** for a
  * concept, never the concept's own kind. So a synonym atom can never establish an `RXCUI`'s term
- * type, and {@link ../rxnorm/load.loadRxNormGraph} will not let one: an `RXCUI` whose release
+ * type, and {@link loadRxNormGraph} will not let one: an `RXCUI` whose release
  * supplies only synonym atoms is skipped and surfaced, never typed `"TMSY"`.
  *
  * @param tty - A {@link TermType}.
