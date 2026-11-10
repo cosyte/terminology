@@ -10,10 +10,14 @@
  * concept, never a crash. RRF reserves `|` as the delimiter (fields never contain a literal pipe), so
  * a plain split is exact.
  *
+ * **Conservative on structure:** a `columns.properties` entry that is not an object (a hole in a
+ * sparse list, an explicit `undefined`, a `null`) names no column, so it is a typed
+ * `TERM_CODESYSTEM_MALFORMED` fatal, raised before any row is read.
+ *
  * @packageDocumentation
  */
 
-import { DIAGNOSTIC_CODES } from "../common/diagnostics.js";
+import { DIAGNOSTIC_CODES, FATAL_CODES, TerminologyError } from "../common/diagnostics.js";
 import type { Writable } from "../common/writable.js";
 import { defaultStatusMapper, makeStatus } from "./status.js";
 import type { Concept, LoadWarning, Property, RrfSource } from "./types.js";
@@ -37,11 +41,26 @@ export function parseRrfLine(line: string): readonly string[] {
   return cells;
 }
 
-/** The highest column index the mapping references: a row must have at least this many cells. */
+/**
+ * The highest column index the mapping references: a row must have at least this many cells.
+ *
+ * The property list is iterated, never mapped, so a hole in a sparse list reads as `undefined`. An
+ * entry that is not an object names no column and takes a value-free fatal: the message is a fixed
+ * string, so nothing the caller configured reaches it.
+ */
 function maxColumn(source: RrfSource): number {
   const { code, display, status, properties } = source.columns;
   let max = Math.max(code, display, status ?? 0);
-  for (const p of properties ?? []) max = Math.max(max, p.column);
+  for (const p of properties ?? []) {
+    const entry: unknown = p;
+    if (typeof entry !== "object" || entry === null) {
+      throw new TerminologyError(
+        FATAL_CODES.TERM_CODESYSTEM_MALFORMED,
+        "RRF source: a configured property column is not an object",
+      );
+    }
+    max = Math.max(max, p.column);
+  }
   return max;
 }
 
@@ -60,6 +79,8 @@ function cell(cells: readonly string[], index: number): string | undefined {
  *
  * @param source - The RRF source.
  * @returns The parsed concepts (by code) and the load warnings.
+ * @throws {TerminologyError} `TERM_CODESYSTEM_MALFORMED` when a `columns.properties` entry is not an
+ *   object (a hole, `undefined`, or `null`). The message is fixed and names no configured value.
  * @example
  * ```ts
  * import { parseRrf } from "@cosyte/terminology";

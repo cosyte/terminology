@@ -92,7 +92,9 @@ import {
   validateUcum,
   type CodeSystem,
   type Concept,
+  type FixedWidthPropertyField,
   type GemDirection,
+  type RrfPropertyColumn,
 } from "../../src/index.js";
 
 /**
@@ -338,7 +340,7 @@ function rf2Row(over: { source?: string; advice?: string; category?: string } = 
  * The reviewed size of the slot table. It is asserted, so a slot cannot be dropped silently while
  * the suite still reports green.
  */
-const SLOT_COUNT = 62;
+const SLOT_COUNT = 64;
 
 const slots: readonly DiagnosticSlot<Probe>[] = [
   // ── RFC-4180 CSV reader: the caller-supplied column config ───────────────────────────────────
@@ -471,6 +473,25 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
       ),
     expectCode: DIAGNOSTIC_CODES.TERM_FIXED_WIDTH_MALFORMED,
   },
+  {
+    name: "FixedWidthSource.fields.properties[0].name beside an entry that is not an object (caller-supplied)",
+    plant: (m) =>
+      probe(() =>
+        parseFixedWidth({
+          format: "fixed-width",
+          content: m,
+          fields: {
+            code: { start: 0, end: 4 },
+            display: { start: 0, end: 4 },
+            properties: [
+              { name: m, slice: { start: 0, end: 4 } },
+              undefined,
+            ] as unknown as readonly FixedWidthPropertyField[],
+          },
+        }),
+      ),
+    expectCode: FATAL_CODES.TERM_CODESYSTEM_MALFORMED,
+  },
 
   // ── RRF (pipe-delimited RxNorm/UMLS) reader ──────────────────────────────────────────────────
   {
@@ -496,6 +517,25 @@ const slots: readonly DiagnosticSlot<Probe>[] = [
         }),
       ),
     expectCode: DIAGNOSTIC_CODES.TERM_RRF_MALFORMED_ROW,
+  },
+  {
+    name: "RrfSource.columns.properties[0].name beside an entry that is not an object (caller-supplied)",
+    plant: (m) =>
+      probe(() =>
+        parseRrf({
+          format: "rrf",
+          content: `${m}|${m}|\n`,
+          columns: {
+            code: 0,
+            display: 1,
+            properties: [
+              { name: m, column: 1 },
+              undefined,
+            ] as unknown as readonly RrfPropertyColumn[],
+          },
+        }),
+      ),
+    expectCode: FATAL_CODES.TERM_CODESYSTEM_MALFORMED,
   },
 
   // ── FHIR CodeSystem reader ───────────────────────────────────────────────────────────────────

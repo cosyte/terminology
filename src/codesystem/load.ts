@@ -27,9 +27,9 @@ import type { CodeSystem, CodeSystemSource, Concept, LoadWarning } from "./types
  * - `"fhir"`: a native FHIR R4 `CodeSystem` JSON resource.
  *
  * **Liberal on load:** a malformed *row* is skipped and surfaced in `warnings` (never a crash, never a
- * partial concept). **Conservative on structure:** an unusable *source* (wrong FHIR `resourceType`, or
- * a CSV whose configured columns are absent from the header) throws a typed `TerminologyError`
- * carrying `TERM_CODESYSTEM_MALFORMED`.
+ * partial concept). **Conservative on structure:** an unusable *source* (wrong FHIR `resourceType`, a
+ * CSV whose configured columns are absent from the header, or an RRF or fixed-width property entry
+ * that is not an object) throws a typed `TerminologyError` carrying `TERM_CODESYSTEM_MALFORMED`.
  *
  * @param source - The release descriptor (a discriminated {@link CodeSystemSource}).
  * @returns The immutable, deep-frozen {@link CodeSystem}.
