@@ -66,20 +66,22 @@ describe("LICENSE", () => {
 /**
  * Every surface a consumer reads the bundled-content posture on. `src/index.ts` is here because its
  * `@packageDocumentation` block compiles into `dist/index.d.ts` / `dist/index.d.cts` and renders on
- * hover, and the four `docs-content/` pages are fetched into docs.cosyte.com. Leaving them out is
- * exactly how a previous pass shipped a `LICENSE` that contradicted the declaration file it built.
+ * hover, and the three `docs-content/` pages that state the posture are fetched into
+ * docs.cosyte.com: the overview, the engine model, and the page that lists what is bundled. Leaving
+ * them out is exactly how a previous pass shipped a `LICENSE` that contradicted the declaration file
+ * it built.
  */
 const BUNDLED_SURFACES = [
   "README.md",
   "src/index.ts",
   "docs-content/intro.md",
-  "docs-content/troubleshooting.md",
   "docs-content/concepts-archetype.md",
+  "docs-content/bundled-content.md",
 ] as const;
 
 /**
- * Every file whose prose can reach a consumer: the surfaces above, `LICENSE`, the remaining
- * `docs-content/` page, and **all** of `src/`, walked rather than listed. Walking is deliberate.
+ * Every file whose prose can reach a consumer: the surfaces above, `LICENSE`, **every** page at the
+ * top of `docs-content/`, and **all** of `src/`, walked rather than listed. Walking is deliberate.
  * A hand-written list omitted `src/rxnorm/rela.ts` and `src/rxnorm/tty.ts`, whose
  * `@packageDocumentation` blocks compile into `dist/index.d.ts` / `dist/index.d.cts`, so restoring
  * the old wording in either put it back into the shipped declaration file with this suite green.
@@ -96,10 +98,9 @@ const walkTs = (dir: string): string[] =>
 const PROSE_FILES: readonly string[] = [
   "LICENSE",
   "README.md",
-  "docs-content/intro.md",
-  "docs-content/quickstart.md",
-  "docs-content/troubleshooting.md",
-  "docs-content/concepts-archetype.md",
+  ...readdirSync(join(ROOT, "docs-content"))
+    .filter((name) => name.endsWith(".md"))
+    .map((name) => `docs-content/${name}`),
   ...walkTs("src"),
 ];
 

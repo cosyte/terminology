@@ -39,3 +39,4 @@ yarn-error.log*
 .cache/
 .turbo/
 dist-artifacts/
+.docs-typecheck/

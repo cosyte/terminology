@@ -13,19 +13,43 @@
     },
     {
       "type": "category",
-      "label": "Core concepts",
-      "collapsed": false,
-      "items": ["concepts-archetype"]
+      "label": "Tutorials",
+      "items": ["check-a-lab-result"]
     },
     {
       "type": "category",
-      "label": "Guides",
-      "items": ["guides-overview"]
+      "label": "How-to guides",
+      "items": [
+        "resolve-a-code-system",
+        "translate-a-code",
+        "load-a-code-system",
+        "look-up-a-code",
+        "expand-a-value-set",
+        "check-value-set-membership",
+        "validate-ucum-units",
+        "map-with-the-gems",
+        "map-snomed-to-icd-10-cm",
+        "navigate-the-rxnorm-graph",
+        "find-rxnorm-concepts",
+        "handle-errors-and-warnings"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Explanation",
+      "items": ["concepts-archetype", "value-set-answers", "crosswalks", "rxnorm-graph"]
+    },
+    {
+      "type": "category",
+      "label": "Reference",
+      "items": ["diagnostic-codes", "code-system-identities", "bundled-content"]
     },
     {
       "type": "category",
       "label": "Troubleshooting",
       "items": ["troubleshooting"]
-    }
+    },
+    "testing-and-quality",
+    "performance"
   ]
 }
