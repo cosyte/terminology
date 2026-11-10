@@ -1,17 +1,21 @@
 /**
  * Row-level edges of the four code-system readers: a code repeated across rows, a blank line, an
- * empty property cell, a column index no row can reach, and the FHIR nesting cases. Each test pins
+ * empty property cell, a column index no row can reach, a property list with a hole, and the FHIR
+ * nesting cases. Each test pins
  * what the reader keeps and what it reports. Synthetic codes and names only.
  */
 
 import { describe, expect, it } from "vitest";
 
 import {
+  loadCodeSystem,
   parseCsvSource,
   parseFhirCodeSystem,
   parseFixedWidth,
   parseRrf,
   TerminologyError,
+  type FixedWidthPropertyField,
+  type RrfPropertyColumn,
 } from "../../src/index.js";
 
 describe("parseCsvSource: row edges", () => {
@@ -231,5 +235,90 @@ describe("parseFhirCodeSystem: nesting and repeats", () => {
         detail: "concept is missing its required code",
       },
     ]);
+  });
+});
+
+describe("parseRrf and parseFixedWidth: a property entry that is not an object", () => {
+  // A JavaScript caller can hand either reader a property list with a hole, an explicit `undefined`,
+  // or a `null`. Each names no column, so each is the reader's typed fatal, exactly as a hole in a
+  // CSV source's `columns.properties` is: never a TypeError from deep in the loader. The list is read
+  // before any row, so an empty file is refused the same way as one with rows.
+  // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
+  const holeRrf = [, { name: "kept", column: 1 }] as unknown as readonly RrfPropertyColumn[];
+  const rrfEntries: readonly (readonly [string, readonly RrfPropertyColumn[]])[] = [
+    ["a hole", holeRrf],
+    ["undefined", [undefined] as unknown as readonly RrfPropertyColumn[]],
+    ["null", [{ name: "kept", column: 1 }, null] as unknown as readonly RrfPropertyColumn[]],
+  ];
+  const keptField = { name: "kept", slice: { start: 0 } };
+  // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
+  const holeFixed = [, keptField] as unknown as readonly FixedWidthPropertyField[];
+  const fixedEntries: readonly (readonly [string, readonly FixedWidthPropertyField[]])[] = [
+    ["a hole", holeFixed],
+    ["undefined", [undefined] as unknown as readonly FixedWidthPropertyField[]],
+    ["null", [keptField, null] as unknown as readonly FixedWidthPropertyField[]],
+  ];
+
+  /** Run `fn` and return what it threw, or `undefined` when it returned. */
+  function thrown(fn: () => unknown): unknown {
+    try {
+      fn();
+    } catch (err) {
+      return err;
+    }
+    return undefined;
+  }
+
+  for (const [label, properties] of rrfEntries) {
+    for (const content of ["1|A|\n", ""]) {
+      it(`parseRrf refuses ${label} with the property-column fatal (${JSON.stringify(content)})`, () => {
+        const caught = thrown(() =>
+          parseRrf({ format: "rrf", content, columns: { code: 0, display: 1, properties } }),
+        );
+        expect(caught).toBeInstanceOf(TerminologyError);
+        expect((caught as TerminologyError).code).toBe("TERM_CODESYSTEM_MALFORMED");
+        expect((caught as TerminologyError).message).toBe(
+          "RRF source: a configured property column is not an object",
+        );
+      });
+    }
+  }
+
+  for (const [label, properties] of fixedEntries) {
+    for (const content of ["A00 Alpha\n", ""]) {
+      it(`parseFixedWidth refuses ${label} with the property-field fatal (${JSON.stringify(content)})`, () => {
+        const caught = thrown(() =>
+          parseFixedWidth({
+            format: "fixed-width",
+            content,
+            fields: { code: { start: 0, end: 3 }, display: { start: 4 }, properties },
+          }),
+        );
+        expect(caught).toBeInstanceOf(TerminologyError);
+        expect((caught as TerminologyError).code).toBe("TERM_CODESYSTEM_MALFORMED");
+        expect((caught as TerminologyError).message).toBe(
+          "fixed-width source: a configured property field is not an object",
+        );
+      });
+    }
+  }
+
+  it("refuses it through loadCodeSystem too, for both formats", () => {
+    const rrf = thrown(() =>
+      loadCodeSystem({
+        format: "rrf",
+        content: "1|A|\n",
+        columns: { code: 0, display: 1, properties: holeRrf },
+      }),
+    );
+    expect((rrf as TerminologyError).code).toBe("TERM_CODESYSTEM_MALFORMED");
+    const fixed = thrown(() =>
+      loadCodeSystem({
+        format: "fixed-width",
+        content: "A00 Alpha\n",
+        fields: { code: { start: 0, end: 3 }, display: { start: 4 }, properties: holeFixed },
+      }),
+    );
+    expect((fixed as TerminologyError).code).toBe("TERM_CODESYSTEM_MALFORMED");
   });
 });
