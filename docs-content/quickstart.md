@@ -1,35 +1,38 @@
 ---
 id: quickstart
 title: Quickstart
-sidebar_position: 1
-description: "Runnable examples: resolve a code system, translate a code, look up and expand, walk the crosswalks, and navigate the RxNorm drug graph."
+sidebar_label: Quickstart
+description: "From install to a first answer: name a code system, translate a code through a ConceptMap you supply, and look a code up in a release."
 ---
 
 # Quickstart
 
-`@cosyte/terminology` is a **terminology engine**, not a wire parser: it answers FHIR terminology
-questions over **consumer-supplied** resources (the code-system identity resolver, the ConceptMap
-`$translate` engine, the CodeSystem `$lookup` / `$validate-code` operations, and the ValueSet
-`$expand` / binding operations) with one non-negotiable rule: **it never fabricates a code, and never
-treats an answer it could not compute as if it had**.
+In five minutes we name a code system, translate a code through a map, and look a code up in a code
+system. Each block is a complete program: paste it into a `.ts` file and run it with Node.js 22 or
+later after `npm install @cosyte/terminology`. The maps and code systems are small synthetic ones
+written inline; with real data you load your own release the same way.
 
-## Resolve a code system to its canonical URI
+## 1. Name the code system
 
-A `Coding` off any parser (HL7 v2, C-CDA, FHIR) might name its system by OID, mnemonic, or URI.
-`resolveSystem` canonicalizes it, and returns a **typed unknown** rather than guessing when it does
-not recognize the identifier.
+A code off an HL7 v2 message, a C-CDA document or a FHIR resource may name its system by OID,
+by mnemonic or by URI. `resolveSystem` turns any of them into the one canonical URI.
 
 ```ts runnable
 import { resolveSystem, isUnknownSystem } from "@cosyte/terminology";
 
-const loinc = resolveSystem("2.16.840.1.113883.6.1");
-isUnknownSystem(loinc) ? "?" : loinc.url; // => "http://loinc.org"
+const byOid = resolveSystem("2.16.840.1.113883.6.1");
+const byMnemonic = resolveSystem("LN");
+
+isUnknownSystem(byOid) ? "unknown" : byOid.url; // => "http://loinc.org"
+isUnknownSystem(byMnemonic) ? "unknown" : byMnemonic.url; // => "http://loinc.org"
+isUnknownSystem(resolveSystem("2.16.840.1.113883.19.9999")); // => true
 ```
 
-## Translate a code through a ConceptMap
+An identifier it does not know comes back as `{ unknown: true, input }`, never a guessed URI.
 
-Feed the engine a standard FHIR `ConceptMap` resource, then translate a `Coding` through it. The
-data is **bring-your-own**: the engine ships no map content.
+## 2. Translate a code
+
+Load a FHIR R4 `ConceptMap` and translate a coding through it. Every target comes from the map.
 
 ```ts runnable
 import { loadConceptMap, translate } from "@cosyte/terminology";
@@ -45,319 +48,51 @@ const map = loadConceptMap({
   ],
 });
 
-const result = translate(
-  { system: "http://hl7.org/fhir/administrative-gender", code: "male" },
-  map,
-);
+const hit = translate({ system: "http://hl7.org/fhir/administrative-gender", code: "male" }, map);
+hit.unmapped ? "unmapped" : hit.matches[0]?.target.code; // => "M"
 
-result.unmapped; // => false
+const miss = translate({ system: "http://hl7.org/fhir/administrative-gender", code: "other" }, map);
+miss.unmapped; // => true
 ```
 
-## An unmapped source is surfaced, never guessed
+A code the map does not cover is `unmapped: true`, with the code `TERM_TRANSLATE_UNMAPPED`. Nothing is
+filled in for it.
 
-When a source does not map, the result is a **typed `unmapped`** carrying the source and any
-declared fallback mode: never a fabricated target.
+## 3. Look up a code
 
-```ts runnable
-import { loadConceptMap, translate } from "@cosyte/terminology";
-
-const map = loadConceptMap({ resourceType: "ConceptMap", group: [] });
-const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
-
-result.unmapped; // => true
-```
-
-## Look up a code in a code system
-
-Load a **consumer-supplied** release (RRF, CSV, fixed-width, or a FHIR `CodeSystem` JSON; the engine
-ships no code-system release) and resolve a code to its display and status. An unknown code is a
-typed `{ found: false }`, never a fabricated display.
+Load a code-system release (here a FHIR `CodeSystem`; RRF, CSV and fixed-width files load too) and
+look a code up.
 
 ```ts runnable
 import { loadCodeSystem, lookup } from "@cosyte/terminology";
 
-const cs = loadCodeSystem({
+const labs = loadCodeSystem({
   format: "fhir",
   resource: {
     resourceType: "CodeSystem",
-    url: "http://example.org/labs",
-    concept: [{ code: "2160-0", display: "Creatinine [Mass/volume] in Serum or Plasma" }],
+    url: "http://example.org/fhir/CodeSystem/local-labs",
+    concept: [{ code: "CREAT", display: "Creatinine, serum" }],
   },
 });
 
-const hit = lookup(cs, "2160-0");
-hit.found ? hit.display : "?"; // => "Creatinine [Mass/volume] in Serum or Plasma"
+const found = lookup(labs, "CREAT");
+found.found ? found.display : "not found"; // => "Creatinine, serum"
+lookup(labs, "NOPE").found; // => false
 ```
 
-An unknown code never yields a guessed display:
+## What you did
 
-```ts runnable
-import { loadCodeSystem, lookup, validateCode } from "@cosyte/terminology";
-
-const cs = loadCodeSystem({
-  format: "fhir",
-  resource: { resourceType: "CodeSystem", concept: [{ code: "A", display: "Alpha" }] },
-});
-
-lookup(cs, "ZZZ").found; // => false
-validateCode(cs, "ZZZ").valid; // => false
-```
-
-## Expand a value set and test membership
-
-Load a **consumer-supplied** FHIR `ValueSet` and expand its `compose` over the code systems you
-supply. `$expand` returns the flattened membership plus an honest `complete` flag; binding
-(`validateCodeInValueSet`) answers whether a code is allowed in a slot.
-
-```ts runnable
-import { loadCodeSystem, loadValueSet, expand } from "@cosyte/terminology";
-
-const cs = loadCodeSystem({
-  format: "fhir",
-  resource: {
-    resourceType: "CodeSystem",
-    url: "http://example.org/cs",
-    concept: [{ code: "a" }, { code: "b" }, { code: "c" }],
-  },
-});
-
-const vs = loadValueSet({
-  resourceType: "ValueSet",
-  compose: {
-    include: [{ system: "http://example.org/cs", concept: [{ code: "a" }, { code: "b" }] }],
-  },
-});
-
-const result = expand(vs, { codeSystems: new Map([["http://example.org/cs", cs]]) });
-result.complete; // => true
-```
-
-```ts runnable
-import { loadValueSet, validateCodeInValueSet } from "@cosyte/terminology";
-
-const vs = loadValueSet({
-  resourceType: "ValueSet",
-  compose: { include: [{ system: "http://example.org/cs", concept: [{ code: "a" }] }] },
-});
-
-const member = validateCodeInValueSet({ system: "http://example.org/cs", code: "a" }, vs);
-member.undetermined === false && member.result; // => true
-```
-
-## A value set it cannot expand is surfaced, never guessed
-
-When a part of the value set cannot be computed (a code system you did not supply, a truncated
-server expansion, an unimplemented filter), the answer is a typed **`undetermined`**, never a
-fabricated "not a member" (a false negative on a binding is a clinical error).
-
-```ts runnable
-import { loadValueSet, validateCodeInValueSet } from "@cosyte/terminology";
-
-// An intensional `is-a` filter whose code system was not supplied cannot be evaluated.
-const vs = loadValueSet({
-  resourceType: "ValueSet",
-  compose: {
-    include: [
-      { system: "http://example.org/cs", filter: [{ property: "concept", op: "is-a", value: "root" }] },
-    ],
-  },
-});
-
-const check = validateCodeInValueSet({ system: "http://example.org/cs", code: "x" }, vs);
-check.undetermined; // => true
-```
-
-## Crosswalk between classifications (ICD-9↔ICD-10 GEMs)
-
-The CMS **GEMs** are *public-domain* reference mappings between ICD-9-CM and ICD-10-CM. Load the file
-(bring-your-own, it is a free CMS download) in its authored direction and apply it. A 1:many source
-returns the **full** candidate set; a No-Map source is a typed outcome, never a fabricated code.
-
-```ts runnable
-import { loadGems, applyGem } from "@cosyte/terminology";
-
-// Synthetic rows in the CMS GEM format: `source target flags` (flags: approximate|no-map|combination|scenario|choice-list).
-const gems = loadGems({
-  direction: "9-to-10",
-  version: "2018",
-  content: "25000 E119 10000\nV290 NoDx 11000\n",
-});
-
-const hit = applyGem(gems, "25000");
-hit.mapped; // => true
-```
-
-A source the steward marked **No-Map** is surfaced as a typed result, never a guessed target:
-
-```ts runnable
-import { loadGems, applyGem } from "@cosyte/terminology";
-
-const gems = loadGems({ direction: "9-to-10", content: "V290 NoDx 11000\n" });
-const r = applyGem(gems, "V290");
-!r.mapped && r.noMap && r.code; // => "TERM_CROSSWALK_NO_MAP"
-```
-
-The forward (9→10) and backward (10→9) GEM files are **separate, non-inverse** artifacts: asking the
-engine to invert one throws, by design:
-
-```ts runnable throws
-import { loadGems, invertGem } from "@cosyte/terminology";
-
-const gems = loadGems({ direction: "9-to-10", content: "0010 A000 00000\n" });
-invertGem(gems); // throws TERM_MAP_NOT_INVERTIBLE
-```
-
-## Resolve a SNOMED CT → ICD-10-CM complex map (BYO)
-
-The NLM SNOMED→ICD-10-CM map is *rule-based* and **context-dependent**. The engine ships the rule
-machinery; the map rows are **yours** (SNOMED CT is licensed, the engine bundles no SNOMED CT refset
-or release, only the individual concepts the resolver names: the map categories and the two gender
-findings).
-Each map group resolves against the patient context you supply; a rule needing context you did **not**
-supply is surfaced as `context-required`, never a guessed branch.
-
-```ts runnable
-import { loadComplexMap, applyComplexMap } from "@cosyte/terminology";
-
-const map = loadComplexMap({
-  format: "rows",
-  rows: [
-    { source: "72098002", group: 1, priority: 1, rule: "IFA 248152002 | Female (finding) |", advice: "MAP IS CONTEXT DEPENDENT FOR GENDER", target: "O00.9", category: "447639009" },
-    { source: "72098002", group: 1, priority: 2, rule: "OTHERWISE TRUE", advice: "CANNOT BE CLASSIFIED WITHOUT GENDER", category: "447638001" },
-  ],
-});
-
-// No gender in context ⇒ the engine refuses to pick a branch.
-const stalled = applyComplexMap(map, "72098002", {});
-stalled.mapped && stalled.groups[0]?.outcome; // => "context-required"
-```
-
-## Navigate the RxNorm drug graph (BYO release)
-
-RxNorm's drug graph (ingredient → clinical drug → branded drug, with brand and dose-form cross-links)
-is loaded from a **bring-your-own** RxNorm RRF release (`RXNCONSO` + `RXNREL`, and `RXNSAT` for
-NDCs; the engine bundles **no** RxNorm release). Relationships are read in RxNorm's documented
-direction (`RELA` is the relationship the **second** `RXCUI` has to the **first**), and navigation
-follows only **authored** edges: the engine never synthesizes an inverse.
-
-```ts runnable
-import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
-
-// Synthetic rows in the real RxNorm RRF wire format (RXNCONSO 18 cols, RXNREL 16 cols).
-// "SCDC(2) has_ingredient IN(1)": subject=RXCUI2=2, object=RXCUI1=1.
-const graph = loadRxNormGraph({
-  conso:
-    "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
-    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||",
-  rel: "1|||RN|2|||has_ingredient|||RXNORM||||||",
-});
-
-const r = ingredientsOf(graph, "2");
-r.found && r.targets[0]?.name; // => "lisinopril"
-```
-
-The ingredient edge is authored on the **component**, not on the clinical drug. That is RxNorm's own
-topology, not a simplification of the example. `has_ingredient` is authored from the **clinical**
-side (`SCDC`/`SCDF`/`SCDG`) to the ingredient `IN`, and from the **branded** side
-(`SBD`/`SBDC`/`SBDF`/`SBDG`) to the **brand name** `BN` rather than to the active ingredient. RxNorm
-authors **no** `SCD ⟶ IN` edge at all, so asking a clinical drug for its ingredients is an honest
-empty answer rather than a guessed one. The **precise** forms (`SCDFP`, `SBDFP`, `SCDGP`) answer
-empty too: an `SCDFP` reaches its basis-of-strength substance(s) by `has_boss`, a one-to-many
-relation whose targets can be a `PIN` or a plain `IN` and which `ingredientsOf` does not follow, and the other two author no ingredient edge at all.
-
-A concept takes its term type from its **defining** atom, wherever that sits in `RXNCONSO`. `PSN`,
-`SY`, and `TMSY` type a *name* rather than a concept, so they never establish one. An `RXCUI` no
-defining atom could type is left out of the graph and reported on `graph.warnings` as
-`TERM_RXNORM_UNTYPED_CONCEPT`, rather than surfacing under a term type it does not have.
-
-To reach an active ingredient, walk to the **clinical** component and take its edge. From an `SCD`
-that is two hops through `consists_of`:
-
-```ts runnable
-import { loadRxNormGraph, consistsOf, ingredientsOf } from "@cosyte/terminology";
-
-const graph = loadRxNormGraph({
-  conso:
-    "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
-    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||\n" +
-    "3|ENG||||||||||RXNORM|SCD||lisinopril 10 MG Oral Tablet||N||",
-  rel: "1|||RN|2|||has_ingredient|||RXNORM||||||\n" + "2|||RN|3|||consists_of|||RXNORM||||||",
-});
-
-// The clinical drug carries no ingredient edge of its own.
-const direct = ingredientsOf(graph, "3");
-direct.found && direct.targets.length; // => 0
-
-// Hop 1: the drug's component. Hop 2: that component's ingredient.
-const parts = consistsOf(graph, "3");
-const component = parts.found ? parts.targets[0]?.rxcui : undefined;
-const viaComponent = ingredientsOf(graph, component ?? "");
-viaComponent.found && viaComponent.targets[0]?.name; // => "lisinopril"
-```
-
-From a **branded** drug the same walk needs one more decision, so do not take the first component
-blindly. An `SBD`'s `consists_of` returns **both** its branded component (an `SBDC`, whose own
-ingredient edge is the brand name again) and the clinical `SCDC`; it is the `SCDC` that leads to the
-`IN`. Select on the component's `tty`:
-
-```ts runnable
-import { loadRxNormGraph, consistsOf, ingredientsOf } from "@cosyte/terminology";
-
-const graph = loadRxNormGraph({
-  conso:
-    "1|ENG||||||||||RXNORM|IN||lisinopril||N||\n" +
-    "2|ENG||||||||||RXNORM|SCDC||lisinopril 10 MG||N||\n" +
-    "4|ENG||||||||||RXNORM|BN||Zestril||N||\n" +
-    "5|ENG||||||||||RXNORM|SBDC||lisinopril 10 MG [Zestril]||N||\n" +
-    "6|ENG||||||||||RXNORM|SBD||lisinopril 10 MG Oral Tablet [Zestril]||N||",
-  rel:
-    "1|||RN|2|||has_ingredient|||RXNORM||||||\n" +
-    "4|||RN|5|||has_ingredient|||RXNORM||||||\n" +
-    "4|||RN|6|||has_ingredient|||RXNORM||||||\n" +
-    "5|||RN|6|||consists_of|||RXNORM||||||\n" +
-    "2|||RN|6|||consists_of|||RXNORM||||||",
-});
-
-// The branded drug's own ingredient edge is its BRAND NAME, not the active ingredient.
-const direct = ingredientsOf(graph, "6");
-direct.found && direct.targets[0]?.tty; // => "BN"
-
-// So pick the CLINICAL component, then take its ingredient edge.
-const parts = consistsOf(graph, "6");
-const clinical = parts.found ? parts.targets.find((c) => c.tty === "SCDC")?.rxcui : undefined;
-const active = ingredientsOf(graph, clinical ?? "");
-active.found && active.targets[0]?.name; // => "lisinopril"
-```
-
-An `RXCUI` absent from the loaded release is a typed unknown, never a guessed concept:
-
-```ts runnable
-import { loadRxNormGraph, ingredientsOf } from "@cosyte/terminology";
-
-const graph = loadRxNormGraph({ conso: "", rel: "" });
-const r = ingredientsOf(graph, "99999999");
-!r.found && r.code; // => "TERM_RXNORM_UNKNOWN_RXCUI"
-```
-
-Approximate name matching is an **opt-in, explicitly labeled** path: never the default, and never an
-exact code assertion (every candidate is marked `approximate: true`):
-
-```ts runnable
-import { loadRxNormGraph, approximateMatch } from "@cosyte/terminology";
-
-const graph = loadRxNormGraph({
-  conso: "1|ENG||||||||||RXNORM|IN||lisinopril||N||",
-  rel: "",
-});
-
-approximateMatch(graph, "lisinopril")[0]?.approximate; // => true
-```
-
-> **About runnable examples.** Blocks tagged ```` ```ts runnable ```` are extracted, run against the
-> package, and their `// =>` results asserted, so a documented example can never silently drift from
-> the code. A ```` ```ts runnable throws ```` block must throw.
+You turned two spellings of LOINC, its OID and its mnemonic, into one URI, translated a code
+through a map you supplied, and looked a code up in a release you supplied. In each step an answer the engine could not prove
+came back as a typed result rather than a guess.
 
 ## Next
 
-- [Core concepts](./concepts-archetype): the engine model and the never-fabricate invariant.
-- **API reference**: every export, generated from source.
+- The tutorial, [check a lab result](./check-a-lab-result.md), takes one coded result through the
+  system, the code, the value set, the unit and a translation.
+- How-to guides for each job: [resolve a code system](./resolve-a-code-system.md),
+  [translate a code](./translate-a-code.md),
+  [load a code system](./load-a-code-system.md), [expand a value set](./expand-a-value-set.md),
+  [validate UCUM units](./validate-ucum-units.md), [map with the GEMs](./map-with-the-gems.md),
+  [navigate the RxNorm graph](./navigate-the-rxnorm-graph.md), and the rest under How-to guides.
+- The [engine model](./concepts-archetype.md) explains why every answer is either proven or typed.

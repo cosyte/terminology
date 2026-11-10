@@ -8,7 +8,8 @@
  *   2. **Never invert**: a GEM is applied source→target only; a matched source is always a declared
  *      source key. The engine never reaches a target as if it were a source.
  *   3. **Liberal load, total apply**: `loadGems` over arbitrary text returns a frozen map or a typed
- *      warning-carrying map (never a crash); `applyGem`/`applyComplexMap` never throw.
+ *      warning-carrying map (never a crash); `loadComplexMap` over arbitrary RF2 text returns a
+ *      frozen map or throws a typed `TerminologyError`; `applyGem`/`applyComplexMap` never throw.
  *   4. **No-Map is typed**: a source whose only entries are `NoDx` is always a typed No-Map.
  *   5. **Context is never guessed**: a complex-map group needing absent context is context-required,
  *      never a silently-picked target.
@@ -37,6 +38,7 @@ import {
   type GemDirection,
   type ComplexMapEntry,
   type PatientContext,
+  TerminologyError,
 } from "../../src/index.js";
 
 const SOURCES = ["0010", "25000", "V290", "78900", "24951"];
@@ -170,6 +172,37 @@ describe("crosswalk invariant: complex map never fabricates, never guesses conte
           }
         },
       ),
+      { numRuns: 400 },
+    );
+  });
+});
+
+const RF2_HEADER =
+  "id\teffectiveTime\tactive\tmoduleId\trefsetId\treferencedComponentId\tmapGroup\tmapPriority\tmapRule\tmapAdvice\tmapTarget\tcorrelationId\tmapCategoryId";
+
+// Arbitrary text, plus arbitrary rows under a real header so the draws also reach the row reader.
+const hostileRf2 = fc.oneof(
+  fc.string({ maxLength: 400 }),
+  fc
+    .array(fc.array(fc.string({ maxLength: 12 }), { maxLength: 14 }), { maxLength: 8 })
+    .map((rows) => [RF2_HEADER, ...rows.map((fields) => fields.join("\t"))].join("\n")),
+);
+
+describe("fuzz: the RF2 complex-map reader never crashes on hostile input", () => {
+  it("loadComplexMap over arbitrary RF2 text returns a frozen map or throws only a typed TerminologyError", () => {
+    fc.assert(
+      fc.property(hostileRf2, fc.string(), contextArb, (content, q, context) => {
+        let map: ReturnType<typeof loadComplexMap>;
+        try {
+          map = loadComplexMap({ format: "rf2", content });
+        } catch (err) {
+          expect(err).toBeInstanceOf(TerminologyError);
+          expect((err as TerminologyError).code).toBe("TERM_CROSSWALK_MALFORMED");
+          return;
+        }
+        expect(Object.isFrozen(map)).toBe(true);
+        expect(() => applyComplexMap(map, q, context)).not.toThrow();
+      }),
       { numRuns: 400 },
     );
   });

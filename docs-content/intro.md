@@ -1,73 +1,69 @@
 ---
 id: intro
-title: Getting started
-sidebar_position: 1
+title: Overview
+sidebar_label: Overview
 description: "A zero-dependency terminology engine for Node.js and TypeScript: FHIR terminology operations over code systems, value sets, and maps you supply."
 ---
 
 # @cosyte/terminology
 
-Answer FHIR terminology questions over your own code-system data, in one line: without standing up a
-terminology server. `@cosyte/terminology` is a **zero-dependency terminology engine** for US
-healthcare code systems. It is **not a wire parser**; it mirrors the FHIR **Terminology Module**
-(`$translate`, `$lookup`, `$validate-code`, `$expand`, …), operating over **consumer-supplied** FHIR
-resources.
+`@cosyte/terminology` is our terminology engine for US healthcare code systems. It answers the FHIR
+terminology questions (`$translate`, `$lookup`, `$validate-code` and `$expand`), validates UCUM units,
+applies the ICD-9-CM and ICD-10-CM GEMs and the SNOMED CT to ICD-10-CM map, and navigates the RxNorm
+drug graph, over code systems, value sets and maps you supply. It runs in your Node.js process, with
+no terminology server and no runtime dependencies.
 
-It ships the **engine, and no code-system release**: SNOMED CT, CPT, LOINC, UMLS/RxNorm, and
-VSAC value sets are strictly bring-your-own. It is not content-free, though. What is bundled includes the
-following, with its copyright:
+```ts runnable
+import { resolveSystem, isUnknownSystem } from "@cosyte/terminology";
 
-- the **UCUM unit table** (`ucum-essence.xml` v2.2), copyright ©1999-2024 Regenstrief Institute, Inc.,
-  reproduced verbatim under the UCUM Copyright Notice and License ([https://ucum.org/license](https://ucum.org/license)) and
-  embedded byte-for-byte in the published build. The UCUM Specification is provided "as is" without
-  warranty of any kind; the full notice ships with the package at `vendor/ucum/NOTICE.md`;
-- the code-system **identities** (the OID ↔ canonical-URI pairings), encoded and grounded firsthand
-  against the HL7/FHIR registry: these identify the systems, they are not any system's code list;
-- the **SNOMED CT concepts the crosswalk resolver names**, each with its description: the four
-  map-category concepts a complex-map row's `mapCategoryId` refers to, and the two gender findings a
-  gender `IFA` rule is written against. SNOMED CT is copyright © International Health Terminology
-  Standards Development Organisation; no SNOMED CT refset or release is bundled;
-- **RxNorm's relationship and term-type names** the drug-graph API is written against (`RELA`,
-  `RELA_INVERSE`, `TERM_TYPES`), each with its name as published by the U.S. National Library of
-  Medicine, which produces RxNorm. Individual RxNorm identifiers also appear in the API documentation
-  examples, with their RxNorm names and term types. No RxNorm release is bundled.
-
-That states what is distributed and under whose copyright. It is not legal advice.
-
-> **Status:** the 0.1 line, published on npm. The public API is settled: below `1.0.0` a breaking change
-> ships in a new minor version and is called out in the changelog. This release ships the code-system
-> identity resolver, the ConceptMap `$translate` engine, the CodeSystem `$lookup`/`$validate-code`
-> loaders, ValueSet `$expand`/binding, UCUM validation, the crosswalk resolvers (GEMs and
-> SNOMED→ICD-10-CM), and the RxNorm drug graph.
-
-## Install
-
-```bash
-npm install @cosyte/terminology
+const system = resolveSystem("2.16.840.1.113883.6.1");
+isUnknownSystem(system) ? "unknown" : system.url; // => "http://loinc.org"
 ```
 
-## Translate a code through a ConceptMap
+## Who it is for
 
-```ts
-import { loadConceptMap, translate } from "@cosyte/terminology";
+Developers who already hold codes (off an HL7 v2 message, a C-CDA document or a FHIR resource) and
+need to answer questions about them in code: which system is this, what does this code mean, is it
+allowed in this field, what is it in the other classification, what is in this drug. It is built for
+the case where a wrong answer is worse than no answer.
 
-const map = loadConceptMap(myConceptMapJson); // a standard FHIR R4 ConceptMap resource
-const result = translate({ system: "http://loinc.org", code: "2160-0" }, map);
+## What it will not do
 
-if (result.unmapped) {
-  // A first-class, surfaced outcome: never a guessed target.
-} else {
-  for (const m of result.matches) {
-    // m.target (a Coding), m.relationship, m.equivalence, m.comment
-  }
-}
-```
+- **Guess.** An unknown system, an unmapped code, a value set it cannot fully evaluate and an `RXCUI`
+  that is not in your release each come back as a typed result, never as a plausible answer. The
+  [engine model](./concepts-archetype.md) explains why.
+- **Run a map backwards.** A directional map is read only in the direction its author wrote it.
+- **Convert magnitudes.** UCUM support is recognition and comparison of units, never `mg/dL` to
+  `mmol/L`.
+- **Ship a code-system release.** SNOMED CT, CPT, LOINC, UMLS and RxNorm releases, the CMS GEM files,
+  the SNOMED CT to ICD-10-CM refset and VSAC value sets are yours to supply, under the terms their
+  stewards set.
+- **Parse a wire format.** It reads FHIR resources and the standard release files; the HL7 v2,
+  C-CDA and FHIR parsers are separate packages.
 
-The engine is **conservative on assertion**: an unmapped source is a typed `unmapped`, never a
-fabricated target, and a directional map is never silently inverted.
+The package is not content-free: it bundles the UCUM unit table, the code-system identities, the
+SNOMED CT concepts the complex-map resolver names, and RxNorm's relationship and term-type names
+(`RELA`, `RELA_INVERSE`, `TERM_TYPES`).
+[What is bundled](./bundled-content.md) lists each, with its copyright.
 
-## Next
+## Status
 
-- [Quickstart](./quickstart): resolve a system and translate a code, runnable.
-- [Core concepts](./concepts-archetype): the engine model and the never-fabricate invariant.
-- Read the **API reference** for every export, generated from source.
+The 0.1 line, published on npm. Below `1.0.0` a breaking change ships in a new minor version, never
+a patch, and the changelog says what broke. The diagnostic and fatal codes are part of that
+contract: renaming or removing one is a breaking change.
+
+## Where to go next
+
+- [Installation](./installation.md), then the [quickstart](./quickstart.md) for a first result.
+- The tutorial, [check a lab result](./check-a-lab-result.md), walks one coded result through
+  every layer.
+- The how-to guides, one task each: [resolve a code system](./resolve-a-code-system.md),
+  [translate a code](./translate-a-code.md), [load a code system](./load-a-code-system.md),
+  [look up a code](./look-up-a-code.md), [expand a value set](./expand-a-value-set.md),
+  [check value set membership](./check-value-set-membership.md),
+  [validate UCUM units](./validate-ucum-units.md), [map with the GEMs](./map-with-the-gems.md),
+  [map SNOMED CT to ICD-10-CM](./map-snomed-to-icd-10-cm.md),
+  [navigate the RxNorm graph](./navigate-the-rxnorm-graph.md),
+  [find RxNorm concepts](./find-rxnorm-concepts.md), and
+  [handle errors and warnings](./handle-errors-and-warnings.md).
+- The [API reference](./api/README.md), generated from the source, covers every export.

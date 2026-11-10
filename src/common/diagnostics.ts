@@ -296,7 +296,7 @@ export const FATAL_CODES = {
   /**
    * An **inversion** of a directional crosswalk was requested: a forbidden operation. The GEMs and
    * the SNOMED→ICD-10-CM map are authoritative in **one direction only**; a forward map is not the
-   * inverse of the backward map. Thrown by {@link ../crosswalk/gems.invertGem} so the
+   * inverse of the backward map. Thrown by {@link invertGem} so the
    * never-invert refusal is a first-class, discoverable contract rather than a silent absence.
    */
   TERM_MAP_NOT_INVERTIBLE: "TERM_MAP_NOT_INVERTIBLE",

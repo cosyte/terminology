@@ -14,7 +14,7 @@
  * A single coded value: a `code` drawn from a code `system`, optionally versioned and displayed.
  *
  * Models FHIR R4 `Coding`. `system` is the code system's **canonical URI** (e.g.
- * `http://loinc.org`), not a mnemonic or OID: use {@link ../systems/resolve.resolveSystem} to
+ * `http://loinc.org`), not a mnemonic or OID: use {@link resolveSystem} to
  * canonicalize before constructing one. `system` is optional because a raw wire code sometimes
  * arrives without one; the engine surfaces that rather than inventing a system.
  *
@@ -40,7 +40,7 @@ export interface Coding {
 /**
  * A concept described by one or more {@link Coding}s plus optional free text: FHIR R4
  * `CodeableConcept`. Included so the value layer is complete for downstream consumers even though
- * {@link ../conceptmap/translate.translate} operates on a single {@link Coding}.
+ * {@link translate} operates on a single {@link Coding}.
  *
  * @example
  * ```ts

@@ -96,10 +96,12 @@ function resolveV2Table(rawInput: string, bareOid: string): SystemIdentity | und
 /**
  * Resolve a code-system identifier to its canonical {@link SystemIdentity}.
  *
- * Accepts, in order of attempt: a canonical URI (case-insensitive), a `v2-XXXX` mnemonic or a
- * v2 table URI/OID (resolved structurally), a bare or `urn:oid:`-prefixed OID, or an HL7 v2
- * Table 0396 mnemonic. Whitespace is trimmed. An empty or unrecognized identifier yields a typed
- * {@link UnknownSystem}: the resolver **never** invents a URI.
+ * Accepts, in order of attempt: a canonical URI (case-insensitive), a mnemonic listed in
+ * {@link SYSTEM_IDENTITIES} (an HL7 v2 Table 0396 mnemonic or another accepted alias,
+ * case-insensitive), a bare or `urn:oid:`-prefixed OID, and an HL7 v2 table's OID or
+ * `terminology.hl7.org` URI (resolved structurally from the table number). The `v2-XXXX` mnemonic a
+ * v2 table identity carries is not accepted as input on its own. Whitespace is trimmed. An empty or
+ * unrecognized identifier yields a typed {@link UnknownSystem}: the resolver **never** invents a URI.
  *
  * @param id - The identifier (canonical URI, OID, `urn:oid:` OID, or mnemonic).
  * @returns The resolved {@link SystemIdentity}, or `{ unknown: true, input }`.
