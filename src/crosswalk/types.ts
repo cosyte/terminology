@@ -14,7 +14,7 @@
  * - a context-dependent rule with no runtime context is a typed {@link ComplexMapContextRequired}:
  *   the rule + advice ride through, the engine never picks a branch it wasn't given the data for;
  * - all Map Advice / GEM flags ride through **verbatim** (advice flags must not be swallowed);
- * - a directional map is **never inverted** (see {@link ../crosswalk/gems.invertGem}).
+ * - a directional map is **never inverted** (see {@link invertGem}).
  *
  * @packageDocumentation
  */
@@ -244,8 +244,8 @@ export interface PatientContext {
 }
 
 /**
- * One map group's resolution: a discriminated outcome. A group resolves to a target, a No-Map, an
- * ambiguity (candidates surfaced), or a context-required stall; it is **never** a silently-picked
+ * One map group's resolution: a discriminated outcome. A group resolves to a target, a No-Map, or a
+ * context-required stall carrying the group's candidate rules; it is **never** a silently-picked
  * single target when the steward flagged otherwise.
  */
 export type ComplexMapGroupResult =
@@ -285,8 +285,9 @@ export interface ComplexMapGroupNoMap {
 }
 
 /**
- * A group whose winning path is a **context-dependent** `IFA` rule (or `447639009`/`447640006`
- * category) for which the caller supplied **no** matching context. The engine surfaces the rules +
+ * A group whose winning path is a **context-dependent** `IFA` rule for which the caller supplied
+ * **no** matching context (or an `IFA` rule the resolver cannot interpret, or a group in which no rule
+ * held). The engine surfaces the rules +
  * advice and refuses to pick a branch: the never-fabricate rule for runtime context.
  */
 export interface ComplexMapContextRequired {
@@ -345,11 +346,11 @@ export interface CrosswalkUnmapped {
   readonly source: string;
 }
 
-/** The result of {@link ../crosswalk/gems.applyGem}: a match, an authored No-Map, or an absence. */
+/** The result of {@link applyGem}: a match, an authored No-Map, or an absence. */
 export type GemApplyResult = GemMatched | CrosswalkNoMap | CrosswalkUnmapped;
 
 /**
- * The result of {@link ../crosswalk/complex-map.applyComplexMap}: a per-group match, or a typed
+ * The result of {@link applyComplexMap}: a per-group match, or a typed
  * absence when the source concept is not in the map.
  */
 export type ComplexMapApplyResult = ComplexMapMatched | CrosswalkUnmapped;

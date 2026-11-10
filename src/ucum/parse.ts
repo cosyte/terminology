@@ -46,6 +46,11 @@ interface SimpleMatch {
   readonly len: number;
 }
 
+/** A bare atom ranks before a prefixed one: the tie-break between two readings of one length. */
+function prefixRank(m: SimpleMatch): number {
+  return m.prefix ? 1 : 0;
+}
+
 /**
  * All plausible (prefix?+atom) interpretations at `pos`, ordered by preference: longer total match
  * first, and a bare atom before a prefixed one on a tie (so `Pa` is pascal, not peta-are). The
@@ -65,7 +70,7 @@ function simpleMatches(essence: UcumEssence, s: string, pos: number): SimpleMatc
       }
     }
   }
-  out.sort((a, b) => b.len - a.len || (a.prefix ? 1 : 0) - (b.prefix ? 1 : 0));
+  out.sort((a, b) => b.len - a.len || prefixRank(a) - prefixRank(b));
   return out;
 }
 

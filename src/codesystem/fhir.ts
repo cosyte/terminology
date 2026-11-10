@@ -94,9 +94,10 @@ function collectConcepts(
     if (code !== undefined && code !== "" && !into.has(code)) {
       const props: Property[] = [];
       for (const p of getArray(raw, "property") ?? []) {
+        if (!isJsonObject(p)) continue;
         const pcode = getString(p, "code");
         if (pcode === undefined) continue;
-        const value = isJsonObject(p) ? readPropertyValue(p) : undefined;
+        const value = readPropertyValue(p);
         if (value !== undefined) props.push(Object.freeze({ code: pcode, value }));
       }
       // Synthesize the nesting-derived `parent` edge (unless the release already declared it), so a

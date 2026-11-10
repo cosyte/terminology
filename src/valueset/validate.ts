@@ -37,9 +37,9 @@ import type {
   ValueSetMembership,
 } from "./types.js";
 
-function cannotExpand(detail: string, path?: string): ExpansionDiagnostic {
-  const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_CANNOT_EXPAND", detail };
-  if (path !== undefined) d.path = path;
+/** Every caller names the component, reference, or expansion it could not decide, so a path is always given. */
+function cannotExpand(detail: string, path: string): ExpansionDiagnostic {
+  const d: Writable<ExpansionDiagnostic> = { code: "TERM_VALUESET_CANNOT_EXPAND", detail, path };
   return Object.freeze(d);
 }
 
@@ -105,7 +105,9 @@ function usableRelease(
  */
 function underPath(d: ExpansionDiagnostic, prefix: string): ExpansionDiagnostic {
   const out: Writable<ExpansionDiagnostic> = { code: d.code, detail: d.detail };
-  out.path = d.path === undefined ? prefix : `${prefix}/${d.path}`;
+  /* v8 ignore if -- unreachable: every diagnostic this module raises carries a path, as cannotExpand requires one */
+  if (d.path === undefined) out.path = prefix;
+  else out.path = `${prefix}/${d.path}`;
   return Object.freeze(out);
 }
 
@@ -227,11 +229,19 @@ function matchComponent(
   // it is today: this fix removes a fabricated `true`, it does not turn a refusal into an answer.
   if (system !== undefined && target.system === undefined && baseComplete) baseMatched = false;
 
+  // A component with no `system`, no `concept`, no `filter` and no referenced value set selects
+  // nothing, so it matches no code: `expand` gives it no members, and reading the absence of every
+  // constraint as "everything" would admit any code on an include and remove any code on an
+  // exclude. The loader accepts one such shape (an empty `valueSet` list); the rest are hand-built.
+  if (baseMatched === null && !hasVs) return { matched: false, complete: true, diagnostics };
+
   // ── referenced value sets (intersection: member of every one) ──
   let refDefiniteFalse = false;
   let refUndetermined = false;
   if (hasVs) {
+    let refsRead = 0;
     for (const [i, url] of valueSet.entries()) {
+      refsRead++;
       const refPath = `${path}.valueSet[${String(i)}]`;
       if (visited.has(url)) {
         diagnostics.push(cannotExpand("cyclic value set reference", refPath));
@@ -252,6 +262,9 @@ function matchComponent(
         refDefiniteFalse = true;
       }
     }
+    // A list with a length whose iterator yielded no reference (one a caller replaced `entries` on)
+    // is an intersection with nothing, exactly as `expand` reads it: never "no constraint".
+    if (refsRead === 0) refDefiniteFalse = true;
   }
 
   // ── combine base ∩ refs ──

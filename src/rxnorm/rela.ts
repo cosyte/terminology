@@ -11,7 +11,7 @@
  * or atom (with … RXCUI1 …)."* The doc's worked example (a row with `RXCUI1=1155862`, `RELA=isa`,
  * `RXCUI2=197589`) reads *"197589 **isa** 1155862"* (the second concept is-a the first).
  *
- * So an `RXNREL.RRF` row is read **`RXCUI2 ⟶RELA⟶ RXCUI1`**, and {@link ../rxnorm/load.loadRxNormGraph}
+ * So an `RXNREL.RRF` row is read **`RXCUI2 ⟶RELA⟶ RXCUI1`**, and {@link loadRxNormGraph}
  * normalizes every row to `subject = RXCUI2`, `predicate = RELA`, `object = RXCUI1`. Concretely, a
  * `has_ingredient` row places the **having** concept in `RXCUI2` and what it *has* in `RXCUI1`; a
  * `tradename_of` row places the **branded** concept in `RXCUI2` and the **generic** in `RXCUI1` (the
@@ -27,7 +27,7 @@
  * basis-of-strength substances by `has_boss` (one-to-many, and its targets can be a `PIN` or a plain
  * `IN`), and the other two author no ingredient-bearing edge at all. Treat those pairings as the
  * ones RxNorm authors, not as a closed set, and read the `TTY` of what a traversal returns. See
- * {@link ../rxnorm/navigate.ingredientsOf}.
+ * {@link ingredientsOf}.
  *
  * @packageDocumentation
  */
@@ -99,7 +99,7 @@ export type RelaName = (typeof RELA)[keyof typeof RELA];
  * The authored **inverse pairs** of the drug-graph `RELA`s: a published fact (RxNorm Appendix 1),
  * used only to *document* and *validate* that a caller is traversing a real relationship. The graph
  * **never** uses this to synthesize a missing edge: RxNorm ships both directions, so
- * {@link ../rxnorm/navigate} follows whichever authored predicate points the way it wants to go.
+ * the navigation functions follow whichever authored predicate points the way they want to go.
  *
  * @example
  * ```ts

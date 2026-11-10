@@ -249,13 +249,18 @@ export function matchesFilter(
  * Evaluate every filter in a component against one concept: does it satisfy **all** of them, and were
  * they **all** supported? An unsupported operator short-circuits `supported: false`.
  *
+ * Internal to the value set engine (`expand` and `validateCodeInValueSet` call it): the package does
+ * not export it, so the example imports it from this module. A caller evaluates a filter with the
+ * exported {@link matchesFilter}, once per filter.
+ *
  * @param concept - The concept under test.
  * @param filters - The component's filters (ANDed).
  * @param sub - The subsumption index.
  * @returns A {@link FilterMatch} over the conjunction.
  * @example
  * ```ts
- * import { loadCodeSystem, buildSubsumption, matchesAllFilters } from "@cosyte/terminology";
+ * import { loadCodeSystem } from "../codesystem/load.js";
+ * import { buildSubsumption, matchesAllFilters } from "./filters.js";
  *
  * const cs = loadCodeSystem({
  *   format: "fhir",

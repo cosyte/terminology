@@ -1,176 +1,174 @@
 ---
 id: troubleshooting
 title: Troubleshooting
-sidebar_position: 1
-description: "What an unmapped, unknown, undetermined, or incomplete answer means, and what to do about it."
+sidebar_label: Troubleshooting
+description: "What an unmapped, unknown, undetermined or incomplete answer means, why a code you expected is missing, and what to do about each."
 ---
 
 # Troubleshooting
 
-Common symptoms when integrating `@cosyte/terminology`, and how to read what the engine is telling
-you.
+Most surprises from this engine are it declining to guess. Each section below starts from what you
+see and ends with what to do. The codes are explained in full in the
+[code reference](./diagnostic-codes.md).
 
-## `translate` returned `unmapped`: where's my code?
+## `translate` returned `unmapped`
 
-That is the engine working as designed. When a source concept has no target in the supplied map, the
-result is a **typed `unmapped`**, never a guessed code:
+The map has no target for that source code, or every target it declares says "not related", so the
+result is [`TERM_TRANSLATE_UNMAPPED`](./diagnostic-codes.md#term_translate_unmapped). Check, in order:
 
-```ts
-const result = translate(coding, map);
-if (result.unmapped) {
-  result.code; // "TERM_TRANSLATE_UNMAPPED"
-  result.mode; // "fixed" | "provided" | "other-map" | "none"
-  result.source; // your original coding, surfaced untouched
-}
-```
+- **The system.** A group applies only when its `source` matches the coding's `system`. Resolve the
+  system first with `resolveSystem`, so an OID and a URI for the same system compare equal.
+- **The direction.** `translate` matches source codes only. If your code is on the target side, you
+  need a map written the other way.
+- **`notRelated`.** If it is present, the map does list your code, and says its targets are not
+  related to it.
+- **`mode`.** A map can declare a fallback (`fixed`, `other-map`, `provided`). The engine reports it on
+  the result and never applies it: you decide whether to trust it.
 
-If the map declares a `group.unmapped` fallback, its `mode` (and, for `fixed`, `fixedTarget`, or for
-`other-map`, `otherMapUrl`) is **reported** on the result, but never silently applied. You decide
-whether to trust a fallback.
+See [translate a code](./translate-a-code.md).
 
 ## `resolveSystem` returned `{ unknown: true }`
 
-The identifier (URI, OID, or mnemonic) is not one the engine recognizes. It returns a typed unknown
-rather than guessing a canonical URI. Check the value, and canonicalize known systems by their OID or
-HL7 v2 mnemonic (`LN`, `SCT`, `I10C`, …).
+The identifier is not one the engine knows. It knows the systems on
+[Code-system identities](./code-system-identities.md), by URI, OID or mnemonic, and HL7 v2 tables by
+their OID or URI. Your own local systems will not resolve, and the short form `v2-0203` is not
+accepted on its own. The [code reference](./diagnostic-codes.md#term_system_unrecognized) explains
+how this relates to `TERM_SYSTEM_UNRECOGNIZED`.
 
-## `loadConceptMap` threw
+## A loader threw a `TerminologyError`
 
-`loadConceptMap` throws a `TerminologyError` carrying `TERM_CONCEPTMAP_MALFORMED` when the resource is
-not a usable ConceptMap (wrong `resourceType`, a target missing its `equivalence`, and so on). Catch
-it and branch on `err.code`. This is deliberate: a structurally broken map is refused rather than
-loaded partially and translating some codes while silently dropping others.
+The source as a whole cannot be used, so nothing was loaded: a broken map would otherwise translate
+some codes and silently drop others. Branch on `err.code`:
 
-## Can I translate a target code back to its source?
+- [`TERM_CONCEPTMAP_MALFORMED`](./diagnostic-codes.md#term_conceptmap_malformed): not an R4
+  `ConceptMap`, or a target without an R4 `equivalence`. An R5 map (with `relationship`) is refused.
+- [`TERM_CODESYSTEM_MALFORMED`](./diagnostic-codes.md#term_codesystem_malformed): the wrong
+  `resourceType`, or a configured CSV column that is not in the header row. Header names are matched
+  exactly.
+- [`TERM_VALUESET_MALFORMED`](./diagnostic-codes.md#term_valueset_malformed): the message gives the
+  path to the part that is broken.
+- [`TERM_CROSSWALK_MALFORMED`](./diagnostic-codes.md#term_crosswalk_malformed): an RF2 refset with no
+  header or without its required columns.
 
-Not through a forward map. Steward maps are directional and **non-invertible**, so `translate` only
-matches the map's source side. Reverse translation needs an explicit inverse `ConceptMap`.
+## A code I know exists is not found
 
-## `validateCodeInValueSet` returned `undetermined`: is my code a member or not?
+`lookup` says `found: false` ([`TERM_CODE_UNKNOWN`](./diagnostic-codes.md#term_code_unknown)) only
+when the code is not in the release you loaded. Check:
 
-The engine could not **prove** membership either way, so it refuses to guess. This happens when a part
-of the value set cannot be evaluated: an intensional `filter`/`system` include whose code system you
-did not pass in the `ExpansionContext`, a referenced value set that is not supplied, an unimplemented
-filter operator (`regex` / `generalizes`), a **truncated** pre-computed expansion, a pre-computed
-expansion the server marked **`unclosed`**, or a component that pins a `version` the `CodeSystem` you
-supplied for that system does not agree with. The result carries
-`code: "TERM_VALUESET_CANNOT_EXPAND"` and a `diagnostics` list naming each gap.
+- **`warnings`** on the loaded code system: the row may have been skipped as malformed.
+- **Letter case and spacing.** Codes are matched exactly.
+- **The columns.** For RRF and fixed-width files, a wrong column index or slice reads the wrong field
+  as the code.
+- **The release.** A code added in a later release is not in an earlier one.
 
-```ts
-const r = validateCodeInValueSet(coding, valueSet, { codeSystems });
-if (r.undetermined) {
-  r.diagnostics; // each carries a stable code and a `path` into your own compose
-}
-```
+## A valid code is flagged
 
-Supply the missing `CodeSystem` (or referenced `ValueSet`) in the context and re-check. A truncated
-server expansion must be re-fetched in full: the engine never treats a truncated snapshot as complete
-membership (a false "not a member" is a clinical error). An `unclosed` expansion cannot be re-fetched
-into completeness at all: the marker says the value set is unbounded because it includes
-post-coordinated content (SNOMED CT, UCUM), so codes beyond the listed ones may be valid and only a
-terminology server that understands that content can decide the ones it did not list. A code that IS
-in such an expansion still validates `true`: the marker bounds what **absence** means, not presence.
-For a version disagreement, supply the release the value set actually pins: re-checking against the
-release you already have is what the diagnostic exists to stop.
+`validateCode` says `valid: true` and `status.active` is `false`: the code exists and the release
+marks it deprecated, obsolete, suppressed or a header. That is the release speaking. A header
+([`TERM_CONCEPT_HEADER_NOT_BILLABLE`](./diagnostic-codes.md#term_concept_header_not_billable)) is not
+valid on a claim; a deprecated code
+([`TERM_CONCEPT_DEPRECATED`](./diagnostic-codes.md#term_concept_deprecated)) is not current. See
+[look up a code](./look-up-a-code.md).
 
-## `expand` dropped a code my value set lists explicitly
+## `validateCodeInValueSet` returned `undetermined`
 
-A `compose` component that enumerates codes is admitted only where the evidence you supplied does
-not contradict it. When you pass a `CodeSystem` for that component's `system` (and the component's
-declared `version`, if it has one, agrees with that release), a code the release does not define is
-**not** a member: `expand` leaves it out of `contains` and reports one
-`TERM_VALUESET_ENUMERATED_CODE_UNDEFINED` diagnostic on that component, and
-`validateCodeInValueSet` decides it a non-member rather than a member.
+The engine could not prove membership either way, so it will not say "not a member": a false "not
+a member" on a binding is a clinical error. The result carries
+[`TERM_VALUESET_CANNOT_EXPAND`](./diagnostic-codes.md#term_valueset_cannot_expand) and a
+`diagnostics` list whose `path` points at each part of your value set that could not be evaluated:
 
-The result is still `complete: true`, so this is a **decided** answer rather than a lower bound, and
-a complete expansion can carry diagnostics: read `diagnostics` on both.
+- a code system or referenced value set you did not pass: pass it, keyed by its canonical URL;
+- a component pinning a `version` the release you passed does not declare: pass the release it
+  pins (re-checking against the one you have is what this guards against);
+- a `regex` or `generalizes` filter: not implemented; it stays undetermined;
+- a truncated pre-computed expansion that does not list the code: fetch the whole expansion;
+- an expansion marked unclosed: no fetch completes it. The value set includes post-coordinated
+  content, so only a terminology server that understands that content can decide the codes it did
+  not list. A code the expansion does list still validates `true`.
 
-```ts
-const r = expand(valueSet, { codeSystems });
-r.complete; // => true
-r.diagnostics.filter((d) => d.code === "TERM_VALUESET_ENUMERATED_CODE_UNDEFINED");
-// each carries a `path` into your own compose, such as "compose.include[0]"
-```
-
-If the release you passed is the incomplete party rather than the value set, supply the release the
-value set was written against: the rule reads the evidence you hand it and nothing else. If you want
-the enumeration honored as written, do not pass a release for that system, or pass one whose
-`version` the component does not pin to: with no usable release the engine holds no contrary
-evidence and every enumerated code is carried, exactly as before.
+See [check value set membership](./check-value-set-membership.md) and
+[complete, incomplete and undetermined answers](./value-set-answers.md).
 
 ## `expand` returned `complete: false`
 
-The `contains` set is a **lower bound**, not exhaustive membership: some intensional part could not be
-computed (see above). Read each diagnostic's `path` (`"compose.include[2]"`, `"expansion"`) to
-find the part that did not resolve in your own resource; do **not** treat the partial `contains` as
-the whole value set.
+`contains` is a lower bound, not the whole value set: some part could not be computed, for the same
+reasons as above. Read each diagnostic's `path` (`compose.include[2]`, `expansion`) to find the part
+in your own resource, and do not treat the partial `contains` as the full membership.
 
-## Diagnostics and logs
+## `expand` dropped a code my value set lists
 
-The `message`, `detail`, and `reason` **fields** are **value-free**: nothing you configured and nothing
-your release or resource contained reaches one, or an `err.stack`, at any length. The locus beside
-them is a line number, an index path into your own resource, or a fixed token: never a URI or a
-column name. `String(err)` is safe.
+You passed a release for that component's system, and the release does not define the code. The
+engine had the evidence, so it left the code out and reported
+[`TERM_VALUESET_ENUMERATED_CODE_UNDEFINED`](./diagnostic-codes.md#term_valueset_enumerated_code_undefined)
+on the component. The answer is still `complete: true`, so read `diagnostics` even on a complete
+expansion.
 
-**The objects those codes ride on are not the same thing, and this is the part to get right.** A
-`TERM_CODE_UNKNOWN`, `TERM_TRANSLATE_UNMAPPED`, `TERM_CROSSWALK_UNMAPPED`, `TERM_RXNORM_UNKNOWN_RXCUI`,
-or `TERM_RXNORM_NDC_UNMAPPED` outcome names **what you asked about** (`input`, `source`, `rxcui`,
-`ndc`, `coding`) because that is how a never-fabricate answer says which thing it refused to guess.
-A loaded model likewise carries the displays and canonical URIs from your release. So
-`JSON.stringify(result)` into a log is a decision about PHI, and a **code in patient context** can be
-PHI: log the `code` and the locus, log a value only if you would log the code you passed in, and
-never the surrounding record.
+If the release is the stale party, pass the release the value set was written against. If you want
+the list taken as written, do not pass a release for that system: with no evidence against it, every
+listed code is a member.
 
-## Known limitations (this release)
+## A crosswalk gave no target
 
-> **Status:** `@cosyte/terminology` ships the code-system identity resolver, the ConceptMap
-> `$translate` engine, the CodeSystem load layer with `$lookup` / `$validate-code`, the ValueSet
-> `compose` / `$expand` / binding operations, UCUM validation, the crosswalk resolvers, and the
-> RxNorm drug graph.
+- [`TERM_CROSSWALK_NO_MAP`](./diagnostic-codes.md#term_crosswalk_no_map): the steward says there is no
+  target. That is the answer.
+- [`TERM_CROSSWALK_UNMAPPED`](./diagnostic-codes.md#term_crosswalk_unmapped): the source is not in
+  the file you loaded. Check the direction of the GEM file and the code's format (GEM codes have no
+  dots).
+- [`TERM_CROSSWALK_CONTEXT_REQUIRED`](./diagnostic-codes.md#term_crosswalk_context_required): pass the
+  patient's `ageYears` or `gender`. The group's `rules` show which one it needs.
 
-- **BYO data**: `$expand` and binding operate over the `CodeSystem` releases and referenced
-  `ValueSet`s you supply in the `ExpansionContext`; an intensional part with no supplied code system is
-  a typed `TERM_VALUESET_CANNOT_EXPAND`, never a fabricated member.
-- **An enumeration is checked against the release you supplied, where there is one**: an explicit
-  `concept` entry a usable release does not define is not admitted, reported as a typed
-  `TERM_VALUESET_ENUMERATED_CODE_UNDEFINED` on that component while the answer stays
-  `complete: true`. Bounded to that case on purpose: with no release for the system, or a declared
-  `version` the supplied release does not agree with, the engine has no contrary evidence and every
-  enumerated code is carried.
-- **A declared code system version is checked, not selected on**: where an intensional part resolves
-  a supplied release, a component's `version` is compared against that release's own `version`. A
-  disagreement (or a release that declares no version to confirm the pin against) is a typed
-  `TERM_VALUESET_CANNOT_EXPAND` located on that component, and its members are withheld or shipped
-  without the unconfirmed version stamp: never membership computed from the other release. The
-  `ExpansionContext` holds **one release per system URI**, so the engine cannot hold several releases
-  and pick the one a component asks for. What is compared is that the two declarations agree, never
-  that either is true: a mislabeled release is still trusted.
-- **Subsumption is the release's own hierarchy**: `is-a` / `descendent-of` read the loaded code
-  system's `parent` edges (nested `concept`s or an explicit `parent` property). Subsumption across
-  two separate releases is not computed.
-- **Intensional filters are best-effort**: `is-a` / `descendent-of` / `is-not-a` / `=` / `in` /
-  `not-in` / `exists` are implemented; `regex` / `generalizes` surface as `TERM_VALUESET_CANNOT_EXPAND`.
-- **RxNorm graph is BYO**: `loadRxNormGraph` operates over the RxNorm RRF release you supply; the
-  engine bundles **no** RxNorm release. NDC↔RXCUI resolution is release-scoped and carries the as-of
-  release; obsolete/alien NDC statuses come from RxNav NDC-history data (a differential source), not the
-  base RRF concept files, and are never fabricated. Approximate matching is opt-in and always labeled.
-  An `RXCUI` whose supplied atoms could not establish a term type is left out of the graph and
-  reported as `TERM_RXNORM_UNTYPED_CONCEPT` on `graph.warnings`, never loaded under a synonym's
-  `TTY`; check that list if a concept you expected reads as `TERM_RXNORM_UNKNOWN_RXCUI`.
-- **No bundled code-system release**: every code-system release is bring-your-own, including the
-  content packs (RxNorm Prescribable, ICD-10-CM) and SNOMED CT / CPT / LOINC / UMLS / VSAC.
-- **What *is* bundled** includes the UCUM unit table (`ucum-essence.xml` v2.2, copyright © Regenstrief
-  Institute, Inc., reproduced verbatim under [https://ucum.org/license](https://ucum.org/license); notice at
-  `vendor/ucum/NOTICE.md`, which ships with the package), the code-system identity pairings, the
-  SNOMED CT concepts the crosswalk resolver names: the map-category concepts and the two gender
-  findings (SNOMED CT is copyright © International Health Terminology Standards Development
-  Organisation), and RxNorm's relationship and term-type names (`RELA`, `RELA_INVERSE`,
-  `TERM_TYPES`), published by the U.S. National Library of Medicine. Individual SNOMED CT, ICD-10-CM,
-  and RxNorm identifiers also appear in the API documentation examples. The full list, with its
-  copyright, is in the package's `LICENSE`. So the UCUM operations and `resolveSystem` work with no
-  release at all; `$lookup`,
-  `$validate-code`, `$expand`, `$translate`, and the crosswalk and RxNorm resolvers need one you
-  supply.
+See [map with the GEMs](./map-with-the-gems.md) and
+[map SNOMED CT to ICD-10-CM](./map-snomed-to-icd-10-cm.md).
 
-The **API reference** always reflects exactly what this release ships: treat it as the source of
-truth over any prose above.
+## An RxNorm answer is empty or missing
+
+- **`ingredientsOf` on a clinical drug is empty.** RxNorm authors no ingredient edge on an `SCD`. Go
+  through its component: see [navigate the RxNorm graph](./navigate-the-rxnorm-graph.md).
+- **A branded drug's ingredient is a brand name.** The branded side's ingredient edge points to the
+  `BN`. Take the clinical component (`SCDC`) instead.
+- **An `RXCUI` is unknown** ([`TERM_RXNORM_UNKNOWN_RXCUI`](./diagnostic-codes.md#term_rxnorm_unknown_rxcui)).
+  Check `graph.warnings` for
+  [`TERM_RXNORM_UNTYPED_CONCEPT`](./diagnostic-codes.md#term_rxnorm_untyped_concept): a concept with
+  only synonym atoms is left out rather than typed from a synonym.
+- **An NDC is unmapped** ([`TERM_RXNORM_NDC_UNMAPPED`](./diagnostic-codes.md#term_rxnorm_ndc_unmapped)).
+  NDCs are matched exactly as `RXNSAT` writes them, 11 digits without hyphens. Pass `sat` when you
+  load the graph.
+
+## `ucumEqual` says two units differ
+
+- **Letter case.** UCUM is case-sensitive: `m` is the meter, `M` is not a unit, and `MG` is the
+  megagauss.
+- **They are different units.** `mg/dL` and `mmol/L` measure different things, and the engine does not
+  convert between them.
+- **A non-linear unit.** `Cel` equals only `Cel`, never `K`.
+
+An invalid unit ([`TERM_UCUM_INVALID`](./diagnostic-codes.md#term_ucum_invalid)) is never equal to
+anything. See [validate UCUM units](./validate-ucum-units.md).
+
+## `structuredClone` or `postMessage` throws on a loaded model
+
+A loaded code system, GEM map, complex map or RxNorm graph holds read-only views of its indexes,
+which cannot be cloned. Copy out what the other side needs, such as `new Map(cs.concepts)`. The
+[engine model](./concepts-archetype.md#immutability) explains why.
+
+## What is safe to log
+
+An error's `message` and `stack`, and a warning's or diagnostic's `detail` or `reason`, never contain
+a value from your data. The result objects do: an outcome names the code, unit, NDC or coding you
+asked about, and a code in a patient's context can be PHI. Log the `code` and the position, not the
+whole result. See [handle errors and warnings](./handle-errors-and-warnings.md).
+
+## Limits of this release
+
+- One release per code system in an expansion context: the engine cannot hold several and pick the
+  one a component pins.
+- Subsumption is each release's own hierarchy; across two releases it is not computed.
+- `regex` and `generalizes` filters are not implemented.
+- `$expand` request parameters such as `activeOnly` and `displayLanguage` are not taken; a value set's
+  own `compose.inactive` is honored.
+- NDC status is `active` as of the loaded release; NDC history (obsolete and alien NDCs) is not read.
+- UCUM is case-sensitive only, with no magnitude conversion.
+- ConceptMaps are read as FHIR R4.
+
+The [API reference](./api/README.md) is generated from the source of this release: where it and a page
+disagree, the reference is right.

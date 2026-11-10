@@ -36,7 +36,7 @@ export const MAP_CATEGORIES = {
   NO_MAP: "447638001",
   /** `447639009`: "Map of source concept is context dependent" (needs runtime patient context). */
   CONTEXT_DEPENDENT: "447639009",
-  /** `447640006`: "Source concept is ambiguous" (surface candidates, never pick one). */
+  /** `447640006`: "Source concept is ambiguous" (carried through on the result; the rule decides). */
   AMBIGUOUS: "447640006",
 } as const;
 
@@ -51,8 +51,8 @@ export const NO_MAP_CATEGORIES: ReadonlySet<string> = new Set([MAP_CATEGORIES.NO
 
 /**
  * The canonical code-system URI for **ICD-10-CM**: the target system of both crosswalks. A published
- * identity fact (mirrors {@link ../systems/registry.SYSTEM_IDENTITIES}); attached to a resolved
- * target {@link ../common/coding.Coding} so a translation is self-describing.
+ * identity fact (mirrors {@link SYSTEM_IDENTITIES}); attached to a resolved
+ * target {@link Coding} so a translation is self-describing.
  */
 export const ICD10CM_SYSTEM = "http://hl7.org/fhir/sid/icd-10-cm";
 

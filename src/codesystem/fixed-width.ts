@@ -11,10 +11,14 @@
  * **Liberal on load:** a line too short to contain the code slice, or with an empty code, is skipped
  * and surfaced as a `TERM_FIXED_WIDTH_MALFORMED` warning.
  *
+ * **Conservative on structure:** a `fields.properties` entry that is not an object (a hole in a
+ * sparse list, an explicit `undefined`, a `null`) names no slice, so it is a typed
+ * `TERM_CODESYSTEM_MALFORMED` fatal, raised before any line is read.
+ *
  * @packageDocumentation
  */
 
-import { DIAGNOSTIC_CODES } from "../common/diagnostics.js";
+import { DIAGNOSTIC_CODES, FATAL_CODES, TerminologyError } from "../common/diagnostics.js";
 import type { Writable } from "../common/writable.js";
 import { defaultStatusMapper, makeStatus } from "./status.js";
 import type {
@@ -69,10 +73,31 @@ export const ICD10CM_ORDER_FILE_FIELDS: FixedWidthFieldMap = Object.freeze({
 });
 
 /**
+ * Check every `fields.properties` entry is an object, before any line is read.
+ *
+ * The list is iterated, never mapped, so a hole in a sparse list reads as `undefined`. An entry that
+ * is not an object names no slice and takes a value-free fatal: the message is a fixed string, so
+ * nothing the caller configured reaches it.
+ */
+function requirePropertyFields(fields: FixedWidthFieldMap): void {
+  for (const p of fields.properties ?? []) {
+    const entry: unknown = p;
+    if (typeof entry !== "object" || entry === null) {
+      throw new TerminologyError(
+        FATAL_CODES.TERM_CODESYSTEM_MALFORMED,
+        "fixed-width source: a configured property field is not an object",
+      );
+    }
+  }
+}
+
+/**
  * Parse a {@link FixedWidthSource} into concepts and skipped-row warnings.
  *
  * @param source - The fixed-width source.
  * @returns The parsed concepts (by code) and the load warnings.
+ * @throws {TerminologyError} `TERM_CODESYSTEM_MALFORMED` when a `fields.properties` entry is not an
+ *   object (a hole, `undefined`, or `null`). The message is fixed and names no configured value.
  * @example
  * ```ts
  * import { parseFixedWidth } from "@cosyte/terminology";
@@ -91,6 +116,7 @@ export function parseFixedWidth(source: FixedWidthSource): {
 } {
   const statusMap = source.statusMap ?? defaultStatusMapper;
   const fields: FixedWidthFieldMap = source.fields;
+  requirePropertyFields(fields);
   const concepts = new Map<string, Concept>();
   const warnings: LoadWarning[] = [];
 
