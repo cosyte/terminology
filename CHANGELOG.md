@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.6
+
+### Patch Changes
+
+- 43eea2f: An internal tidy with no change to any result, warning, or diagnostic. The value set diagnostic factories now take the path every caller already gives them, a few expressions became statements so a coverage note can name the one arm no input reaches, and those arms now carry that note.
+- 43eea2f: A CSV source whose `columns.properties` list has a hole now fails with the typed `TERM_CODESYSTEM_MALFORMED` fatal for a missing property column, the same as an explicit `undefined` entry, instead of a `TypeError` from inside the loader.
+- 0cb5b88: Doc comments, which your editor shows on hover and the generated API reference prints, now match the code. `resolveSystem` lists the forms it accepts in the order it tries them, and no longer says it accepts a `v2-0203` mnemonic on its own (it does not; pass the table's OID or URI). `SYSTEM_IDENTITIES` and `resolveSystem` no longer say every accepted mnemonic comes from HL7 Table 0396: aliases such as `LOINC` and `CPT` are accepted too but are not Table 0396 codes. `NdcStatus` says that `loadRxNormGraph` reads no NDC history, so every NDC it resolves is `active`. `RxNormGraph.concepts` says a concept is typed by its first defining atom. The complex-map outcome types and `MAP_CATEGORIES.AMBIGUOUS` no longer say an ambiguous or context-dependent category stops a group on its own: the group's rules decide. Links that printed as a source path, such as `../crosswalk/gems.invertGem`, now link the symbol. No code changes.
+- e16570e: An RRF or fixed-width source whose property list has an entry that is not an object (a hole, `undefined`, or `null`) now fails with the typed `TERM_CODESYSTEM_MALFORMED` fatal, as a CSV source with a hole in its property columns does, instead of a `TypeError` from inside the loader.
+- 43eea2f: `validateCodeInValueSet` no longer admits a code through a `compose` component that selects nothing. A component with no `system`, `concept`, `filter`, or referenced value set (the loader accepts one with an empty `valueSet` list) matched every code, so an include admitted any code and an exclude removed every code, while `expand` gave the same component no members. Membership now agrees with `expand`: such a component matches no code, and a `valueSet` list that yields no reference is an intersection with nothing.
+
 ## 0.1.5
 
 ### Patch Changes
