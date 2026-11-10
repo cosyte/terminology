@@ -1,9 +1,10 @@
 /**
  * Property-based + fuzz conformance for the Phase-2 load layer:
  *
- *   1. **Fuzz (roadmap §6, fuzz #1)**, the RRF, CSV, and fixed-width readers never crash, hang, or
- *      OOM on hostile input: they return a frozen `CodeSystem` (degrading bad rows to typed
- *      warnings) or throw a typed `TerminologyError`, never any other error.
+ *   1. **Fuzz (roadmap §6, fuzz #1)**, the RRF, CSV, and fixed-width readers (arbitrary text) and the
+ *      FHIR CodeSystem reader (arbitrary JSON) never crash, hang, or OOM on hostile input: they
+ *      return a frozen `CodeSystem` (degrading bad rows to typed warnings) or throw a typed
+ *      `TerminologyError`, never any other error.
  *   2. **Never fabricate**: `lookup` returns a display drawn verbatim from a loaded concept, or a
  *      typed `unknown`; it never invents a display. `validateCode` is `valid: true` **iff** the code
  *      is present: never a guessed `true`.
@@ -90,6 +91,37 @@ describe("fuzz: readers never crash on hostile input", () => {
         }
       }),
       { numRuns: 400 },
+    );
+  });
+
+  // Arbitrary JSON, plus CodeSystem-shaped JSON whose fields hold arbitrary values, so the draws also
+  // reach the concept walk past the resourceType check.
+  const hostileFhir = fc.oneof(
+    fc.anything(),
+    fc.record(
+      {
+        resourceType: fc.constant("CodeSystem"),
+        url: fc.anything(),
+        version: fc.anything(),
+        name: fc.anything(),
+        concept: fc.oneof(fc.anything(), fc.array(fc.anything(), { maxLength: 6 })),
+      },
+      { requiredKeys: ["resourceType"] },
+    ),
+  );
+
+  it("FHIR CodeSystem reader over arbitrary JSON returns a frozen release or throws only a typed TerminologyError", () => {
+    fc.assert(
+      fc.property(hostileFhir, (resource) => {
+        try {
+          const cs = loadCodeSystem({ format: "fhir", resource: resource as never });
+          isFrozenCs(cs);
+        } catch (err) {
+          expect(err).toBeInstanceOf(TerminologyError);
+          expect((err as TerminologyError).code).toBe("TERM_CODESYSTEM_MALFORMED");
+        }
+      }),
+      { numRuns: 500 },
     );
   });
 });
