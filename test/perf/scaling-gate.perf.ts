@@ -122,13 +122,18 @@ const csvLoad = (text: string): CodeSystem =>
  * times its input while it runs, and at that size the collector's cost grows faster than the text.
  * That is a memory finding the bench reading reports, not a complexity regression this gate exists
  * to catch.
+ *
+ * The reader that scans the text once is about three times faster, so the base phases hold more
+ * input: 72 tables a pass on the count axis rather than 24, where a pass of 24 took about 16 ms on a
+ * runner and its warmup alternated by more than 5% between passes that did and did not collect, so
+ * it never settled; and 18 on the size axis rather than 12, to keep that base phase above 10 ms.
  */
 const csvOptions: ScalingGateOptions<string, CodeSystem> = {
   name: "@cosyte/terminology loadCodeSystem, CSV",
   parse: csvLoad,
   weigh: (cs) => cs.count,
-  count: { n: 24, generate: () => loincCsv(200) },
-  size: { inputs: 12, size: 200, generate: (_i, rows) => loincCsv(rows) },
+  count: { n: 72, generate: () => loincCsv(200) },
+  size: { inputs: 18, size: 200, generate: (_i, rows) => loincCsv(rows) },
 };
 
 const rrfLoad = (text: string): CodeSystem =>
