@@ -218,6 +218,21 @@ async function main() {
       sizes: [64, 1_024],
     },
     {
+      // The reading's warmup did not settle on the 78,000 line file twice running, so it is timed
+      // here too.
+      name: "loadGems: ICD-10-CM to ICD-9-CM",
+      small: "1,000 lines",
+      large: "78,000 lines",
+      build: (lines) => {
+        const content = gemFile(lines);
+        return {
+          bytes: Buffer.byteLength(content),
+          pass: () => t.loadGems(gemSource(content)).count,
+        };
+      },
+      sizes: [1_000, 78_000],
+    },
+    {
       name: "loadCodeSystem: RXNCONSO-style RRF",
       small: "10,000 rows",
       large: "400,000 rows",
