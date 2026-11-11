@@ -95,6 +95,34 @@ function loadUnmapped(raw: unknown, path: string): ConceptMapUnmapped {
   return Object.freeze(out);
 }
 
+/**
+ * The groups {@link loadConceptMap} made. Each is frozen, and so is its element list and every
+ * element in it, so nothing about which elements a group holds or what code each names can change
+ * after the load: an index computed from one is good for as long as the group lives. Held weakly.
+ */
+const loadedGroups = new WeakSet<object>();
+
+/**
+ * Whether `group` is one {@link loadConceptMap} made, and so cannot change. Internal: `translate`
+ * keys its by-code element index on it, and reads a group a caller built by hand element by element,
+ * as it always has.
+ *
+ * @param group - A ConceptMap group.
+ * @returns Whether it is a loaded, unchangeable group.
+ * @example
+ * ```ts
+ * import { isLoadedGroup, loadConceptMap } from "./load.js";
+ *
+ * const map = loadConceptMap({ resourceType: "ConceptMap", group: [{ element: [] }] });
+ * const group = map.group[0];
+ * group !== undefined && isLoadedGroup(group); // => true
+ * isLoadedGroup({ element: [] }); // => false
+ * ```
+ */
+export function isLoadedGroup(group: ConceptMapGroup): boolean {
+  return loadedGroups.has(group);
+}
+
 function loadGroup(raw: unknown, path: string): ConceptMapGroup {
   if (!isJsonObject(raw)) malformed(path, "group is not an object");
   const rawElements = getArray(raw, "element") ?? [];
@@ -109,7 +137,9 @@ function loadGroup(raw: unknown, path: string): ConceptMapGroup {
   if (isJsonObject(raw) && raw["unmapped"] !== undefined) {
     out.unmapped = loadUnmapped(raw["unmapped"], `${path}.unmapped`);
   }
-  return Object.freeze(out);
+  const group = Object.freeze(out);
+  loadedGroups.add(group);
+  return group;
 }
 
 /**

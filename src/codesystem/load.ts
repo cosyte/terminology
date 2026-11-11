@@ -32,6 +32,17 @@ const loadedConcepts = new WeakSet<object>();
  *
  * @param concepts - A code system's `concepts`.
  * @returns Whether it is a loaded, unchangeable view.
+ * @example
+ * ```ts
+ * import { isLoadedConcepts, loadCodeSystem } from "./load.js";
+ *
+ * const cs = loadCodeSystem({
+ *   format: "fhir",
+ *   resource: { resourceType: "CodeSystem", concept: [{ code: "c" }] },
+ * });
+ * isLoadedConcepts(cs.concepts); // => true
+ * isLoadedConcepts(new Map(cs.concepts)); // => false
+ * ```
  */
 export function isLoadedConcepts(concepts: ReadonlyMap<string, Concept>): boolean {
   return loadedConcepts.has(concepts);

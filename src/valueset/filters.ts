@@ -129,6 +129,18 @@ const loadedSubsumption = new WeakMap<object, Subsumption>();
  *
  * @param cs - The code system a filter is evaluated over.
  * @returns Its {@link Subsumption}.
+ * @example
+ * ```ts
+ * import { loadCodeSystem } from "../codesystem/load.js";
+ * import { subsumptionOf } from "./filters.js";
+ *
+ * const cs = loadCodeSystem({
+ *   format: "fhir",
+ *   resource: { resourceType: "CodeSystem", concept: [{ code: "p", concept: [{ code: "c" }] }] },
+ * });
+ * subsumptionOf(cs) === subsumptionOf(cs); // => true
+ * subsumptionOf(cs).ancestorsOf("c").has("p"); // => true
+ * ```
  */
 export function subsumptionOf(cs: CodeSystem): Subsumption {
   const concepts = cs.concepts;
