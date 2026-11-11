@@ -697,12 +697,20 @@ describe("no pending changeset opens a line with an ATX or setext heading", () =
   });
 });
 
+/**
+ * The cases that run the real `changeset version` in a scratch repository, with the runtime the
+ * suite runs on. Skipped under Deno: the Changesets CLI calls `enableCompileCache` from
+ * `node:module`, which Deno does not provide (measured on Deno 2.9.8 in CI), so the CLI cannot start
+ * there. A release runs it on Node, where these cases run.
+ */
+const itRunsChangesets = it.skipIf("Deno" in globalThis);
+
 describe("the shape that makes generated output land correctly", () => {
   it("puts nothing but the H1 above the first heading", () => {
     expect(shapeViolation(changelog)).toBeUndefined();
   });
 
-  it(
+  itRunsChangesets(
     "writes the new version section between the H1 and the archived history",
     { timeout: 90_000 },
     async () => {
@@ -749,7 +757,7 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  it(
+  itRunsChangesets(
     "survives the version-heading prefix collision, across two consecutive releases",
     // Above the two 60s `spawnSync` ceilings this case can spend, so a hung subprocess
     // reports as itself rather than as a case timeout.
@@ -788,7 +796,7 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  it(
+  itRunsChangesets(
     "writes no version heading at all when the generator is off (the control)",
     { timeout: 90_000 },
     () => {
@@ -807,7 +815,7 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  it(
+  itRunsChangesets(
     "writes raw output this repo's own format:check rejects when the Prettier pass is off (the control)",
     { timeout: 90_000 },
     async () => {
@@ -877,7 +885,7 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  it(
+  itRunsChangesets(
     "splits the header when prose follows the H1 (the negative control)",
     { timeout: 90_000 },
     () => {

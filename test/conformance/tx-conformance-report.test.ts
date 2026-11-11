@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { renderReport, REPORT_PATH } from "./tx-report.js";
@@ -20,7 +21,7 @@ import {
  * agree on every figure while describing a different selection.
  */
 
-const ROOT = new URL("../../", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const read = (rel: string): string => readFileSync(join(ROOT, rel), "utf8");
 
 describe("the committed conformance report", () => {

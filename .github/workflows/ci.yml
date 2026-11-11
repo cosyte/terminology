@@ -48,31 +48,79 @@ jobs:
   # this caller, never instead of it.
   #
   # Every shared workflow in this repository is called at a published reference, by name: the
-  # callers in the other workflow files at `workflows-2026-11-08-c0db8d8e5927`, and this one at
-  # `workflows-2026-11-10-0be6757a7738` (see below). A reference names one commit of cosyte/.github
-  # and never another (its release there is immutable), so nothing upstream reaches this pipeline
-  # until a change here moves a caller to a newer one. Its release notes say what a caller adopting
-  # it must act on: https://github.com/cosyte/.github/releases
+  # callers in the other workflow files at `workflows-2026-11-08-c0db8d8e5927`, the weekly mutation
+  # and nightly property callers and this one at `workflows-2026-11-10-398cd4ded647` (see below). A
+  # reference names one commit of cosyte/.github and never another (its release there is
+  # immutable), so nothing upstream reaches this pipeline until a change here moves a caller to a
+  # newer one. Its release notes say what a caller adopting it must act on:
+  # https://github.com/cosyte/.github/releases
   # The shared pipeline's optional PHI-scan step is switched on. `pnpm phi-scan` runs
   # `cosyte-phi-scan` from @cosyte/script-utils (ST34): the cross-cutting SSN and email floor over
   # the whole repository, with scripts/phi-allow-list.txt and scripts/phi-scan.exclude.
   #
-  # The performance standard's two jobs run beside `verify`, never after it, so a pull request waits
-  # for the slowest job rather than their sum:
+  # `verify` runs on Linux and macOS, each on Node 22, 24 and 26. The Ubuntu legs keep the names the
+  # ruleset requires; the macOS legs are new contexts, `ci / verify (<node>, macos-latest)`. The
+  # suite also runs under Bun and under Deno, each in its own job (`bun`, `deno`), on Linux. Windows
+  # runs the suite in the `windows` job below rather than in `verify`: see there.
+  #
+  # The testing and performance standards' jobs run beside `verify`, never after it, so a pull
+  # request waits for the slowest job rather than their sum:
+  # - `coverage-ratchet`: coverage held to quality-floor.json, and on a pull request every changed
+  #   line that coverage counts must have run and no floor may be lowered or removed;
+  # - `mutation` (pull requests only): the changed source files mutated with stryker.config.mjs,
+  #   and every mutant in the changed lines killed;
   # - `scaling-gate`: `pnpm test:perf`, the scaling gates for the loaders and for expansion and
   #   their self-checks, never under coverage;
   # - `bench-compare` (pull requests only): bench/terminology.bench.mjs timed on the base build and
   #   the head build, interleaved on one runner. Advisory: it never fails, so never require it.
-  # A skipped job satisfies a required check, so require `scaling-gate` only while its input below
-  # stays on. The full reading, the budgets and the profile are in bench-reading.yml. This caller
-  # alone moved to the 2026-11-10 reference, the first with those two jobs; the jobs it added beside
-  # them (bun, deno, coverage-ratchet, mutation) stay off, as their inputs default to.
+  # A skipped job satisfies a required check, so require each of the others only while its input
+  # below stays on. The full reading, the budgets and the profile are in bench-reading.yml; the
+  # full mutation run is weekly-mutation.yml, and the deep property run nightly-properties.yml.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@0be6757a773885cbd5165dbfa0f93772d907b3e8 # workflows-2026-11-10-0be6757a7738
+    uses: cosyte/.github/.github/workflows/ci.yml@398cd4ded647dddd9f2e220ceb042840f59e1426 # workflows-2026-11-10-398cd4ded647
     with:
+      os: '["ubuntu-latest", "macos-latest"]'
       run-phi-scan: true
+      run-bun: true
+      run-deno: true
+      run-coverage-ratchet: true
+      run-mutation: true
       run-scaling-gate: true
       run-bench-compare: true
+
+  # `verify`'s steps on Windows, on Node 22, 24 and 26, up to the build: not attw and the packed
+  # smoke after it. Not the shared `verify` on `windows-latest`: that leg runs `pnpm attw`, and the
+  # attw gate in @cosyte/script-utils 0.1.10 starts `node_modules/.bin/attw` directly, which on
+  # Windows is a `.cmd` shim Node cannot start without a shell (measured: `spawnSync ...
+  # node_modules\.bin\attw ENOENT`, after every earlier step passed). Once a script-utils release
+  # runs that gate on Windows, add "windows-latest" to `os` above and delete this job. Not a
+  # required context.
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24", "26"]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm phi-scan
+      - run: pnpm test
+      - run: pnpm test:coverage
+      - run: pnpm build
 
   # The runnable programs under examples/. They import the package by name, which resolves through
   # its own `exports` to `dist/`, so the build comes first. Each example checks its own output and

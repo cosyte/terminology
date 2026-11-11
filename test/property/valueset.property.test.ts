@@ -12,20 +12,13 @@
  *      or throws a typed `TerminologyError`, never any other error.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 
-/**
- * This file declares its own test budget. A property test draws fresh random input every run (this
- * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again: making the property suite the one
- * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
- * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
- * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
- * the slowest property case peaked at 1.6 s, so 30 s is ~19x headroom. `vitest.config.ts` sets no global timeout on
- * purpose: read its docblock before adding one, or before deleting this.
- */
-vi.setConfig({ testTimeout: 30_000 });
+import { checkProperty, usePropertyBudget } from "./_property.js";
+
+// This file's tests take the property budget, which grows with the depth (see `_property.ts`).
+usePropertyBudget();
 
 import {
   expand,
@@ -68,7 +61,7 @@ const composeVsArb = fc.record({
 
 describe("invariant: never fabricate a member", () => {
   it("every expanded code is selected by the value set; excludes are honored", () => {
-    fc.assert(
+    checkProperty(
       fc.property(composeVsArb, (json) => {
         const vs = loadValueSet(json);
         const result = expand(vs, ctx());
@@ -87,14 +80,13 @@ describe("invariant: never fabricate a member", () => {
           expect(excluded.has(member.code)).toBe(false);
         }
       }),
-      { numRuns: 400 },
     );
   });
 });
 
 describe("invariant: order-independent membership", () => {
   it("reversing include order yields the same membership set", () => {
-    fc.assert(
+    checkProperty(
       fc.property(composeVsArb, (json) => {
         const forward = loadValueSet(json);
         const reversed = loadValueSet({
@@ -105,14 +97,13 @@ describe("invariant: order-independent membership", () => {
         const b = new Set(expand(reversed, ctx()).contains.map((c) => c.code));
         expect([...a].sort()).toStrictEqual([...b].sort());
       }),
-      { numRuns: 300 },
     );
   });
 });
 
 describe("invariant: a decided membership agrees with the expansion", () => {
   it("validateCodeInValueSet result matches expand() membership for a complete value set", () => {
-    fc.assert(
+    checkProperty(
       fc.property(composeVsArb, codeArb, (json, code) => {
         const vs = loadValueSet(json);
         const result = expand(vs, ctx());
@@ -123,14 +114,13 @@ describe("invariant: a decided membership agrees with the expansion", () => {
         expect(membership.undetermined).toBe(false);
         if (!membership.undetermined) expect(membership.result).toBe(inExpansion);
       }),
-      { numRuns: 400 },
     );
   });
 });
 
 describe("invariant: a truncated expansion never reads as complete membership", () => {
   it("a code absent from a truncated expansion is undetermined, never a confident false", () => {
-    fc.assert(
+    checkProperty(
       fc.property(
         fc.array(fc.record({ system: fc.constant(CS_URL), code: codeArb }), { maxLength: 4 }),
         codeArb,
@@ -151,14 +141,13 @@ describe("invariant: a truncated expansion never reads as complete membership", 
           }
         },
       ),
-      { numRuns: 300 },
     );
   });
 });
 
 describe("invariant: liberal load, typed failure", () => {
   it("loadValueSet over arbitrary JSON returns a frozen value set or throws TerminologyError", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.anything(), (anything) => {
         try {
           const vs = loadValueSet(anything);
@@ -168,16 +157,14 @@ describe("invariant: liberal load, typed failure", () => {
           expect((err as TerminologyError).code).toBe("TERM_VALUESET_MALFORMED");
         }
       }),
-      { numRuns: 500 },
     );
   });
 
   it("expand never throws on a loaded value set", () => {
-    fc.assert(
+    checkProperty(
       fc.property(composeVsArb, (json) => {
         expect(() => expand(loadValueSet(json), ctx())).not.toThrow();
       }),
-      { numRuns: 300 },
     );
   });
 });

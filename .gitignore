@@ -9,6 +9,10 @@ dist/
 # Test / coverage
 coverage/
 .vitest-cache/
+
+# Mutation testing (`pnpm mutate`): StrykerJS's sandbox and its reports
+.stryker-tmp/
+reports/
 .cosyte-doc-snippets*/
 
 # Bench readings and profiles (`pnpm bench:reading --out bench-results/...`)

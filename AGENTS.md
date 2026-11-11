@@ -29,6 +29,7 @@ pnpm format:check
 pnpm phi-scan
 pnpm test
 pnpm test:coverage
+pnpm quality:check --base origin/main
 pnpm build
 pnpm attw
 pnpm examples
@@ -40,6 +41,12 @@ pnpm check:process
 pnpm check:no-emdash
 pnpm check:no-internal-refs
 ```
+
+`pnpm quality:check` holds the coverage `pnpm test:coverage` just measured to
+`quality-floor.json`, and with `--base` requires every changed line to have run. Mutation testing
+runs in CI's `mutation` job on a pull request, over the source files it changed; to run it
+locally, `pnpm mutate changed --base origin/main`, then
+`pnpm quality:mutation --base origin/main`. The full run, `pnpm mutate:full`, runs weekly in CI.
 
 Then pipe the PR title, the PR body, and each commit message through
 `pnpm check:no-emdash --stdin <label>`: CI checks those too.

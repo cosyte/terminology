@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { FATAL_CODES, TerminologyError } from "../../src/index.js";
@@ -29,7 +30,7 @@ import {
  * measured the moment the real snapshot changes.
  */
 
-const FIXTURES = join(new URL(".", import.meta.url).pathname, "fixtures");
+const FIXTURES = join(fileURLToPath(new URL(".", import.meta.url)), "fixtures");
 
 describe("the vendored snapshot", () => {
   const run = runConformance();
@@ -241,7 +242,7 @@ describe("the vendored fixtures and the published tarball", () => {
   // guarantee is that no entry of it reaches into the vendored snapshot. Measured directly against
   // `pnpm pack` as well: that run listed 11 paths, none of them under `vendor/tx-ecosystem/`.
   const pkg = JSON.parse(
-    readFileSync(join(new URL("../../", import.meta.url).pathname, "package.json"), "utf8"),
+    readFileSync(join(fileURLToPath(new URL("../../", import.meta.url)), "package.json"), "utf8"),
   ) as { files?: readonly string[] };
 
   it("names no vendored ecosystem path in the files allowlist", () => {

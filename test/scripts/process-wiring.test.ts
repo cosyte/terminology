@@ -37,8 +37,8 @@
  *
  * The fixtures are throwaway directories in a temp dir, because the check reads the
  * package.json of the directory it is invoked in. Nothing here writes outside the temp dir
- * it created, and every subprocess call uses spawnSync with array args: no exec, no shell
- * form.
+ * it created, and every subprocess call uses spawnSync with array args: no exec, and the shell
+ * only on Windows, where the bin is a `.cmd` shim (see `BIN`).
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -49,8 +49,18 @@ import { join } from "node:path";
 
 const REPO_ROOT = process.cwd();
 
-/** What `pnpm check:process` runs: the bin pnpm linked for `@cosyte/process`. */
-const BIN = join(REPO_ROOT, "node_modules", ".bin", "cosyte-process");
+/**
+ * What `pnpm check:process` runs: the bin pnpm linked for `@cosyte/process`. On Windows pnpm links
+ * it as a `.cmd` shim, which Node starts only through the shell; the shim's path and the one
+ * argument, `check`, are this file's own, so the shell receives no caller value.
+ */
+const ON_WINDOWS = process.platform === "win32";
+const BIN = join(
+  REPO_ROOT,
+  "node_modules",
+  ".bin",
+  ON_WINDOWS ? "cosyte-process.cmd" : "cosyte-process",
+);
 
 /** The five delegated verbs, and the four reserved variant script names with their modifiers. */
 const VERBS = ["build", "test", "lint", "typecheck", "format"] as const;
@@ -67,7 +77,12 @@ interface RunResult {
 }
 
 function check(cwd: string): RunResult {
-  const r = spawnSync(BIN, ["check"], { cwd, encoding: "utf8", timeout: 60_000 });
+  const r = spawnSync(ON_WINDOWS ? `"${BIN}"` : BIN, ["check"], {
+    cwd,
+    encoding: "utf8",
+    timeout: 60_000,
+    shell: ON_WINDOWS,
+  });
   return { code: r.status ?? -1, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 }
 
