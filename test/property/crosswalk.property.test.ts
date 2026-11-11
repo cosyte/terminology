@@ -15,20 +15,13 @@
  *      never a silently-picked target.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 
-/**
- * This file declares its own test budget. A property test draws fresh random input every run (this
- * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again: making the property suite the one
- * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
- * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
- * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
- * the slowest property case peaked at 1.6 s, so 30 s is ~19x headroom. `vitest.config.ts` sets no global timeout on
- * purpose: read its docblock before adding one, or before deleting this.
- */
-vi.setConfig({ testTimeout: 30_000 });
+import { checkProperty, usePropertyBudget } from "./_property.js";
+
+// This file's tests take the property budget, which grows with the depth (see `_property.ts`).
+usePropertyBudget();
 
 import {
   loadGems,
@@ -58,7 +51,7 @@ const directionArb: fc.Arbitrary<GemDirection> = fc.constantFrom("9-to-10", "10-
 
 describe("crosswalk invariant: GEMs never fabricate, never invert", () => {
   it("every returned target is declared for that exact source; No-Map/unmapped yield none", () => {
-    fc.assert(
+    checkProperty(
       fc.property(
         gemContentArb,
         directionArb,
@@ -84,30 +77,27 @@ describe("crosswalk invariant: GEMs never fabricate, never invert", () => {
           }
         },
       ),
-      { numRuns: 400 },
     );
   });
 
   it("loadGems over arbitrary text never throws and returns a frozen map; applyGem never throws", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.string(), fc.string(), (content, q) => {
         const map = loadGems({ direction: "9-to-10", content });
         expect(Object.isFrozen(map)).toBe(true);
         expect(() => applyGem(map, q)).not.toThrow();
       }),
-      { numRuns: 300 },
     );
   });
 
   it("a source whose only entries are NoDx is always a typed No-Map", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.constantFrom(...SOURCES), FLAG, (src, flags) => {
         const map = loadGems({ direction: "9-to-10", content: `${src} NoDx ${flags}` });
         const r = applyGem(map, src);
         expect(r.mapped).toBe(false);
         if (!r.mapped) expect(r.code).toBe("TERM_CROSSWALK_NO_MAP");
       }),
-      { numRuns: 100 },
     );
   });
 });
@@ -149,7 +139,7 @@ const contextArb: fc.Arbitrary<PatientContext> = fc
 
 describe("crosswalk invariant: complex map never fabricates, never guesses context", () => {
   it("a resolved group's target is drawn from the map; apply never throws", () => {
-    fc.assert(
+    checkProperty(
       fc.property(
         fc.array(complexRowArb, { maxLength: 10 }),
         fc.constantFrom("111", "222", "333", "absent"),
@@ -172,7 +162,6 @@ describe("crosswalk invariant: complex map never fabricates, never guesses conte
           }
         },
       ),
-      { numRuns: 400 },
     );
   });
 });
@@ -190,7 +179,7 @@ const hostileRf2 = fc.oneof(
 
 describe("fuzz: the RF2 complex-map reader never crashes on hostile input", () => {
   it("loadComplexMap over arbitrary RF2 text returns a frozen map or throws only a typed TerminologyError", () => {
-    fc.assert(
+    checkProperty(
       fc.property(hostileRf2, fc.string(), contextArb, (content, q, context) => {
         let map: ReturnType<typeof loadComplexMap>;
         try {
@@ -203,7 +192,6 @@ describe("fuzz: the RF2 complex-map reader never crashes on hostile input", () =
         expect(Object.isFrozen(map)).toBe(true);
         expect(() => applyComplexMap(map, q, context)).not.toThrow();
       }),
-      { numRuns: 400 },
     );
   });
 });

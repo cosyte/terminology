@@ -13,20 +13,13 @@
  *      with a score in `[0, 1]`, drawn verbatim from a loaded concept.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 
-/**
- * This file declares its own test budget. A property test draws fresh random input every run (this
- * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again: making the property suite the one
- * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
- * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
- * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
- * the slowest property case peaked at 1.6 s, so 30 s is ~19x headroom. `vitest.config.ts` sets no global timeout on
- * purpose: read its docblock before adding one, or before deleting this.
- */
-vi.setConfig({ testTimeout: 30_000 });
+import { checkProperty, usePropertyBudget } from "./_property.js";
+
+// This file's tests take the property budget, which grows with the depth (see `_property.ts`).
+usePropertyBudget();
 
 import {
   loadRxNormGraph,
@@ -74,7 +67,7 @@ const graphArb: fc.Arbitrary<RxNormGraph> = fc
 
 describe("rxnorm invariant: navigation never fabricates, never inverts", () => {
   it("every returned target is a loaded concept reached by an authored edge under the predicate", () => {
-    fc.assert(
+    checkProperty(
       fc.property(graphArb, fc.constantFrom(...RXCUIS), fc.constantFrom(...RELAS), (g, q, rela) => {
         const r = relatedByRela(g, q, rela);
         if (!r.found) {
@@ -94,12 +87,11 @@ describe("rxnorm invariant: navigation never fabricates, never inverts", () => {
         const ids = r.targets.map((t) => t.rxcui);
         expect(new Set(ids).size).toBe(ids.length);
       }),
-      { numRuns: 400 },
     );
   });
 
   it("loadRxNormGraph over arbitrary text never throws and is frozen; queries never throw", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.string(), fc.string(), fc.string(), (conso, rel, q) => {
         const g = loadRxNormGraph({ conso, rel });
         expect(Object.isFrozen(g)).toBe(true);
@@ -107,14 +99,13 @@ describe("rxnorm invariant: navigation never fabricates, never inverts", () => {
         expect(() => resolveNdc(g, q)).not.toThrow();
         expect(() => approximateMatch(g, q)).not.toThrow();
       }),
-      { numRuns: 300 },
     );
   });
 });
 
 describe("rxnorm invariant: NDC is release-scoped, approximate is labeled", () => {
   it("resolveNdc resolves only NDCs present in the release; absent is typed unmapped", () => {
-    fc.assert(
+    checkProperty(
       fc.property(
         fc.array(fc.constantFrom("11111111111", "22222222222"), { maxLength: 3 }),
         fc.constantFrom("11111111111", "22222222222", "99999999999"),
@@ -137,12 +128,11 @@ describe("rxnorm invariant: NDC is release-scoped, approximate is labeled", () =
           }
         },
       ),
-      { numRuns: 200 },
     );
   });
 
   it("every approximate candidate is labeled approximate with a score in [0,1], drawn from the graph", () => {
-    fc.assert(
+    checkProperty(
       fc.property(graphArb, fc.string(), (g, query) => {
         const matches = approximateMatch(g, query, { minScore: 0 });
         for (const m of matches) {
@@ -152,7 +142,6 @@ describe("rxnorm invariant: NDC is release-scoped, approximate is labeled", () =
           expect(g.concepts.get(m.concept.rxcui)).toBe(m.concept);
         }
       }),
-      { numRuns: 200 },
     );
   });
 });

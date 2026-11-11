@@ -12,20 +12,13 @@
  * Arbitraries are local; the invariants are asserted directly.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 
-/**
- * This file declares its own test budget. A property test draws fresh random input every run (this
- * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again: making the property suite the one
- * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
- * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
- * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
- * the slowest property case peaked at 1.6 s, so 30 s is ~19x headroom. `vitest.config.ts` sets no global timeout on
- * purpose: read its docblock before adding one, or before deleting this.
- */
-vi.setConfig({ testTimeout: 30_000 });
+import { checkProperty, usePropertyBudget } from "./_property.js";
+
+// This file's tests take the property budget, which grows with the depth (see `_property.ts`).
+usePropertyBudget();
 
 import { validateUcum, ucumEqual } from "../../src/index.js";
 
@@ -49,7 +42,7 @@ const VALID_UNITS = [
 
 describe("UCUM properties", () => {
   it("validateUcum is total and fail-safe over arbitrary strings", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.string(), (s) => {
         const v = validateUcum(s);
         if (v.valid) {
@@ -59,21 +52,19 @@ describe("UCUM properties", () => {
           expect(typeof v.reason).toBe("string");
         }
       }),
-      { numRuns: 500 },
     );
   });
 
   it("validateUcum never throws, even on unicode / control / bracket noise", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.string({ unit: "binary" }), (s) => {
         expect(() => validateUcum(s)).not.toThrow();
       }),
-      { numRuns: 300 },
     );
   });
 
   it("canonical descriptor is deterministic (pure)", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.constantFrom(...VALID_UNITS), (u) => {
         expect(validateUcum(u)).toEqual(validateUcum(u));
       }),
@@ -81,7 +72,7 @@ describe("UCUM properties", () => {
   });
 
   it("ucumEqual is reflexive on valid units and symmetric on any pair", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.constantFrom(...VALID_UNITS), fc.constantFrom(...VALID_UNITS), (a, b) => {
         expect(ucumEqual(a, a)).toBe(true);
         expect(ucumEqual(a, b)).toBe(ucumEqual(b, a));
@@ -90,7 +81,7 @@ describe("UCUM properties", () => {
   });
 
   it("appending an annotation is inert (yields an equal unit)", () => {
-    fc.assert(
+    checkProperty(
       fc.property(
         fc.constantFrom(...VALID_UNITS),
         fc.stringMatching(/^[a-zA-Z_]{1,8}$/),
@@ -102,12 +93,11 @@ describe("UCUM properties", () => {
   });
 
   it("a valid unit is never equal to an invalid expression", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.constantFrom(...VALID_UNITS), fc.string(), (valid, junk) => {
         if (validateUcum(junk).valid) return; // only exercise the invalid side
         expect(ucumEqual(valid, junk)).toBe(false);
       }),
-      { numRuns: 300 },
     );
   });
 

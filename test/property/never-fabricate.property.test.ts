@@ -13,20 +13,13 @@
  * The arbitraries are local (the format-specific generators); the invariants are asserted directly.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 
-/**
- * This file declares its own test budget. A property test draws fresh random input every run (this
- * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again: making the property suite the one
- * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
- * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
- * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
- * the slowest property case peaked at 1.6 s, so 30 s is ~19x headroom. `vitest.config.ts` sets no global timeout on
- * purpose: read its docblock before adding one, or before deleting this.
- */
-vi.setConfig({ testTimeout: 30_000 });
+import { checkProperty, usePropertyBudget } from "./_property.js";
+
+// This file's tests take the property budget, which grows with the depth (see `_property.ts`).
+usePropertyBudget();
 
 import {
   loadConceptMap,
@@ -95,7 +88,7 @@ function reachableSourceCodes(map: ConceptMap, system: string | undefined): Set<
 
 describe("invariant: never fabricate", () => {
   it("every returned target is declared in the map; unmapped never invents one", () => {
-    fc.assert(
+    checkProperty(
       fc.property(conceptMapJsonArb, codingArb, (json, src) => {
         const map = loadConceptMap(json);
         const result = translate(src, map);
@@ -133,7 +126,6 @@ describe("invariant: never fabricate", () => {
           expect(declared).toBe(true);
         }
       }),
-      { numRuns: 500 },
     );
   });
 });
@@ -162,7 +154,7 @@ function usableTargets(map: ConceptMap, src: Coding): readonly ConceptMapTarget[
 
 describe("invariant: the not-related verdict is one-directional", () => {
   it("any target asserting a relationship keeps the source translated, and nothing gains a translation", () => {
-    fc.assert(
+    checkProperty(
       fc.property(conceptMapJsonArb, codingArb, (json, src) => {
         const map = loadConceptMap(json);
         const usable = usableTargets(map, src);
@@ -178,14 +170,13 @@ describe("invariant: the not-related verdict is one-directional", () => {
         // usable targets asserts non-relation.
         if (usable.length > 0 && result.unmapped) expect(assertsRelation).toBe(false);
       }),
-      { numRuns: 500 },
     );
   });
 });
 
 describe("invariant: never invert", () => {
   it("a matched result implies the source code was a source-side element code", () => {
-    fc.assert(
+    checkProperty(
       fc.property(conceptMapJsonArb, codingArb, (json, src) => {
         const map = loadConceptMap(json);
         const result = translate(src, map);
@@ -193,14 +184,13 @@ describe("invariant: never invert", () => {
           expect(reachableSourceCodes(map, src.system).has(src.code)).toBe(true);
         }
       }),
-      { numRuns: 500 },
     );
   });
 });
 
 describe("invariant: liberal load, typed failure", () => {
   it("loadConceptMap over arbitrary JSON returns a frozen map or throws TerminologyError", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fc.anything(), (anything) => {
         try {
           const map = loadConceptMap(anything);
@@ -211,16 +201,14 @@ describe("invariant: liberal load, typed failure", () => {
           expect((err as TerminologyError).code).toBe("TERM_CONCEPTMAP_MALFORMED");
         }
       }),
-      { numRuns: 500 },
     );
   });
 
   it("translate never throws on a loaded map and an arbitrary coding", () => {
-    fc.assert(
+    checkProperty(
       fc.property(conceptMapJsonArb, codingArb, (json, src) => {
         expect(() => translate(src, loadConceptMap(json))).not.toThrow();
       }),
-      { numRuns: 300 },
     );
   });
 });

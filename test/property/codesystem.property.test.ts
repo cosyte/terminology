@@ -10,20 +10,13 @@
  *      is present: never a guessed `true`.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 
-/**
- * This file declares its own test budget. A property test draws fresh random input every run (this
- * repo pins no fast-check seed, by design), so its cost varies with the draw as well as with the
- * box, and the gating coverage run roughly doubles it again: making the property suite the one
- * class here whose runtime is not fixed. That is precisely the work that carries its own ceiling
- * rather than inheriting one sized for deterministic tests. Measured 2026-08-03 across ten full runs
- * on a contended 12-CPU box (six of them with `--coverage`, the slower execution CI also gates on),
- * the slowest property case peaked at 1.6 s, so 30 s is ~19x headroom. `vitest.config.ts` sets no global timeout on
- * purpose: read its docblock before adding one, or before deleting this.
- */
-vi.setConfig({ testTimeout: 30_000 });
+import { checkProperty, usePropertyBudget } from "./_property.js";
+
+// This file's tests take the property budget, which grows with the depth (see `_property.ts`).
+usePropertyBudget();
 
 import {
   loadCodeSystem,
@@ -44,7 +37,7 @@ function isFrozenCs(cs: CodeSystem): void {
 
 describe("fuzz: readers never crash on hostile input", () => {
   it("RRF reader degrades to a frozen release, never throws", () => {
-    fc.assert(
+    checkProperty(
       fc.property(hostile, (content) => {
         const cs = loadCodeSystem({
           format: "rrf",
@@ -53,12 +46,11 @@ describe("fuzz: readers never crash on hostile input", () => {
         });
         isFrozenCs(cs);
       }),
-      { numRuns: 400 },
     );
   });
 
   it("fixed-width reader degrades to a frozen release, never throws", () => {
-    fc.assert(
+    checkProperty(
       fc.property(hostile, (content) => {
         const cs = loadCodeSystem({
           format: "fixed-width",
@@ -71,12 +63,11 @@ describe("fuzz: readers never crash on hostile input", () => {
         });
         isFrozenCs(cs);
       }),
-      { numRuns: 400 },
     );
   });
 
   it("CSV reader returns a frozen release or throws only a typed TerminologyError", () => {
-    fc.assert(
+    checkProperty(
       fc.property(hostile, (content) => {
         try {
           const cs = loadCodeSystem({
@@ -90,7 +81,6 @@ describe("fuzz: readers never crash on hostile input", () => {
           expect((err as TerminologyError).code).toBe("TERM_CODESYSTEM_MALFORMED");
         }
       }),
-      { numRuns: 400 },
     );
   });
 
@@ -111,7 +101,7 @@ describe("fuzz: readers never crash on hostile input", () => {
   );
 
   it("FHIR CodeSystem reader over arbitrary JSON returns a frozen release or throws only a typed TerminologyError", () => {
-    fc.assert(
+    checkProperty(
       fc.property(hostileFhir, (resource) => {
         try {
           const cs = loadCodeSystem({ format: "fhir", resource: resource as never });
@@ -121,7 +111,6 @@ describe("fuzz: readers never crash on hostile input", () => {
           expect((err as TerminologyError).code).toBe("TERM_CODESYSTEM_MALFORMED");
         }
       }),
-      { numRuns: 500 },
     );
   });
 });
@@ -141,7 +130,7 @@ const fhirCsArb = fc.record({
 
 describe("invariant: never fabricate a display or a valid:true", () => {
   it("lookup returns a loaded display or a typed unknown; validateCode iff present", () => {
-    fc.assert(
+    checkProperty(
       fc.property(fhirCsArb, codeArb, (resource, code) => {
         const cs = loadCodeSystem({ format: "fhir", resource });
         const r = lookup(cs, code);
@@ -156,7 +145,6 @@ describe("invariant: never fabricate a display or a valid:true", () => {
         }
         expect(validateCode(cs, code).valid).toBe(concept !== undefined);
       }),
-      { numRuns: 500 },
     );
   });
 });

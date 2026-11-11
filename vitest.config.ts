@@ -39,7 +39,8 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * in `test/rxnorm/term-types.test.ts`, a case that paid a `tsx` cold start to pin the real
  * `pnpm phi-scan` entry point (it left with the repo-local PHI scanner, for the shared one, on
  * 2026-11-08), and **all of `test/property/**`**, whose runtime varies with the fast-check draw as well as with the box (this
- * repo pins no seed, by design, see the note above) and which each set 30 s via `vi.setConfig`.
+ * repo pins no seed, by design, see the note above) and which each take a budget via `vi.setConfig`:
+ * 30 s at a pull request's 100 cases, growing with the nightly depth (`test/property/_property.ts`).
  *
  * With those declared, **every remaining test peaked at 689 ms.**
  *

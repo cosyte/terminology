@@ -1,0 +1,29 @@
+name: Nightly properties
+
+# The property tests at depth: every property in test/property runs 10,000 cases instead of a
+# pull request's 100 (COSYTE_PROPERTY_RUNS, read by `assertProperty` from @cosyte/test-utils). Each
+# run draws fresh seeds. A failure prints the seed and path that replay it, and the shared job
+# records each one in its summary and in the `property-run` artifact: set the pair beside the
+# failing test and run it to get the same case, already shrunk.
+
+on:
+  schedule:
+    # 04:29 UTC. An odd minute: GitHub delays scheduled runs at the start of every hour.
+    - cron: "29 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    uses: cosyte/.github/.github/workflows/nightly-properties.yml@398cd4ded647dddd9f2e220ceb042840f59e1426 # workflows-2026-11-10-398cd4ded647
+    with:
+      # The property suites only: nothing else reads the depth, so the rest of the suite would add
+      # time and no cases.
+      test-cmd: "pnpm exec vitest run test/property"
+      property-runs: "10000"

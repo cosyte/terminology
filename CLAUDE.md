@@ -10,13 +10,13 @@ RxNorm queries, over data the caller supplies. It ships no code-system release.
 
 Required: `ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)`, `ci / actionlint`,
 `codeql / analyze (javascript-typescript)`, `no-internal-refs / public-surface`, and
-`no-emdash / tracked-files`. CI also runs Node 26, `examples`, `standards`, `pr-title`, and the dash
-check on PR text. In CI's order:
+`no-emdash / tracked-files`. CI also runs Node 26, Windows, macOS, Bun, Deno, `coverage-ratchet`,
+`mutation`, `scaling-gate`, `examples`, `standards`, `pr-title`, PR-text dashes. In order:
 
 ```sh
 pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm format:check
-pnpm phi-scan && pnpm test && pnpm test:coverage && pnpm build && pnpm attw
-pnpm examples && pnpm phi-scan examples/README.md examples/*.ts
+pnpm phi-scan && pnpm test && pnpm test:coverage && pnpm quality:check --base origin/main
+pnpm build && pnpm attw && pnpm examples && pnpm phi-scan examples/README.md examples/*.ts
 pnpm check:readme && pnpm check:claude-card && pnpm check:catalog && pnpm check:process
 pnpm check:no-emdash && pnpm check:no-internal-refs
 ```
