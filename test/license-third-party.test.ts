@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -17,7 +18,7 @@ import { describe, expect, it } from "vitest";
  * exit 1 from it is indistinguishable from an honest no-match.
  */
 
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 const read = (rel: string): string => readFileSync(join(ROOT, rel), "utf8");
 

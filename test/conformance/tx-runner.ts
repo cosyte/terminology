@@ -34,6 +34,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   expand,
@@ -66,7 +67,7 @@ export const SNAPSHOT_ROOT = "vendor/tx-ecosystem/tests";
  * working directory: the job runs from `pnpm test` and from `pnpm run conformance:tx`, and a
  * cwd-relative default would answer differently depending on which.
  */
-const VENDORED_ROOT = join(new URL("../../", import.meta.url).pathname, SNAPSHOT_ROOT);
+const VENDORED_ROOT = join(fileURLToPath(new URL("../../", import.meta.url)), SNAPSHOT_ROOT);
 
 /** The suites in scope. A suite outside this list contributes no case to any count. */
 export const SUITES_IN_SCOPE: readonly string[] = ["simple-cases", "parameters", "validation"];

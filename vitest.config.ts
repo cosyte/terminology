@@ -1,3 +1,5 @@
+import { configDefaults } from "vitest/config";
+
 import { cosyteVitest } from "@cosyte/vitest-config";
 
 /**
@@ -91,6 +93,17 @@ const COVERAGE_DIRS = [
   "rxnorm",
 ];
 
+/**
+ * Test files that cannot run under one runtime, each named with its reason. CI runs the suite on
+ * Node in `verify` (Linux, Windows, macOS), and again under Bun and under Deno.
+ *
+ * - Deno, `test/docs-content.test.ts`: it builds the package first, and tsup's declaration build
+ *   cannot load TypeScript under Deno ("You need to install \"typescript\" in your project",
+ *   measured on Deno 2.9.8 in CI), so no sample has a built package to run against. The samples
+ *   run on Node in every `verify` leg.
+ */
+const RUNTIME_EXCLUDES = "Deno" in globalThis ? ["test/docs-content.test.ts"] : [];
+
 /** Every metric at 100. */
 const FULL = { lines: 100, branches: 100, functions: 100, statements: 100 };
 
@@ -104,5 +117,6 @@ export default cosyteVitest({
     globals: false,
     environment: "node",
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
+    exclude: [...configDefaults.exclude, ...RUNTIME_EXCLUDES],
   },
 });

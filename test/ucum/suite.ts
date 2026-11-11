@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Readers for the two vendored UCUM artifacts, shared by the conformance gate
@@ -34,7 +35,7 @@ import { join } from "node:path";
  */
 
 /** Repository root, so an artifact is addressed by its tracked path rather than by a relative walk. */
-export const REPO_ROOT = new URL("../../", import.meta.url).pathname;
+export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 /** The vendored UCUM functional-test suite, tracked path. Test fixture: it does not ship. */
 export const SUITE_ARTIFACT = "vendor/ucum/UcumFunctionalTests.xml";

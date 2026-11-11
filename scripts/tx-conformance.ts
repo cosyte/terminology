@@ -24,11 +24,12 @@
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { renderReport, REPORT_PATH } from "../test/conformance/tx-report.js";
 import { runConformance, TxConformanceError } from "../test/conformance/tx-runner.js";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function main(): number {
   let run;

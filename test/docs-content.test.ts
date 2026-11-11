@@ -50,8 +50,14 @@ const distEntry = join(ROOT, "dist", "index.mjs");
 const resolve = (specifier: string): string | undefined =>
   specifier === "@cosyte/terminology" ? distEntry : undefined;
 
+// On Windows `pnpm` is a `pnpm.cmd` shim, which Node starts only through the shell. The command and
+// its one argument are fixed literals, so the shell receives no caller value.
 beforeAll(() => {
-  execFileSync("pnpm", ["build"], { cwd: ROOT, stdio: "inherit" });
+  execFileSync("pnpm", ["build"], {
+    cwd: ROOT,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
 }, 120_000);
 
 const pages = pagePaths();

@@ -41,7 +41,10 @@ release formats with made-up identifiers, and the two vendored conformance suite
 
 - **The test suite and the coverage gate** run on every pull request and on `main`, on Node.js 22,
   24 and 26, each on Linux, Windows and macOS, and again every night on `main`. The suite also runs
-  under Bun and under Deno on Linux. A floor that is not met fails the run. The two conformance
+  under Bun and under Deno on Linux. Under Deno two groups are skipped, by name and with their
+  reason in the test code: the doc samples, because the package build they run against cannot load
+  TypeScript there, and the cases that run the Changesets release tool, which does not start there.
+  A floor that is not met fails the run. The two conformance
   suites and the doc samples are part of the suite.
 - **The coverage floor** is `quality-floor.json`: 100 for lines, branches, functions and
   statements. It only rises. On a pull request, every changed line that coverage counts must have
@@ -58,7 +61,8 @@ release formats with made-up identifiers, and the two vendored conformance suite
 - **The property-based tests** run 100 cases a property on every pull request, and 10,000 a
   property every night on `main`. Each run draws a fresh random seed, so each run explores new
   inputs. A failure prints the seed and path that replay it exactly, and the nightly run records
-  each one in its summary. The fixed tests alone reach the same coverage as the whole suite
+  each one in its summary. The nightly run also prints the seed it started from, so a night that
+  passed can be replayed whole. The fixed tests alone reach the same coverage as the whole suite
   (checked by running the coverage gate with `test/property` excluded), so the coverage figure does
   not depend on what a draw reaches.
 - **The PHI scan** runs on every commit (a pre-commit hook) and in CI.

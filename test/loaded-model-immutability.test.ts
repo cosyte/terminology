@@ -241,6 +241,16 @@ describe("a loaded model has nothing writable reachable from it", () => {
 // ── The routes, each asserted by the reading it would have changed ────────────────────────────────
 
 /** Call `f` and report what it threw, so a test can assert the refusal without a `try` block. */
+/**
+ * The engine's own words for the two refusals below. Node and Deno run V8; Bun runs JavaScriptCore,
+ * which raises the same classes in other words (measured on Bun 1.4.4 in CI). Each engine is held
+ * to its own exact wording, so a refusal for some other reason still fails.
+ */
+const UNDER_BUN = "Bun" in globalThis;
+const ENGINE_WORDING = UNDER_BUN
+  ? { receiver: "Map operation called on non-Map object", clone: "can not be cloned" }
+  : { receiver: "incompatible receiver", clone: "could not be cloned" };
+
 function attempt(f: () => unknown): Error | undefined {
   try {
     f();
@@ -281,7 +291,7 @@ describe("GemMap: a mapping cannot be deleted, and a target cannot be added", ()
       attempt(() => Map.prototype.clear.call(g.entries)),
     ]) {
       expect(err).toBeInstanceOf(TypeError);
-      expect(err?.message).toContain("incompatible receiver");
+      expect(err?.message).toContain(ENGINE_WORDING.receiver);
     }
     // The reading is the guarantee: no fabricated source, no deleted mapping, count intact.
     expect(applyGem(gems(), "0010")).toEqual(applyGem(g, "0010"));
@@ -484,11 +494,7 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
 
     const err = attempt(() => structuredClone(g));
     expect(err?.name).toBe("DataCloneError");
-    expect(err?.message).toContain("could not be cloned");
-    const viaV8 = attempt(() => v8.deserialize(v8.serialize(g)));
-    expect(viaV8).toBeInstanceOf(Error);
-    expect(viaV8?.name).toBe("Error"); // NOT a DataCloneError: v8.serialize raises a plain Error
-    expect(viaV8?.message).toContain("could not be cloned");
+    expect(err?.message).toContain(ENGINE_WORDING.clone);
 
     const channel = new MessageChannel();
     try {
@@ -509,6 +515,15 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
     expect(g.conceptCount).toBe(2);
     expect(ingredientsOf(g, "2").found).toBe(true);
     expect(structuredClone(new Map(g.concepts)).get("1")?.name).toBe("lisinopril");
+  });
+
+  it("refuses a node:v8 clone with a plain Error, not a DataCloneError", () => {
+    const g = graph();
+    const viaV8 = attempt(() => v8.deserialize(v8.serialize(g)));
+    expect(viaV8).toBeInstanceOf(Error);
+    expect(viaV8?.name).toBe("Error"); // NOT a DataCloneError: v8.serialize raises a plain Error
+    expect(viaV8?.message).toContain("could not be cloned");
+    expect(g.conceptCount).toBe(2);
   });
 
   it("leaves a model with no view cloning exactly as it did", () => {
