@@ -26,4 +26,8 @@ the identity of their `flags`, compare the entries themselves, or their fields, 
   with the same character, from an index of the unit table built once, rather than against the whole
   table.
 
-The indexes are kept with the loaded release or map and go when it does.
+The indexes are kept with the loaded release or map and go when it does. A source coding with no
+`code` is still matched against a loaded map's elements that have none, as before.
+
+The package's npm keywords also gain `snomed`, `icd10` and `cpt`, so a search on those terms finds
+it.

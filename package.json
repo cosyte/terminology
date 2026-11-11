@@ -15,7 +15,10 @@
     "rxnorm",
     "loinc",
     "snomed-ct",
-    "icd-10"
+    "icd-10",
+    "snomed",
+    "icd10",
+    "cpt"
   ],
   "homepage": "https://docs.cosyte.com/terminology",
   "bugs": {
