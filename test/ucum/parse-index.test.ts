@@ -24,7 +24,7 @@ describe("parseUcum: matching a component", () => {
     expect(compares.mock.calls.length).toBeLessThan(50);
   });
 
-  it("still prefers the longest reading, and a bare atom over a prefixed one of the same length", () => {
+  it("still reads a bare atom and a prefixed atom as before", () => {
     const pa = parseUcum("Pa");
     expect(pa.ok).toBe(true);
     if (pa.ok) {

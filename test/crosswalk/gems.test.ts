@@ -212,3 +212,28 @@ describe("invertGem: the never-invert refusal is a first-class thrown contract",
     }
   });
 });
+
+describe("loadGems: whitespace", () => {
+  it("splits fields on any whitespace a regex \\s matches, ASCII or not, and on nothing else", () => {
+    const gems = loadGems({
+      direction: "9-to-10",
+      content:
+        "\u00a00010\u3000A000\t00000\u2028\r\nE1010\u200bA000 00000\nV290 A000 00000 extra\n",
+    });
+    expect(gems.count).toBe(1);
+    expect(applyGem(gems, "0010").mapped).toBe(true);
+    // U+200B is not whitespace, so that line has two fields, not three.
+    expect(gems.warnings).toStrictEqual([
+      {
+        code: "TERM_GEM_MALFORMED_ROW",
+        line: 2,
+        detail: "expected 3 whitespace-delimited fields, found 2",
+      },
+      {
+        code: "TERM_GEM_MALFORMED_ROW",
+        line: 3,
+        detail: "expected 3 whitespace-delimited fields, found 4",
+      },
+    ]);
+  });
+});

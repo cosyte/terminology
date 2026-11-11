@@ -221,3 +221,33 @@ describe("parseCsvSource via loadCodeSystem", () => {
     }
   });
 });
+
+describe("parseCsvSource: the columns no one configured", () => {
+  it("reads past quoted, escaped and multi-line fields it does not keep, and keeps the rest exactly", () => {
+    const cs = loadCodeSystem({
+      format: "csv",
+      content:
+        'NOTE,CODE,NAME,MORE\r\n"a ""quoted"" note\r\nover lines",A,"Alpha ""one""",x\r\n' +
+        'plain\rnote,B,Be\rta,"y"\r\n',
+      columns: { code: "CODE", display: "NAME" },
+    });
+    expect(cs.warnings).toEqual([]);
+    expect([...cs.concepts.values()]).toStrictEqual([
+      { code: "A", display: 'Alpha "one"', properties: [] },
+      { code: "B", display: "Beta", properties: [] },
+    ]);
+  });
+
+  it("keeps a long value whole, and an empty display absent", () => {
+    const long = "A display long enough to be cut from the text rather than copied";
+    const cs = loadCodeSystem({
+      format: "csv",
+      content: `CODE,NAME,P\nA,${long},"${long}"\nB,,\n`,
+      columns: { code: "CODE", display: "NAME", properties: ["P"] },
+    });
+    expect([...cs.concepts.values()]).toStrictEqual([
+      { code: "A", display: long, properties: [{ code: "P", value: long }] },
+      { code: "B", properties: [] },
+    ]);
+  });
+});

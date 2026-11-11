@@ -67,8 +67,8 @@ function scanCsv(content: string, sink: CsvSink): boolean {
   const n = content.length;
   const cells: string[] = [];
   let column = 0;
-  let wanted = sink.wanted;
-  let keep = wanted === undefined || wanted[0] === true;
+  const keeps = (col: number): boolean => sink.wanted === undefined || sink.wanted[col] === true;
+  let keep = keeps(0);
   // The current field is `field` followed by the text from `runStart` to the current position.
   let field = "";
   let runStart = 0;
@@ -82,9 +82,8 @@ function scanCsv(content: string, sink: CsvSink): boolean {
   };
   const endRow = (): void => {
     sink.row(cells, column + 1);
-    wanted = sink.wanted;
     column = 0;
-    keep = wanted === undefined || wanted[0] === true;
+    keep = keeps(0);
   };
 
   for (let i = 0; i < n; i++) {
@@ -113,7 +112,7 @@ function scanCsv(content: string, sink: CsvSink): boolean {
     } else if (ch === COMMA) {
       endField(i);
       column++;
-      keep = wanted === undefined || wanted[column] === true;
+      keep = keeps(column);
       runStart = i + 1;
       fieldStart = true;
       sawAny = true;
