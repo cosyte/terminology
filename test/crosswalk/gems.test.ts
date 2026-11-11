@@ -212,3 +212,56 @@ describe("invertGem: the never-invert refusal is a first-class thrown contract",
     }
   });
 });
+
+describe("loadGems: whitespace", () => {
+  it("splits fields on any whitespace a regex \\s matches, ASCII or not, and on nothing else", () => {
+    const gems = loadGems({
+      direction: "9-to-10",
+      content:
+        "\u00a00010\u3000A000\t00000\u2028\r\nE1010\u200bA000 00000\nV290 A000 00000 extra\n",
+    });
+    expect(gems.count).toBe(1);
+    expect(applyGem(gems, "0010").mapped).toBe(true);
+    // U+200B is not whitespace, so that line has two fields, not three.
+    expect(gems.warnings).toStrictEqual([
+      {
+        code: "TERM_GEM_MALFORMED_ROW",
+        line: 2,
+        detail: "expected 3 whitespace-delimited fields, found 2",
+      },
+      {
+        code: "TERM_GEM_MALFORMED_ROW",
+        line: 3,
+        detail: "expected 3 whitespace-delimited fields, found 4",
+      },
+    ]);
+  });
+});
+
+describe("loadGems: one flags object for each distinct flag field", () => {
+  it("shares the frozen flags object among the entries of a load that carry the same five digits", () => {
+    const gems = loadGems({
+      direction: "10-to-9",
+      content: "E1010 A000 10111\nE1010 Z0000 10111\nV290 A000 10000\nZ0000 A000 10000\n",
+    });
+    const [a, b] = gems.entries.get("E1010") ?? [];
+    const c = only(gems.entries.get("V290") ?? []);
+    const d = only(gems.entries.get("Z0000") ?? []);
+    expect(a?.flags).toBe(b?.flags);
+    expect(c.flags).toBe(d.flags);
+    expect(a?.flags).not.toBe(c.flags);
+    // Each field is what a fresh object held, and the object is frozen.
+    expect(a?.flags).toStrictEqual({
+      approximate: true,
+      noMap: false,
+      combination: true,
+      scenario: 1,
+      choiceList: 1,
+      raw: "10111",
+    });
+    expect(Object.isFrozen(c.flags)).toBe(true);
+    // Another load decodes its own.
+    const again = loadGems({ direction: "10-to-9", content: "V290 A000 10000\n" });
+    expect(only(again.entries.get("V290") ?? []).flags).not.toBe(c.flags);
+  });
+});

@@ -21,8 +21,10 @@
 
 import { coding, type Coding } from "../common/coding.js";
 import type { Writable } from "../common/writable.js";
+import { isLoadedGroup } from "./load.js";
 import type {
   ConceptMap,
+  ConceptMapElement,
   ConceptMapGroup,
   MapProvenance,
   R4Equivalence,
@@ -65,6 +67,43 @@ function equivalenceToRelationship(equivalence: R4Equivalence): Relationship {
 function groupApplies(group: ConceptMapGroup, system: string | undefined): boolean {
   if (system === undefined) return true;
   return group.source === undefined || group.source === system;
+}
+
+/**
+ * Each loaded group's elements by source code, in declared order, built on the first translation
+ * through the group and kept for as long as it lives. Keyed on the group, which
+ * {@link loadConceptMap} made and nothing can change; held weakly, so it goes when the map does.
+ */
+const elementIndex = new WeakMap<ConceptMapGroup, ReadonlyMap<string, ConceptMapElement[]>>();
+
+/** No element names the code. */
+const NO_ELEMENTS: readonly ConceptMapElement[] = Object.freeze([]);
+
+/**
+ * The elements of `group` a source `code` may match, in declared order. For a loaded group that is
+ * the index's list for the code, so a translation reads the elements that name it rather than every
+ * element of the map (2% of the throughput was kept from a 1,000 to a 50,000 element map before).
+ * A group a caller built by hand can change between two calls, so all of its elements are read, as
+ * they always were. So is every group when the source's code is not a string: a coding with no code
+ * matches the elements that have none (FHIR makes both `0..1`), and the index holds only elements
+ * that name a code. The caller still compares each element's code, so both routes select the same
+ * elements.
+ */
+function candidates(group: ConceptMapGroup, code: string): readonly ConceptMapElement[] {
+  if (typeof code !== "string" || !isLoadedGroup(group)) return group.element;
+  let index = elementIndex.get(group);
+  if (index === undefined) {
+    const built = new Map<string, ConceptMapElement[]>();
+    for (const element of group.element) {
+      if (element.code === undefined) continue;
+      const list = built.get(element.code);
+      if (list === undefined) built.set(element.code, [element]);
+      else list.push(element);
+    }
+    index = built;
+    elementIndex.set(group, index);
+  }
+  return index.get(code) ?? NO_ELEMENTS;
 }
 
 /** Build the provenance record for a translation attempt against `map`, optionally within `group`. */
@@ -160,7 +199,7 @@ export function translate(sourceCoding: Coding, map: ConceptMap): TranslateResul
     if (!groupApplies(group, system)) continue;
     if (fallbackGroup === undefined && group.unmapped !== undefined) fallbackGroup = group;
 
-    for (const element of group.element) {
+    for (const element of candidates(group, source.code)) {
       if (element.code !== source.code) continue;
       sourceCodePresent = true;
       for (const t of element.target) {

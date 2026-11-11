@@ -122,13 +122,21 @@ const csvLoad = (text: string): CodeSystem =>
  * times its input while it runs, and at that size the collector's cost grows faster than the text.
  * That is a memory finding the bench reading reports, not a complexity regression this gate exists
  * to catch.
+ *
+ * The reader that scans the text once is about three times faster, so the base phases hold more
+ * input: 72 tables a pass on the count axis rather than 24, where a pass of 24 took about 16 ms on a
+ * runner and its warmup alternated by more than 5% between passes that did and did not collect, so
+ * it never settled; and 72 on the size axis rather than 12, where a pass of 18 took about 12 ms
+ * and its warmup swung the same way. Both base passes now take about 50 ms. The size axis's
+ * self-check reads each 800 row table a character at a time, so 72 of them take about four times
+ * as long as 18 did (about 200 s on a runner): `vitest.perf.config.ts` allows for it.
  */
 const csvOptions: ScalingGateOptions<string, CodeSystem> = {
   name: "@cosyte/terminology loadCodeSystem, CSV",
   parse: csvLoad,
   weigh: (cs) => cs.count,
-  count: { n: 24, generate: () => loincCsv(200) },
-  size: { inputs: 12, size: 200, generate: (_i, rows) => loincCsv(rows) },
+  count: { n: 72, generate: () => loincCsv(200) },
+  size: { inputs: 72, size: 200, generate: (_i, rows) => loincCsv(rows) },
 };
 
 const rrfLoad = (text: string): CodeSystem =>
@@ -155,12 +163,20 @@ const fhirOptions: ScalingGateOptions<FhirCodeSystemJson, CodeSystem> = {
   size: { inputs: 9, size: 2_000, generate: (_i, n) => hierarchyCodeSystem(n).resource },
 };
 
+/**
+ * The loader reads a line in place now, several times faster, so the base phases hold more lines:
+ * twice the files on the count axis, and on the size axis 96 files of 1,500 lines (it was 12 of
+ * 3,000). At 24 files of 3,000 lines a size pass took about 25 ms on a runner and its warmup
+ * swung by more than 5% with the collector, so it once never settled; a pass of 144,000 lines takes
+ * about twice that. Halving each file while quadrupling the files keeps the self-check's quadratic
+ * reading, which grows with the square of a file's lines, at the same total cost.
+ */
 const gemOptions: ScalingGateOptions<string, GemMap> = {
   name: "@cosyte/terminology loadGems",
   parse: (text) => loadGems(gemSource(text)),
   weigh: (map) => map.count,
-  count: { n: 96, generate: () => gemFile(500) },
-  size: { inputs: 12, size: 3_000, generate: (_i, lines) => gemFile(lines) },
+  count: { n: 192, generate: () => gemFile(500) },
+  size: { inputs: 96, size: 1_500, generate: (_i, lines) => gemFile(lines) },
 };
 
 type RxRelease = ReturnType<typeof rxnormRelease>;

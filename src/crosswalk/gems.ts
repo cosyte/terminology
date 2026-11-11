@@ -24,6 +24,7 @@
 
 import { TerminologyError, FATAL_CODES } from "../common/diagnostics.js";
 import { frozenMap } from "../common/frozen-map.js";
+import { ownString } from "../common/own-string.js";
 import type { Writable } from "../common/writable.js";
 import type {
   CrosswalkNoMap,
@@ -64,18 +65,36 @@ export interface GemSource {
 
 /**
  * Decode a GEM 5-position flag field into typed {@link GemFlags}. The layout (CMS Dx GEM User's
- * Guide) is `approximate | no-map | combination | scenario | choice-list`, one digit each.
+ * Guide) is `approximate | no-map | combination | scenario | choice-list`, one digit each. `raw` is
+ * five ASCII digits: {@link sharedFlags} checks that first.
  */
-function decodeFlags(raw: string): GemFlags | undefined {
-  if (!/^[0-9]{5}$/.test(raw)) return undefined;
+function decodeFlags(raw: string): GemFlags {
   return Object.freeze({
-    approximate: raw[0] === "1",
-    noMap: raw[1] === "1",
-    combination: raw[2] === "1",
-    scenario: Number(raw[3]),
-    choiceList: Number(raw[4]),
+    approximate: raw.charCodeAt(0) === DIGIT_ONE,
+    noMap: raw.charCodeAt(1) === DIGIT_ONE,
+    combination: raw.charCodeAt(2) === DIGIT_ONE,
+    scenario: raw.charCodeAt(3) - DIGIT_ZERO,
+    choiceList: raw.charCodeAt(4) - DIGIT_ZERO,
     raw,
   });
+}
+
+const DIGIT_ZERO = 0x30;
+const DIGIT_ONE = 0x31;
+const DIGIT_NINE = 0x39;
+const SPACE = 0x20;
+
+/** Matches one character `\s` matches: the regex is asked only of a character outside ASCII. */
+const NON_ASCII_SPACE = /^\s$/;
+
+/**
+ * Whether the UTF-16 unit `c` is whitespace as `String.prototype.trim` and the regex `\s` read it
+ * (the two read the same set: the white space and line terminator characters). ASCII is decided by
+ * code; anything else is asked of the regex, so the set is the engine's own, exactly as before.
+ */
+function isSpace(c: number): boolean {
+  if (c < 0x80) return c === SPACE || (c >= 0x09 && c <= 0x0d);
+  return NON_ASCII_SPACE.test(String.fromCharCode(c));
 }
 
 /**
@@ -106,44 +125,45 @@ export function loadGems(source: GemSource): GemMap {
   const entries = new Map<string, GemEntry[]>();
   const warnings: GemLoadWarning[] = [];
   let count = 0;
-  const lines = source.content.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (raw === undefined) continue;
-    const trimmed = raw.trim();
-    if (trimmed === "") continue;
-    const fields = trimmed.split(/\s+/);
-    if (fields.length !== 3) {
+
+  const sink: GemLineSink = {
+    flags: new Map(),
+    malformed: (lineNo, fieldCount) => {
       warnings.push(
         Object.freeze({
           code: "TERM_GEM_MALFORMED_ROW",
-          line: i + 1,
-          detail: `expected 3 whitespace-delimited fields, found ${String(fields.length)}`,
+          line: lineNo,
+          detail: `expected 3 whitespace-delimited fields, found ${String(fieldCount)}`,
         }),
       );
-      continue;
-    }
-    const [src, tgt, flagStr] = fields as [string, string, string];
-    const flags = decodeFlags(flagStr);
-    if (flags === undefined) {
-      warnings.push(
-        Object.freeze({
-          code: "TERM_GEM_MALFORMED_ROW",
-          line: i + 1,
-          detail: "flag field is not a 5-digit code",
-        }),
+    },
+    line: (lineNo, src, tgt, flags) => {
+      if (flags === undefined) {
+        warnings.push(
+          Object.freeze({
+            code: "TERM_GEM_MALFORMED_ROW",
+            line: lineNo,
+            detail: "flag field is not a 5-digit code",
+          }),
+        );
+        return;
+      }
+      // A No-Map row carries the sentinel target and no real code: never surface it as a target.
+      // Built whole, in the key order a caller has always read: source, flags, then target.
+      const frozen: GemEntry = Object.freeze(
+        isNoMapSentinel(tgt) ? { source: src, flags } : { source: src, flags, target: tgt },
       );
-      continue;
-    }
-    const entry: Writable<GemEntry> = { source: src, flags };
-    // A No-Map row carries the sentinel target and no real code: never surface it as a target.
-    if (!isNoMapSentinel(tgt)) entry.target = tgt;
-    const frozen = Object.freeze(entry);
-    const list = entries.get(src);
-    if (list) list.push(frozen);
-    else entries.set(src, [frozen]);
-    count++;
-  }
+      const list = entries.get(src);
+      if (list) list.push(frozen);
+      else entries.set(src, [frozen]);
+      count++;
+    },
+  };
+
+  const content = source.content;
+  if (typeof content === "string") readLinesInPlace(content, sink);
+  else readLinesBySplit(content, sink);
+
   // Freeze each source's candidate list, then hand out the index as a read-only view rather than the
   // map itself. `Object.freeze` below reaches neither: a `Map`'s entries live in an internal slot,
   // and the lists were only `readonly` to TypeScript. Without both, a holder could delete an
@@ -157,6 +177,134 @@ export function loadGems(source: GemSource): GemMap {
     entries: frozenMap(entries, "a loaded GEM map's entries"),
     warnings: Object.freeze(warnings),
   });
+}
+
+/**
+ * Where a reader hands each line that is not blank, in file order (see `loadGems`), and the decoded
+ * flags of this load, one frozen object for each distinct five digits, keyed by their value.
+ */
+interface GemLineSink {
+  readonly flags: Map<number, GemFlags>;
+  /** A line whose field count is not three. */
+  malformed(lineNo: number, fieldCount: number): void;
+  /** A line of three fields; `flags` is `undefined` when the third is not five ASCII digits. */
+  line(lineNo: number, src: string, tgt: string, flags: GemFlags | undefined): void;
+}
+
+/**
+ * The decoded flags of a five-digit flag field, shared by every line of the load that carries the
+ * same five digits: a GEM file has a handful of distinct flag fields over tens of thousands of lines.
+ * Each field of a shared object is what a fresh one would hold, and it is frozen; only the object is
+ * the same one, so two entries' `flags` compared with `===` are equal where they carry the same
+ * digits. `undefined` when the field, `text` from `from` to `to`, is not exactly five ASCII digits
+ * (`/^[0-9]{5}$/`). The field is cut out of `text` only the first time its digits are seen.
+ */
+function sharedFlags(
+  sink: GemLineSink,
+  text: string,
+  from: number,
+  to: number,
+): GemFlags | undefined {
+  const key = fiveDigitsAt(text, from, to);
+  if (key === -1) return undefined;
+  let flags = sink.flags.get(key);
+  if (flags === undefined) {
+    flags = decodeFlags(text.slice(from, to));
+    sink.flags.set(key, flags);
+  }
+  return flags;
+}
+
+/** The value of five ASCII digits at `from` in `content`, or -1 when they are not five digits. */
+function fiveDigitsAt(content: string, from: number, to: number): number {
+  if (to - from !== 5) return -1;
+  let value = 0;
+  for (let i = from; i < to; i++) {
+    const c = content.charCodeAt(i);
+    if (c < DIGIT_ZERO || c > DIGIT_NINE) return -1;
+    value = value * 10 + (c - DIGIT_ZERO);
+  }
+  return value;
+}
+
+/**
+ * Read GEM text in place: each line's fields are found by character code and only a well-formed
+ * line's three are cut out, rather than splitting the file into lines and each line into an array of
+ * fields. A line ends at a line feed; a carriage return before it, like any other whitespace, only
+ * separates fields. The fields are what trimming the line and splitting it on `\s+` gave (see
+ * {@link readLinesBySplit}), and lines are numbered from 1, counting line feeds. A flag field already
+ * seen in this load is read by its value, without cutting it out again.
+ */
+function readLinesInPlace(content: string, sink: GemLineSink): void {
+  const n = content.length;
+  let lineNo = 0;
+  for (let start = 0; start <= n;) {
+    let end = content.indexOf("\n", start);
+    if (end === -1) end = n;
+    lineNo++;
+    let fieldCount = 0;
+    let srcStart = 0;
+    let srcEnd = 0;
+    let tgtStart = 0;
+    let tgtEnd = 0;
+    let flagStart = 0;
+    let flagEnd = 0;
+    for (let i = start; i < end;) {
+      if (isSpace(content.charCodeAt(i))) {
+        i++;
+        continue;
+      }
+      const from = i;
+      while (i < end && !isSpace(content.charCodeAt(i))) i++;
+      fieldCount++;
+      if (fieldCount === 1) {
+        srcStart = from;
+        srcEnd = i;
+      } else if (fieldCount === 2) {
+        tgtStart = from;
+        tgtEnd = i;
+      } else if (fieldCount === 3) {
+        flagStart = from;
+        flagEnd = i;
+      }
+    }
+    start = end + 1;
+    if (fieldCount === 0) continue;
+    if (fieldCount !== 3) {
+      sink.malformed(lineNo, fieldCount);
+      continue;
+    }
+    const flags = sharedFlags(sink, content, flagStart, flagEnd);
+    // Copied out of the file's text, so the loaded map does not keep the file alive (`ownString`).
+    sink.line(
+      lineNo,
+      ownString(content.slice(srcStart, srcEnd)),
+      ownString(content.slice(tgtStart, tgtEnd)),
+      flags,
+    );
+  }
+}
+
+/**
+ * Read GEM content that is not a primitive string (a `String` object a caller built, whose `split`
+ * may answer anything) the way the loader always has: split into lines on `\r?\n`, each line trimmed
+ * and split on `\s+`, a hole in the line list skipped. A primitive string never comes here.
+ */
+function readLinesBySplit(content: string, sink: GemLineSink): void {
+  const lines = content.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (raw === undefined) continue;
+    const trimmed = raw.trim();
+    if (trimmed === "") continue;
+    const fields = trimmed.split(/\s+/);
+    if (fields.length !== 3) {
+      sink.malformed(i + 1, fields.length);
+      continue;
+    }
+    const [src, tgt, flagStr] = fields as [string, string, string];
+    sink.line(i + 1, src, tgt, sharedFlags(sink, flagStr, 0, flagStr.length));
+  }
 }
 
 /** Build the scenario→choice-list combination structure from a source's combination entries. */

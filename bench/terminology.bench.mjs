@@ -347,6 +347,12 @@ const benchmarks = [
         model: hierarchyModel(20_000),
         queries: (b) => spread(10, 20_000, b, fhirCode, fhirCode),
       },
+      {
+        // The size of a SNOMED CT subset a value set is commonly bound over.
+        label: "100,000 concepts",
+        model: hierarchyModel(100_000),
+        queries: (b) => spread(10, 100_000, b, fhirCode, fhirCode),
+      },
     ]),
     bind: (t) => {
       const model = modelOf(loadHierarchy(t));

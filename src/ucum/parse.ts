@@ -51,12 +51,42 @@ function prefixRank(m: SimpleMatch): number {
   return m.prefix ? 1 : 0;
 }
 
+/** The order the parser tries readings in: longer first, then a bare atom before a prefixed one. */
+function byPreference(a: SimpleMatch, b: SimpleMatch): number {
+  return b.len - a.len || prefixRank(a) - prefixRank(b);
+}
+
 /**
  * All plausible (prefix?+atom) interpretations at `pos`, ordered by preference: longer total match
  * first, and a bare atom before a prefixed one on a tie (so `Pa` is pascal, not peta-are). The
  * caller commits to the first whose continuation lands on a component boundary.
  */
 function simpleMatches(essence: UcumEssence, s: string, pos: number): SimpleMatch[] {
+  if (typeof s !== "string") return simpleMatchesByScan(essence, s, pos);
+  const index = indexOf(essence);
+  const out: SimpleMatch[] = [];
+  for (const atom of index.atoms.get(s.charCodeAt(pos)) ?? NONE) {
+    if (s.startsWith(atom.code, pos)) out.push({ atom, len: atom.code.length });
+  }
+  for (const prefix of index.prefixes.get(s.charCodeAt(pos)) ?? NONE) {
+    if (!s.startsWith(prefix.code, pos)) continue;
+    const rem = pos + prefix.code.length;
+    for (const atom of index.metricAtoms.get(s.charCodeAt(rem)) ?? NONE) {
+      if (s.startsWith(atom.code, rem)) {
+        out.push({ prefix, atom, len: prefix.code.length + atom.code.length });
+      }
+    }
+  }
+  out.sort(byPreference);
+  return out;
+}
+
+/**
+ * {@link simpleMatches} for a unit that is not a primitive string (a `String` object a caller built,
+ * whose `startsWith` may answer anything): every atom and prefix of the table is asked of it, as the
+ * parser always did, so its own `startsWith` decides. A primitive string takes the index instead.
+ */
+function simpleMatchesByScan(essence: UcumEssence, s: string, pos: number): SimpleMatch[] {
   const out: SimpleMatch[] = [];
   for (const atom of essence.atoms) {
     if (s.startsWith(atom.code, pos)) out.push({ atom, len: atom.code.length });
@@ -70,8 +100,59 @@ function simpleMatches(essence: UcumEssence, s: string, pos: number): SimpleMatc
       }
     }
   }
-  out.sort((a, b) => b.len - a.len || prefixRank(a) - prefixRank(b));
+  out.sort(byPreference);
   return out;
+}
+
+/** The unit table's atoms and prefixes by the UTF-16 unit their code starts with. */
+interface FirstCharIndex {
+  readonly atoms: ReadonlyMap<number, readonly UcumAtom[]>;
+  /** The metric atoms only: the ones a prefix may attach to. */
+  readonly metricAtoms: ReadonlyMap<number, readonly UcumAtom[]>;
+  readonly prefixes: ReadonlyMap<number, readonly UcumPrefix[]>;
+}
+
+/** No atom or prefix starts with the character. */
+const NONE: readonly never[] = Object.freeze([]);
+
+/** Each unit table's index, built on the first parse against it. */
+const firstCharIndexes = new WeakMap<UcumEssence, FirstCharIndex>();
+
+/** Group `items` by the first UTF-16 unit of their code, keeping the table's order within each. */
+function byFirstChar<T extends { readonly code: string }>(
+  items: readonly T[],
+): ReadonlyMap<number, readonly T[]> {
+  const out = new Map<number, T[]>();
+  for (const item of items) {
+    const first = item.code.charCodeAt(0);
+    const list = out.get(first);
+    if (list === undefined) out.set(first, [item]);
+    else list.push(item);
+  }
+  return out;
+}
+
+/**
+ * The first-character index of a unit table. A code can only match where its first character does,
+ * so a component is matched against the few atoms and prefixes that start with the character at its
+ * position rather than against all 312 atoms (and all of them again for each prefix that matched):
+ * the same candidates, found in the same table order, so the same reading wins.
+ *
+ * `parseUcum` always parses against the table `loadUcumEssence` returns, which is frozen, so its
+ * index never goes stale. Every code in that table is non-empty (asserted in
+ * `test/ucum/essence.test.ts`), so every code has a first character to be filed under.
+ */
+function indexOf(essence: UcumEssence): FirstCharIndex {
+  let index = firstCharIndexes.get(essence);
+  if (index === undefined) {
+    index = {
+      atoms: byFirstChar(essence.atoms),
+      metricAtoms: byFirstChar(essence.atoms.filter((a) => a.metric)),
+      prefixes: byFirstChar(essence.prefixes),
+    };
+    firstCharIndexes.set(essence, index);
+  }
+  return index;
 }
 
 interface Cursor {
