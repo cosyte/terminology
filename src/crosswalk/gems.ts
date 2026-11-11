@@ -24,6 +24,7 @@
 
 import { TerminologyError, FATAL_CODES } from "../common/diagnostics.js";
 import { frozenMap } from "../common/frozen-map.js";
+import { ownString } from "../common/own-string.js";
 import type { Writable } from "../common/writable.js";
 import type {
   CrosswalkNoMap,
@@ -67,15 +68,38 @@ export interface GemSource {
  * Guide) is `approximate | no-map | combination | scenario | choice-list`, one digit each.
  */
 function decodeFlags(raw: string): GemFlags | undefined {
-  if (!/^[0-9]{5}$/.test(raw)) return undefined;
+  // Exactly five ASCII digits (`/^[0-9]{5}$/`), read by character code rather than a regex.
+  if (raw.length !== 5) return undefined;
+  for (let i = 0; i < 5; i++) {
+    const c = raw.charCodeAt(i);
+    if (c < DIGIT_ZERO || c > DIGIT_NINE) return undefined;
+  }
   return Object.freeze({
-    approximate: raw[0] === "1",
-    noMap: raw[1] === "1",
-    combination: raw[2] === "1",
-    scenario: Number(raw[3]),
-    choiceList: Number(raw[4]),
+    approximate: raw.charCodeAt(0) === DIGIT_ONE,
+    noMap: raw.charCodeAt(1) === DIGIT_ONE,
+    combination: raw.charCodeAt(2) === DIGIT_ONE,
+    scenario: raw.charCodeAt(3) - DIGIT_ZERO,
+    choiceList: raw.charCodeAt(4) - DIGIT_ZERO,
     raw,
   });
+}
+
+const DIGIT_ZERO = 0x30;
+const DIGIT_ONE = 0x31;
+const DIGIT_NINE = 0x39;
+const SPACE = 0x20;
+
+/** Matches one character `\s` matches: the regex is asked only of a character outside ASCII. */
+const NON_ASCII_SPACE = /^\s$/;
+
+/**
+ * Whether the UTF-16 unit `c` is whitespace as `String.prototype.trim` and the regex `\s` read it
+ * (the two read the same set: the white space and line terminator characters). ASCII is decided by
+ * code; anything else is asked of the regex, so the set is the engine's own, exactly as before.
+ */
+function isSpace(c: number): boolean {
+  if (c < 0x80) return c === SPACE || (c >= 0x09 && c <= 0x0d);
+  return NON_ASCII_SPACE.test(String.fromCharCode(c));
 }
 
 /**
@@ -106,35 +130,70 @@ export function loadGems(source: GemSource): GemMap {
   const entries = new Map<string, GemEntry[]>();
   const warnings: GemLoadWarning[] = [];
   let count = 0;
-  const lines = source.content.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (raw === undefined) continue;
-    const trimmed = raw.trim();
-    if (trimmed === "") continue;
-    const fields = trimmed.split(/\s+/);
-    if (fields.length !== 3) {
+  const content = source.content;
+  const n = content.length;
+  // Each line is read in place: its fields are found by character code and only the three of a
+  // well-formed line are cut out, rather than splitting the file into lines and each line into an
+  // array of fields. A line ends at a line feed; a carriage return before it, like any other
+  // whitespace, only separates fields. The fields are what trimming the line and splitting it on
+  // `\s+` gave, and a line is numbered as before, from 1, counting line feeds.
+  let lineNo = 0;
+  for (let start = 0; start <= n;) {
+    let end = content.indexOf("\n", start);
+    if (end === -1) end = n;
+    lineNo++;
+    let fieldCount = 0;
+    let srcStart = 0;
+    let srcEnd = 0;
+    let tgtStart = 0;
+    let tgtEnd = 0;
+    let flagStart = 0;
+    let flagEnd = 0;
+    for (let i = start; i < end;) {
+      if (isSpace(content.charCodeAt(i))) {
+        i++;
+        continue;
+      }
+      const from = i;
+      while (i < end && !isSpace(content.charCodeAt(i))) i++;
+      fieldCount++;
+      if (fieldCount === 1) {
+        srcStart = from;
+        srcEnd = i;
+      } else if (fieldCount === 2) {
+        tgtStart = from;
+        tgtEnd = i;
+      } else if (fieldCount === 3) {
+        flagStart = from;
+        flagEnd = i;
+      }
+    }
+    start = end + 1;
+    if (fieldCount === 0) continue;
+    if (fieldCount !== 3) {
       warnings.push(
         Object.freeze({
           code: "TERM_GEM_MALFORMED_ROW",
-          line: i + 1,
-          detail: `expected 3 whitespace-delimited fields, found ${String(fields.length)}`,
+          line: lineNo,
+          detail: `expected 3 whitespace-delimited fields, found ${String(fieldCount)}`,
         }),
       );
       continue;
     }
-    const [src, tgt, flagStr] = fields as [string, string, string];
-    const flags = decodeFlags(flagStr);
+    const flags = decodeFlags(ownString(content.slice(flagStart, flagEnd)));
     if (flags === undefined) {
       warnings.push(
         Object.freeze({
           code: "TERM_GEM_MALFORMED_ROW",
-          line: i + 1,
+          line: lineNo,
           detail: "flag field is not a 5-digit code",
         }),
       );
       continue;
     }
+    // Copied out of the file's text, so the loaded map does not keep the file alive (`ownString`).
+    const src = ownString(content.slice(srcStart, srcEnd));
+    const tgt = ownString(content.slice(tgtStart, tgtEnd));
     const entry: Writable<GemEntry> = { source: src, flags };
     // A No-Map row carries the sentinel target and no real code: never surface it as a target.
     if (!isNoMapSentinel(tgt)) entry.target = tgt;
