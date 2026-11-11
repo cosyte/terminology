@@ -189,13 +189,24 @@ describe("text in a String object: the same answers as the primitive", () => {
     const gems = loadGems({
       direction: "9-to-10",
       content: asText(
-        new SplitsInto("", ["0010 A000 00000", "   ", "0011 A001 0000x", "V290 NoDx 11000"]),
+        new SplitsInto("", [
+          "0010 A000 00000",
+          "   ",
+          "0011 A001 0000x",
+          "V290 NoDx 11000",
+          "0012 A002 0000",
+          "0013 A003 00000",
+        ]),
       ),
     });
-    expect(gems.count).toBe(2);
+    expect(gems.count).toBe(3);
     expect(applyGem(gems, "V290").mapped).toBe(false);
     expect(gems.warnings).toStrictEqual([
       { code: "TERM_GEM_MALFORMED_ROW", line: 3, detail: "flag field is not a 5-digit code" },
+      { code: "TERM_GEM_MALFORMED_ROW", line: 5, detail: "flag field is not a 5-digit code" },
     ]);
+    expect(only(gems.entries.get("0013") ?? []).flags).toBe(
+      only(gems.entries.get("0010") ?? []).flags,
+    );
   });
 });

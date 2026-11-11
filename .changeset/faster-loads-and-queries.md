@@ -3,8 +3,11 @@
 ---
 
 Faster value set membership and translation, and leaner CSV, GEM and UCUM reading. Every answer,
-loaded model, warning and error is unchanged, and no signature changes, so there is nothing to
-adapt.
+loaded model, warning and error is unchanged, and no signature changes. One thing is deliberately
+different: within one `loadGems` result, the entries that carry the same five flag digits now share
+one frozen `flags` object rather than each holding its own. Every field reads the same; only
+`entryA.flags === entryB.flags` is now `true` for two such entries. If you told entries apart by
+the identity of their `flags`, compare the entries themselves, or their fields, instead.
 
 - `validateCodeInValueSet` builds a loaded release's hierarchy index on the first membership
   question over a filter and reuses it, rather than walking the whole release for every code. A code
@@ -18,7 +21,7 @@ adapt.
   the release text, so the model does not keep that text alive after the load; the same holds for
   `parseCsv` and `loadGems`.
 - `loadGems` reads each line in place instead of splitting the file into lines and each line into
-  fields.
+  fields, and decodes each distinct flag field once per load (the shared `flags` object above).
 - `validateUcum`, `ucumEqual` and `parseUcum` match a unit against the atoms and prefixes that start
   with the same character, from an index of the unit table built once, rather than against the whole
   table.
