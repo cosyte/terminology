@@ -161,15 +161,19 @@ const fhirOptions: ScalingGateOptions<FhirCodeSystemJson, CodeSystem> = {
 };
 
 /**
- * Twice the inputs the gate first had on both axes: the loader reads a line in place now, several
- * times faster, and the base phase stays above 10 ms only with twice the lines in it.
+ * The loader reads a line in place now, several times faster, so the base phases hold more lines:
+ * twice the files on the count axis, and on the size axis 96 files of 1,500 lines (it was 12 of
+ * 3,000). At 24 files of 3,000 lines a size pass took about 25 ms on a runner and its warmup
+ * swung by more than 5% with the collector, so it once never settled; a pass of 144,000 lines takes
+ * about twice that. Halving each file while quadrupling the files keeps the self-check's quadratic
+ * reading, which grows with the square of a file's lines, at the same total cost.
  */
 const gemOptions: ScalingGateOptions<string, GemMap> = {
   name: "@cosyte/terminology loadGems",
   parse: (text) => loadGems(gemSource(text)),
   weigh: (map) => map.count,
   count: { n: 192, generate: () => gemFile(500) },
-  size: { inputs: 24, size: 3_000, generate: (_i, lines) => gemFile(lines) },
+  size: { inputs: 96, size: 1_500, generate: (_i, lines) => gemFile(lines) },
 };
 
 type RxRelease = ReturnType<typeof rxnormRelease>;
