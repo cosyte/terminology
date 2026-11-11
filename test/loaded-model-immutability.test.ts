@@ -517,7 +517,10 @@ describe("a read-only view behaves as the Map it replaced, for every read", () =
     expect(structuredClone(new Map(g.concepts)).get("1")?.name).toBe("lisinopril");
   });
 
-  it("refuses a node:v8 clone with a plain Error, not a DataCloneError", () => {
+  // Skipped under Bun: its `node:v8` serializer is JavaScriptCore's, which raises a DataCloneError
+  // here (measured on Bun 1.4.4 in CI), and what this pins is V8's plain Error, which the docs state
+  // for Node.
+  it.skipIf(UNDER_BUN)("refuses a node:v8 clone with a plain Error, not a DataCloneError", () => {
     const g = graph();
     const viaV8 = attempt(() => v8.deserialize(v8.serialize(g)));
     expect(viaV8).toBeInstanceOf(Error);

@@ -44,6 +44,8 @@ release formats with made-up identifiers, and the two vendored conformance suite
   under Bun and under Deno on Linux. Under Deno two groups are skipped, by name and with their
   reason in the test code: the doc samples, because the package build they run against cannot load
   TypeScript there, and the cases that run the Changesets release tool, which does not start there.
+  Under Bun one case is skipped: the one that pins the error Node's `node:v8` serializer raises,
+  which Bun raises as a different class.
   A floor that is not met fails the run. The two conformance
   suites and the doc samples are part of the suite.
 - **The coverage floor** is `quality-floor.json`: 100 for lines, branches, functions and

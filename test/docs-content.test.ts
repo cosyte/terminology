@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -46,7 +47,9 @@ import {
  * reference and each explanation links a how-to guide; and the quality pages' "Current numbers"
  * section holds only the sentence the release fills in.
  */
-const distEntry = join(ROOT, "dist", "index.mjs");
+// A sample's import is rewritten to the built entry as a file URL: on Windows a bare absolute path
+// (`D:\...`) reads as a URL with the scheme `d:`, which the ESM loader refuses.
+const distEntry = pathToFileURL(join(ROOT, "dist", "index.mjs")).href;
 const resolve = (specifier: string): string | undefined =>
   specifier === "@cosyte/terminology" ? distEntry : undefined;
 
