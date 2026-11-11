@@ -16,90 +16,135 @@
  */
 
 import { DIAGNOSTIC_CODES, FATAL_CODES, TerminologyError } from "../common/diagnostics.js";
+import { ownString } from "../common/own-string.js";
 import type { Writable } from "../common/writable.js";
 import { defaultStatusMapper, makeStatus } from "./status.js";
 import type { Concept, CsvSource, LoadWarning, Property } from "./types.js";
 
-/** The lenient RFC-4180 parse result: the rows, plus whether a quoted field was left unterminated. */
-interface CsvParse {
-  /** The parsed rows, each an array of field strings (untrimmed, CSV whitespace can be significant). */
-  readonly rows: string[][];
-  /** True when a quoted field opened but never closed before end-of-input (a malformed final field). */
-  readonly unterminatedQuote: boolean;
+const QUOTE = 0x22;
+const COMMA = 0x2c;
+const LINE_FEED = 0x0a;
+const CARRIAGE_RETURN = 0x0d;
+
+/**
+ * Where a scan hands each logical row, and which of its fields to cut out of the text.
+ *
+ * `wanted` is read at the start of every field: `undefined` keeps every field, otherwise a field is
+ * kept only where `wanted[column]` is `true`. A field that is not kept is still counted but never
+ * built, so a row's long columns nobody configured cost no allocation. `row` may change `wanted`
+ * for the rows after it (a source reads its header first, then wants only its configured columns).
+ */
+interface CsvSink {
+  wanted: readonly boolean[] | undefined;
+  /**
+   * One logical row: `cells[i]` is the field at column `i` where it was kept (a cell past the
+   * row's own `count`, or one not kept, holds whatever an earlier row left there: read only the
+   * kept columns of a row long enough to have them), and `count` the number of fields it has.
+   */
+  row(cells: string[], count: number): void;
 }
 
 /**
- * Parse RFC-4180 CSV content into rows and fields, **lenient** in the one place a strict RFC-4180
- * parser is dangerous: a `"` is a field-quote **only at the start of a field**. A stray/unescaped
- * quote in the *middle* of an otherwise-unquoted field (e.g. an inch mark, `12" fitting`) is a
- * **literal character**, not a quote-open, so it can never flip quote-mode and silently swallow the
- * rest of the file into one garbled field. Inside a quoted field, `""` is an escaped quote and commas
- * and newlines are literal data. An opened quote that never closes before EOF is reported via
- * {@link CsvParse.unterminatedQuote} (surfaced by {@link parseCsvSource}), never swallowed.
+ * Scan RFC-4180 CSV text into logical rows, **lenient** in the one place a strict RFC-4180 parser
+ * is dangerous: a `"` is a field-quote **only at the start of a field**. A stray/unescaped quote in
+ * the *middle* of an otherwise-unquoted field (e.g. an inch mark, `12" fitting`) is a **literal
+ * character**, not a quote-open, so it can never flip quote-mode and silently swallow the rest of
+ * the file into one garbled field. Inside a quoted field, `""` is an escaped quote and commas and
+ * newlines are literal data. Outside quotes a carriage return is dropped wherever it falls (the line
+ * feed ends the row), and it does not end a field's start: a quote after it still opens one.
+ *
+ * Each field is cut from the text in runs between the characters the reader drops (a quote that
+ * opens, closes or escapes, a carriage return outside quotes) rather than built a character at a
+ * time, and a field the sink does not want is never built at all. A kept field is a view into the
+ * text: copy what outlives the scan ({@link ownString}).
  *
  * @param content - The raw CSV text.
- * @returns The parsed {@link CsvParse}.
+ * @param sink - Where each logical row goes, and which fields to keep.
+ * @returns `true` when a quoted field opened but never closed before end-of-input (a malformed
+ *   final field; the row holding it is still handed to the sink).
  */
-function parseCsvRows(content: string): CsvParse {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let inQuotes = false;
-  let fieldStart = true; // are we at the first char of the current field?
-  let sawAny = false; // any content on the current (possibly-empty) logical row
+function scanCsv(content: string, sink: CsvSink): boolean {
   const n = content.length;
+  const cells: string[] = [];
+  let column = 0;
+  let wanted = sink.wanted;
+  let keep = wanted === undefined || wanted[0] === true;
+  // The current field is `field` followed by the text from `runStart` to the current position.
+  let field = "";
+  let runStart = 0;
+  let inQuotes = false;
+  let fieldStart = true; // at the first character of the current field?
+  let sawAny = false; // any content on the current (possibly-empty) logical row
+
+  const endField = (end: number): void => {
+    if (keep) cells[column] = field + content.slice(runStart, end);
+    field = "";
+  };
+  const endRow = (): void => {
+    sink.row(cells, column + 1);
+    wanted = sink.wanted;
+    column = 0;
+    keep = wanted === undefined || wanted[0] === true;
+  };
 
   for (let i = 0; i < n; i++) {
-    const ch = content.charAt(i);
+    const ch = content.charCodeAt(i);
     if (inQuotes) {
-      if (ch === '"') {
-        if (content.charAt(i + 1) === '"') {
-          field += '"';
+      if (ch === QUOTE) {
+        if (content.charCodeAt(i + 1) === QUOTE) {
+          // An escaped quote: keep the first of the two, drop the second.
+          if (keep) field += content.slice(runStart, i + 1);
           i++;
         } else {
-          inQuotes = false; // close the quoted field; stay in the same (non-start) field
+          // Close the quoted field; stay in the same (non-start) field.
+          if (keep) field += content.slice(runStart, i);
+          inQuotes = false;
         }
-      } else {
-        field += ch;
+        runStart = i + 1;
       }
       continue;
     }
-    if (ch === '"' && fieldStart) {
+    if (ch === QUOTE && fieldStart) {
+      // Only carriage returns, already dropped, can precede it in this field.
       inQuotes = true;
       fieldStart = false;
       sawAny = true;
-    } else if (ch === ",") {
-      row.push(field);
-      field = "";
+      runStart = i + 1;
+    } else if (ch === COMMA) {
+      endField(i);
+      column++;
+      keep = wanted === undefined || wanted[column] === true;
+      runStart = i + 1;
       fieldStart = true;
       sawAny = true;
-    } else if (ch === "\n") {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
+    } else if (ch === LINE_FEED) {
+      endField(i);
+      endRow();
+      runStart = i + 1;
       fieldStart = true;
       sawAny = false;
-    } else if (ch === "\r") {
-      // CRLF: ignore the CR; the LF ends the row.
+    } else if (ch === CARRIAGE_RETURN) {
+      // CRLF: drop the CR; the LF ends the row.
+      if (keep) field += content.slice(runStart, i);
+      runStart = i + 1;
     } else {
       // Any other char (including a `"` that is NOT at field start) is literal.
-      field += ch;
       fieldStart = false;
       sawAny = true;
     }
   }
-  // Flush a trailing row that did not end with a newline.
-  if (sawAny || field !== "" || row.length > 0) {
-    row.push(field);
-    rows.push(row);
+  // Flush a trailing row that did not end with a newline. A field with any text, or a row with an
+  // earlier field, has seen content, so `sawAny` alone decides.
+  if (sawAny) {
+    endField(n);
+    endRow();
   }
-  return { rows, unterminatedQuote: inQuotes };
+  return inQuotes;
 }
 
 /**
- * Parse RFC-4180 CSV content into rows of fields (the `.rows` of {@link parseCsvRows}). Lenient: a
- * stray mid-field quote is literal, so a malformed quote never silently swallows subsequent rows.
+ * Parse RFC-4180 CSV content into rows of fields. Lenient: a stray mid-field quote is literal, so a
+ * malformed quote never silently swallows subsequent rows.
  *
  * @param content - The raw CSV text.
  * @returns The rows, each an array of field strings (untrimmed).
@@ -111,7 +156,16 @@ function parseCsvRows(content: string): CsvParse {
  * ```
  */
 export function parseCsv(content: string): string[][] {
-  return parseCsvRows(content).rows;
+  const rows: string[][] = [];
+  scanCsv(content, {
+    wanted: undefined,
+    row: (cells, count) => {
+      const row: string[] = [];
+      for (let c = 0; c < count; c++) row.push(ownString(cells[c] as string));
+      rows.push(row);
+    },
+  });
+  return rows;
 }
 
 /**
@@ -172,61 +226,56 @@ export function parseCsvSource(source: CsvSource): {
   warnings: LoadWarning[];
 } {
   const statusMap = source.statusMap ?? defaultStatusMapper;
-  const { rows, unterminatedQuote } = parseCsvRows(source.content);
-  const header = rows[0];
-  if (header === undefined) {
-    throw new TerminologyError(
-      FATAL_CODES.TERM_CODESYSTEM_MALFORMED,
-      "CSV source: the file has no header row",
-    );
-  }
-  const warnings: LoadWarning[] = [];
-  if (unterminatedQuote) {
-    // A quoted field opened but never closed before EOF: the final logical row is malformed. Surface
-    // it (never silently keep a garbled field), pointing at the last parsed row.
-    warnings.push(
-      Object.freeze({
-        code: DIAGNOSTIC_CODES.TERM_CSV_MALFORMED,
-        line: rows.length,
-        detail: "an opened quoted field was not terminated before end-of-input",
-      }),
-    );
-  }
-
-  const codeIdx = requireHeader(header, source.columns.code, "code");
-  const displayIdx = requireHeader(header, source.columns.display, "display");
-  const statusIdx =
-    source.columns.status !== undefined
-      ? requireHeader(header, source.columns.status, "status")
-      : undefined;
-  // Iterated, never mapped: `map` skips a hole in a sparse list and leaves it in the result, where it
-  // later read as an entry with no index. Iteration reads a hole as `undefined`, which names no column
-  // and so takes the same typed fatal as any other absent property column.
-  const propIdx: { name: string; index: number }[] = [];
-  for (const n of source.columns.properties ?? []) {
-    propIdx.push({ name: n, index: requireHeader(header, n, "property") });
-  }
-  const needCols =
-    Math.max(codeIdx, displayIdx, statusIdx ?? 0, ...propIdx.map((p) => p.index)) + 1;
-
+  const content = source.content;
   const concepts = new Map<string, Concept>();
+  const warnings: LoadWarning[] = [];
 
-  for (let r = 1; r < rows.length; r++) {
-    /* v8 ignore next -- the `?? []` is unreachable: r < rows.length and parseCsvRows only pushes rows, so rows[r] is defined */
-    const cells = rows[r] ?? [];
-    const lineNo = r + 1;
-    if (cells.length < needCols) {
+  // Read row by row as the text is scanned, so no row outlives its own turn: the header first,
+  // which names the columns to keep, then each data row, of which only those columns are built.
+  let rowCount = 0;
+  let codeIdx = 0;
+  let displayIdx = 0;
+  let statusIdx: number | undefined;
+  const propIdx: { name: string; index: number }[] = [];
+  let needCols = 0;
+
+  const header = (cells: readonly string[], count: number): void => {
+    const names = cells.slice(0, count);
+    codeIdx = requireHeader(names, source.columns.code, "code");
+    displayIdx = requireHeader(names, source.columns.display, "display");
+    statusIdx =
+      source.columns.status !== undefined
+        ? requireHeader(names, source.columns.status, "status")
+        : undefined;
+    // Iterated, never mapped: `map` skips a hole in a sparse list and leaves it in the result, where
+    // it later read as an entry with no index. Iteration reads a hole as `undefined`, which names no
+    // column and so takes the same typed fatal as any other absent property column.
+    for (const n of source.columns.properties ?? []) {
+      propIdx.push({ name: n, index: requireHeader(names, n, "property") });
+    }
+    needCols = Math.max(codeIdx, displayIdx, statusIdx ?? 0, ...propIdx.map((p) => p.index)) + 1;
+    const wanted: boolean[] = [];
+    wanted[codeIdx] = true;
+    wanted[displayIdx] = true;
+    if (statusIdx !== undefined) wanted[statusIdx] = true;
+    for (const p of propIdx) wanted[p.index] = true;
+    sink.wanted = wanted;
+  };
+
+  const dataRow = (cells: readonly string[], count: number, lineNo: number): void => {
+    if (count < needCols) {
       warnings.push(
         Object.freeze({
           code: DIAGNOSTIC_CODES.TERM_CSV_MALFORMED,
           line: lineNo,
-          detail: `row has ${String(cells.length)} fields, need ${String(needCols)}`,
+          detail: `row has ${String(count)} fields, need ${String(needCols)}`,
         }),
       );
-      continue;
+      return;
     }
-    /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
-    const code = (cells[codeIdx] ?? "").trim();
+    // Every configured index is under `needCols`, so this row holds a kept cell at each of them.
+    const cell = (index: number): string => cells[index] as string;
+    const code = cell(codeIdx).trim();
     if (code === "") {
       warnings.push(
         Object.freeze({
@@ -235,27 +284,54 @@ export function parseCsvSource(source: CsvSource): {
           detail: "row is missing its code",
         }),
       );
-      continue;
+      return;
     }
-    if (concepts.has(code)) continue; // first row per code wins
+    if (concepts.has(code)) return; // first row per code wins
 
-    const out: Writable<Concept> = { code, properties: [] };
-    /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
-    const display = (cells[displayIdx] ?? "").trim();
-    if (display !== "") out.display = display;
+    // Each string the model keeps is copied out of the text, so the model does not keep the whole
+    // release text alive after the load (see `ownString`).
+    const out: Writable<Concept> = { code: ownString(code), properties: [] };
+    const display = cell(displayIdx).trim();
+    if (display !== "") out.display = ownString(display);
     if (statusIdx !== undefined) {
-      /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
-      const rawStatus = (cells[statusIdx] ?? "").trim();
+      const rawStatus = ownString(cell(statusIdx).trim());
       out.status = makeStatus(statusMap(rawStatus), rawStatus);
     }
     const props: Property[] = [];
     for (const p of propIdx) {
-      /* v8 ignore next -- the `?? ""` is unreachable: the row has needCols cells, more than any configured index, and every cell is a string */
-      const value = (cells[p.index] ?? "").trim();
-      if (value !== "") props.push(Object.freeze({ code: p.name, value }));
+      const value = cell(p.index).trim();
+      if (value !== "") props.push(Object.freeze({ code: p.name, value: ownString(value) }));
     }
     out.properties = Object.freeze(props);
-    concepts.set(code, Object.freeze(out));
+    concepts.set(out.code, Object.freeze(out));
+  };
+
+  const sink: CsvSink = {
+    wanted: undefined,
+    row: (cells, count) => {
+      rowCount++;
+      if (rowCount === 1) header(cells, count);
+      else dataRow(cells, count, rowCount);
+    },
+  };
+  const unterminatedQuote = scanCsv(content, sink);
+  if (rowCount === 0) {
+    throw new TerminologyError(
+      FATAL_CODES.TERM_CODESYSTEM_MALFORMED,
+      "CSV source: the file has no header row",
+    );
+  }
+  if (unterminatedQuote) {
+    // A quoted field opened but never closed before EOF: the final logical row is malformed. Surface
+    // it (never silently keep a garbled field), pointing at the last parsed row, ahead of every row
+    // warning.
+    warnings.unshift(
+      Object.freeze({
+        code: DIAGNOSTIC_CODES.TERM_CSV_MALFORMED,
+        line: rowCount,
+        detail: "an opened quoted field was not terminated before end-of-input",
+      }),
+    );
   }
 
   return { concepts, warnings };
