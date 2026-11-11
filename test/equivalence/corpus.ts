@@ -289,6 +289,10 @@ const CSV_EDGES: readonly CsvCase[] = [
   { content: "CODE,NAME\n\r\n\r", columns: { code: "CODE", display: "NAME" } },
   { content: "NAME,CODE,CODE\nn,c1,c2\n", columns: { code: "CODE", display: "NAME" } },
   { content: "CODE,NAME\nA,  padded  \n", columns: { code: "CODE", display: "NAME" } },
+  // A byte order mark is a literal character: the first header name carries it.
+  { content: "\ufeffCODE,NAME\r\nA,Alpha\r\n", columns: { code: "CODE", display: "NAME" } },
+  { content: "\ufeffCODE,NAME\r\nA,Alpha\r\n", columns: { code: "\ufeffCODE", display: "NAME" } },
+  { content: "CODE,NAME\n\ufeffA,\ufeff\n", columns: { code: "CODE", display: "NAME" } },
   {
     content: "CODE,NAME,S\nA,a, ACTIVE \nB,b,\nC,c,DEPRECATED\nD,d,bogus\n",
     columns: { code: "CODE", display: "NAME", status: "S" },
@@ -364,7 +368,7 @@ const GEM_SPACES = [
   "\u180e",
   "\r",
 ];
-const GEM_CODES = ["0010", "A000", "E1010", "V290", "Z0000", "S72001A", "VeryLongCodeOver13Chars"];
+const GEM_CODES = ["0010", "A000", "E1010", "V290", "Z0000", "X99901Z", "VeryLongCodeOver13Chars"];
 const GEM_TARGETS = [...GEM_CODES, "NoDx", "NoPCS", "nodx"];
 const GEM_FLAGS = [
   "00000",
@@ -671,13 +675,13 @@ function conceptMapJson(rng: Rng): Record<string, unknown> {
 /** Every ConceptMap case, with the codings each is asked about. */
 export function conceptMapCorpus(): {
   readonly maps: readonly Record<string, unknown>[];
-  readonly queries: readonly { system?: string; code: string; display?: string }[];
+  readonly queries: readonly { system?: string; code?: string; display?: string }[];
 } {
   const rng = new Rng(0x7a7e1a7e);
   const maps: Record<string, unknown>[] = [];
   for (let i = 0; i < 300; i++) maps.push(conceptMapJson(rng));
   maps.push(benchConceptMap(200));
-  const queries: { system?: string; code: string; display?: string }[] = [];
+  const queries: { system?: string; code?: string; display?: string }[] = [];
   for (const code of [...MAP_CODES, "absent", ""]) {
     queries.push({ code });
     for (const system of [...MAP_SOURCES, "http://example.org/fhir/CodeSystem/unknown"]) {
@@ -689,6 +693,9 @@ export function conceptMapCorpus(): {
     code: "k1",
     display: "Shown",
   });
+  // A coding with no code (FHIR Coding.code is 0..1): it matches an element with no code.
+  queries.push({});
+  for (const system of MAP_SOURCES) queries.push({ system });
   return { maps, queries };
 }
 

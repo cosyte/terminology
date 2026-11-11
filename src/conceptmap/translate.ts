@@ -84,11 +84,13 @@ const NO_ELEMENTS: readonly ConceptMapElement[] = Object.freeze([]);
  * the index's list for the code, so a translation reads the elements that name it rather than every
  * element of the map (2% of the throughput was kept from a 1,000 to a 50,000 element map before).
  * A group a caller built by hand can change between two calls, so all of its elements are read, as
- * they always were. The caller still compares each element's code, so both routes select the same
+ * they always were. So is every group when the source's code is not a string: a coding with no code
+ * matches the elements that have none (FHIR makes both `0..1`), and the index holds only elements
+ * that name a code. The caller still compares each element's code, so both routes select the same
  * elements.
  */
 function candidates(group: ConceptMapGroup, code: string): readonly ConceptMapElement[] {
-  if (!isLoadedGroup(group)) return group.element;
+  if (typeof code !== "string" || !isLoadedGroup(group)) return group.element;
   let index = elementIndex.get(group);
   if (index === undefined) {
     const built = new Map<string, ConceptMapElement[]>();

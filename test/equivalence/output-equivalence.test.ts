@@ -168,7 +168,7 @@ function translateRecords(): unknown[] {
     const codes =
       maps.indexOf(json) === maps.length - 1
         ? map.group.flatMap((g) =>
-            g.element.slice(0, 60).map((e) => ({ system: g.source, code: e.code ?? "" })),
+            g.element.slice(0, 60).map((e) => ({ system: g.source, code: e.code })),
           )
         : queries;
     return { loaded, translated: codes.map((q) => outcome(() => translate(q as never, map))) };

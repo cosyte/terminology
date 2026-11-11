@@ -86,6 +86,47 @@ describe("translate: the element index of a loaded group", () => {
   });
 });
 
+describe("translate: a source coding with no code, through a loaded map", () => {
+  // FHIR makes both Coding.code and ConceptMap.group.element.code 0..1, and loadConceptMap keeps an
+  // element with no code. A source with no code matches those elements, as it always has.
+  const empty: object = {};
+  const noCode = (): never => empty as never;
+
+  it("matches the loaded map's elements that have no code, in declared order", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          target: TARGET,
+          element: [
+            { code: "A", target: [{ code: "T1", equivalence: "equivalent" }] },
+            { target: [{ code: "T2", equivalence: "equivalent" }] },
+            { target: [{ code: "T3", equivalence: "wider" }] },
+          ],
+        },
+      ],
+    });
+    const r = translate(noCode(), map);
+    expect(r.unmapped).toBe(false);
+    if (!r.unmapped) expect(r.matches.map((m) => m.target.code)).toEqual(["T2", "T3"]);
+  });
+
+  it("is unmapped against a loaded map whose elements all have a code", () => {
+    const map = loadConceptMap({
+      resourceType: "ConceptMap",
+      group: [
+        {
+          target: TARGET,
+          element: [{ code: "A", target: [{ code: "T1", equivalence: "equivalent" }] }],
+        },
+      ],
+    });
+    const r = translate(noCode(), map);
+    expect(r.unmapped).toBe(true);
+    if (r.unmapped) expect(r.mode).toBe("none");
+  });
+});
+
 describe("translate: a group built by hand", () => {
   it("is read element by element on every call, so a change between two calls is read", () => {
     const element = [{ code: "A", target: [{ code: "T1", equivalence: "equivalent" as const }] }];
