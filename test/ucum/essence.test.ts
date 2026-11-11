@@ -43,6 +43,11 @@ describe("loadUcumEssence", () => {
     expect(da).toBeLessThan(d);
   });
 
+  it("gives every atom and prefix a non-empty code, which the parser files by its first character", () => {
+    expect(essence.atoms.filter((a) => a.code === "")).toEqual([]);
+    expect(essence.prefixes.filter((p) => p.code === "")).toEqual([]);
+  });
+
   it("returns the same cached instance across calls", () => {
     expect(loadUcumEssence()).toBe(essence);
   });
