@@ -126,14 +126,17 @@ const csvLoad = (text: string): CodeSystem =>
  * The reader that scans the text once is about three times faster, so the base phases hold more
  * input: 72 tables a pass on the count axis rather than 24, where a pass of 24 took about 16 ms on a
  * runner and its warmup alternated by more than 5% between passes that did and did not collect, so
- * it never settled; and 18 on the size axis rather than 12, to keep that base phase above 10 ms.
+ * it never settled; and 72 on the size axis rather than 12, where a pass of 18 took about 12 ms
+ * and its warmup swung the same way. Both base passes now take about 50 ms. The size axis's
+ * self-check reads each 800 row table a character at a time, so 72 of them take about four times
+ * as long as 18 did (about 200 s on a runner): `vitest.perf.config.ts` allows for it.
  */
 const csvOptions: ScalingGateOptions<string, CodeSystem> = {
   name: "@cosyte/terminology loadCodeSystem, CSV",
   parse: csvLoad,
   weigh: (cs) => cs.count,
   count: { n: 72, generate: () => loincCsv(200) },
-  size: { inputs: 18, size: 200, generate: (_i, rows) => loincCsv(rows) },
+  size: { inputs: 72, size: 200, generate: (_i, rows) => loincCsv(rows) },
 };
 
 const rrfLoad = (text: string): CodeSystem =>

@@ -14,7 +14,8 @@ export default defineConfig({
     pool: "forks",
     fileParallelism: false,
     // A phase is well under a second, but the warmup may take up to its 5 s bound per axis, and
-    // each self-check runs a deliberately quadratic version of its work at the same sizes.
-    testTimeout: 180_000,
+    // each self-check runs a deliberately quadratic version of its work at the same sizes. The CSV
+    // self-check is the longest, at about 200 s on a runner (see `csvOptions` in the gate file).
+    testTimeout: 360_000,
   },
 });
