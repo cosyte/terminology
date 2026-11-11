@@ -17,6 +17,7 @@
  * @packageDocumentation
  */
 
+import { isLoadedConcepts } from "../codesystem/load.js";
 import type { CodeSystem, Concept } from "../codesystem/types.js";
 import type { ConceptSetFilter, FilterOperator } from "./types.js";
 
@@ -80,8 +81,13 @@ function directParents(concept: Concept): string[] {
  * ```
  */
 export function buildSubsumption(cs: CodeSystem): Subsumption {
+  return subsumptionOver(cs.concepts);
+}
+
+/** The ancestor index over one concepts map: {@link buildSubsumption}'s work. */
+function subsumptionOver(concepts: ReadonlyMap<string, Concept>): Subsumption {
   const parentsOf = new Map<string, readonly string[]>();
-  for (const concept of cs.concepts.values()) {
+  for (const concept of concepts.values()) {
     const parents = directParents(concept);
     if (parents.length > 0) parentsOf.set(concept.code, parents);
   }
@@ -101,6 +107,38 @@ export function buildSubsumption(cs: CodeSystem): Subsumption {
     return acc;
   };
   return { ancestorsOf };
+}
+
+/**
+ * The ancestor index of each loaded release, built on the first membership question asked of it and
+ * kept for as long as the release lives. Keyed on the concepts view, which {@link loadCodeSystem}
+ * made and nothing can change, so the index can never describe a release other than the one it was
+ * built from; held weakly, so it goes when the release does.
+ */
+const loadedSubsumption = new WeakMap<object, Subsumption>();
+
+/**
+ * The ancestor index of `cs`, as {@link buildSubsumption} gives it, built once per loaded release.
+ *
+ * Before this, `validateCodeInValueSet` built the index for every code it was asked about, so one
+ * membership question over a filter cost a walk of the whole release (about 45 ms at 100,000
+ * concepts). A release {@link loadCodeSystem} returned cannot change, so its index is built on the
+ * first question and reused. A code system whose `concepts` a caller assembled by hand can change
+ * between two calls, so it is indexed afresh each time, exactly as before. Reads `cs.concepts` once,
+ * as {@link buildSubsumption} does. Internal to the value set engine.
+ *
+ * @param cs - The code system a filter is evaluated over.
+ * @returns Its {@link Subsumption}.
+ */
+export function subsumptionOf(cs: CodeSystem): Subsumption {
+  const concepts = cs.concepts;
+  if (!isLoadedConcepts(concepts)) return subsumptionOver(concepts);
+  let sub = loadedSubsumption.get(concepts);
+  if (sub === undefined) {
+    sub = subsumptionOver(concepts);
+    loadedSubsumption.set(concepts, sub);
+  }
+  return sub;
 }
 
 /**

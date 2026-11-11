@@ -28,7 +28,7 @@
 import type { CodeSystem } from "../codesystem/types.js";
 import type { Coding } from "../common/coding.js";
 import type { Writable } from "../common/writable.js";
-import { buildSubsumption, matchesAllFilters, unsupportedOps } from "./filters.js";
+import { matchesAllFilters, subsumptionOf, unsupportedOps } from "./filters.js";
 import type {
   ConceptSetComponent,
   ExpansionContext,
@@ -210,7 +210,7 @@ function matchComponent(
           const concpt = cs.concepts.get(target.code);
           // A code absent from the system is a definite non-member of any filter over it.
           baseMatched =
-            concpt !== undefined && matchesAllFilters(concpt, filter, buildSubsumption(cs)).matched;
+            concpt !== undefined && matchesAllFilters(concpt, filter, subsumptionOf(cs)).matched;
         }
       } else {
         baseMatched = cs.concepts.get(target.code) !== undefined;

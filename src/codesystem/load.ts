@@ -18,6 +18,26 @@ import { parseRrf } from "./rrf.js";
 import type { CodeSystem, CodeSystemSource, Concept, LoadWarning } from "./types.js";
 
 /**
+ * The concepts views {@link loadCodeSystem} made. Each is a frozen view over a map nothing else
+ * holds, and every concept in it is frozen down to its property list, so nothing about it can
+ * change after the load: an index computed from one is good for as long as the view lives. Held
+ * weakly, so a code system a caller drops is collected with whatever was computed from it.
+ */
+const loadedConcepts = new WeakSet<object>();
+
+/**
+ * Whether `concepts` is a concepts view {@link loadCodeSystem} made, and so cannot change. Internal:
+ * the value set engine keys its per-release hierarchy index on it, and computes one afresh for a
+ * map a caller built by hand, which could change between two calls.
+ *
+ * @param concepts - A code system's `concepts`.
+ * @returns Whether it is a loaded, unchangeable view.
+ */
+export function isLoadedConcepts(concepts: ReadonlyMap<string, Concept>): boolean {
+  return loadedConcepts.has(concepts);
+}
+
+/**
  * Load a consumer-supplied code-system release into an immutable, queryable {@link CodeSystem}.
  *
  * Dispatches on `source.format`:
@@ -93,6 +113,7 @@ export function loadCodeSystem(source: CodeSystemSource): CodeSystem {
   // `count`). This used to replace the three mutators on the map itself, which left
   // `Map.prototype.set.call(cs.concepts, …)` inserting; the view has no internal slot to write to.
   out.concepts = frozenMap(concepts, "a loaded CodeSystem's concepts map");
+  loadedConcepts.add(out.concepts);
   out.warnings = Object.freeze(warnings);
   return Object.freeze(out);
 }
