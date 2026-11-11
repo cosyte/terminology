@@ -2,7 +2,7 @@
 id: performance
 title: Performance
 sidebar_label: Performance
-description: "What we will measure on @cosyte/terminology (loading a release, answering a query, memory, import time and bundle size), what runs today, and what does not yet."
+description: "What we measure on @cosyte/terminology (loading a release, answering a query, memory, import time and bundle size), and how to run it yourself."
 ---
 
 # Performance
@@ -29,16 +29,33 @@ The engine's cost has three parts, and they behave differently:
 
 ## What runs today
 
-No benchmark ships in this repository yet, and none runs in CI. The test suite has no time limits
-beyond Vitest's default per test, and a few tests that load large synthetic releases set their own;
-those limits catch a gross slowdown, not a regression of a few percent.
+`bench/terminology.bench.mjs` measures the built package, as a consumer imports it, with
+`@cosyte/bench`. Every input is synthetic and built in code by `bench/shapes.mjs`:
 
-## What is not measured yet
+- **Loading a release**: a LOINC-style CSV (up to 100,000 rows, 40 MiB), the same table with long
+  quoted definitions, RXNCONSO-style RRF, an ICD-10-CM order file (98,000 lines), a hierarchical FHIR
+  CodeSystem (up to 100,000 concepts), a GEM file (78,000 lines), an RxNorm release and a ConceptMap.
+- **Many queries in a row**: lookups and validations, value set membership and expansion over an
+  `is-a` filter, translations, GEM lookups, RxNorm navigation and UCUM validation, against a small and
+  a large model, asking the same questions at each size.
+- **One query**: the single call made for each coded field.
 
-The performance standard asks for throughput, latency percentiles, memory over a long run, import
-time and bundle size. This package measures none of them yet, so the section below says "not
-measured for this release" for each, with the reason, until it does. When the benchmark is added,
-this page will say what it runs and how to run it yourself.
+For each case it reports throughput, latency p50, p95 and p99, allocations per call, the peak heap of
+one call, whether the heap stays flat over a long run, and the cold import with every file it loads
+and its gzip size. `bench/budgets.mjs` reads a reading against proposed budgets, and
+`bench/profile.mjs` takes a CPU and heap profile of the hottest paths.
+
+```sh
+pnpm build
+pnpm bench:reading --out bench-results/reading.json --summary bench-results/reading.md
+node bench/budgets.mjs bench-results/reading.json
+node --enable-source-maps bench/profile.mjs dist/index.mjs --out bench-results/profiles
+```
+
+A full reading loads releases of tens of MiB many times and takes a long while; `--only <benchmark>`
+narrows it. In CI, `pnpm test:perf` runs the scaling gates (does a load or an expansion grow faster
+than its input?) beside the tests, a pull request's build is timed against its base (advisory), and
+the Bench reading workflow takes a full reading, the budgets and a profile on a GitHub-hosted runner.
 
 ## What these numbers are not
 

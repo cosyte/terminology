@@ -47,18 +47,32 @@ jobs:
   # the Node lines CI runs. Repo-specific extra jobs (an examples smoke, for one) are added on top of
   # this caller, never instead of it.
   #
-  # Every shared workflow in this repository is called at one published reference,
-  # `workflows-2026-11-08-c0db8d8e5927`, by name. It names one commit of cosyte/.github and never
-  # another (its release there is immutable), so nothing upstream reaches this pipeline until a
-  # change here moves every caller to a newer reference together. Its release notes say what a
-  # caller adopting it must act on: https://github.com/cosyte/.github/releases
+  # Every shared workflow in this repository is called at a published reference, by name: the
+  # callers in the other workflow files at `workflows-2026-11-08-c0db8d8e5927`, and this one at
+  # `workflows-2026-11-10-0be6757a7738` (see below). A reference names one commit of cosyte/.github
+  # and never another (its release there is immutable), so nothing upstream reaches this pipeline
+  # until a change here moves a caller to a newer one. Its release notes say what a caller adopting
+  # it must act on: https://github.com/cosyte/.github/releases
   # The shared pipeline's optional PHI-scan step is switched on. `pnpm phi-scan` runs
   # `cosyte-phi-scan` from @cosyte/script-utils (ST34): the cross-cutting SSN and email floor over
   # the whole repository, with scripts/phi-allow-list.txt and scripts/phi-scan.exclude.
+  #
+  # The performance standard's two jobs run beside `verify`, never after it, so a pull request waits
+  # for the slowest job rather than their sum:
+  # - `scaling-gate`: `pnpm test:perf`, the scaling gates for the loaders and for expansion and
+  #   their self-checks, never under coverage;
+  # - `bench-compare` (pull requests only): bench/terminology.bench.mjs timed on the base build and
+  #   the head build, interleaved on one runner. Advisory: it never fails, so never require it.
+  # A skipped job satisfies a required check, so require `scaling-gate` only while its input below
+  # stays on. The full reading, the budgets and the profile are in bench-reading.yml. This caller
+  # alone moved to the 2026-11-10 reference, the first with those two jobs; the jobs it added beside
+  # them (bun, deno, coverage-ratchet, mutation) stay off, as their inputs default to.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
+    uses: cosyte/.github/.github/workflows/ci.yml@0be6757a773885cbd5165dbfa0f93772d907b3e8 # workflows-2026-11-10-0be6757a7738
     with:
       run-phi-scan: true
+      run-scaling-gate: true
+      run-bench-compare: true
 
   # The runnable programs under examples/. They import the package by name, which resolves through
   # its own `exports` to `dist/`, so the build comes first. Each example checks its own output and
