@@ -155,12 +155,16 @@ const fhirOptions: ScalingGateOptions<FhirCodeSystemJson, CodeSystem> = {
   size: { inputs: 9, size: 2_000, generate: (_i, n) => hierarchyCodeSystem(n).resource },
 };
 
+/**
+ * Twice the inputs the gate first had on both axes: the loader reads a line in place now, several
+ * times faster, and the base phase stays above 10 ms only with twice the lines in it.
+ */
 const gemOptions: ScalingGateOptions<string, GemMap> = {
   name: "@cosyte/terminology loadGems",
   parse: (text) => loadGems(gemSource(text)),
   weigh: (map) => map.count,
-  count: { n: 96, generate: () => gemFile(500) },
-  size: { inputs: 12, size: 3_000, generate: (_i, lines) => gemFile(lines) },
+  count: { n: 192, generate: () => gemFile(500) },
+  size: { inputs: 24, size: 3_000, generate: (_i, lines) => gemFile(lines) },
 };
 
 type RxRelease = ReturnType<typeof rxnormRelease>;

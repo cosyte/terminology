@@ -21,9 +21,12 @@ The engine's cost has three parts, and they behave differently:
   whole release file into memory and index it. This happens once per release, grows with the size of
   the file, and is where the memory goes: a loaded release stays in memory for as long as you hold it.
 - **Answering a query.** `lookup`, `validateCode`, `resolveNdc`, `applyGem` and `applyComplexMap`
-  find their answer through an index keyed by code. `translate` reads the map's groups and elements in
-  order. `expand` and `validateCodeInValueSet` walk the release for a filter or a whole-system include,
-  so their cost grows with the release and the value set.
+  find their answer through an index keyed by code. `translate` finds a loaded map's elements through
+  an index of each group by source code, and `validateCodeInValueSet` reads a filter through the
+  release's hierarchy index: each is built on the first call that needs it and kept with the loaded
+  map or release, so the first call pays for it once. A map or code system you build by hand, rather
+  than load, is read in full on every call. `expand` walks the release for a filter or a whole-system
+  include, so its cost grows with the release and the value set.
 - **Fixed costs.** The bundled UCUM table is parsed the first time a UCUM call needs it and kept for
   the life of the process. The package has no runtime dependencies to load.
 
