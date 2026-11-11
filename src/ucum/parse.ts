@@ -51,12 +51,18 @@ function prefixRank(m: SimpleMatch): number {
   return m.prefix ? 1 : 0;
 }
 
+/** The order the parser tries readings in: longer first, then a bare atom before a prefixed one. */
+function byPreference(a: SimpleMatch, b: SimpleMatch): number {
+  return b.len - a.len || prefixRank(a) - prefixRank(b);
+}
+
 /**
  * All plausible (prefix?+atom) interpretations at `pos`, ordered by preference: longer total match
  * first, and a bare atom before a prefixed one on a tie (so `Pa` is pascal, not peta-are). The
  * caller commits to the first whose continuation lands on a component boundary.
  */
 function simpleMatches(essence: UcumEssence, s: string, pos: number): SimpleMatch[] {
+  if (typeof s !== "string") return simpleMatchesByScan(essence, s, pos);
   const index = indexOf(essence);
   const out: SimpleMatch[] = [];
   for (const atom of index.atoms.get(s.charCodeAt(pos)) ?? NONE) {
@@ -71,7 +77,30 @@ function simpleMatches(essence: UcumEssence, s: string, pos: number): SimpleMatc
       }
     }
   }
-  out.sort((a, b) => b.len - a.len || prefixRank(a) - prefixRank(b));
+  out.sort(byPreference);
+  return out;
+}
+
+/**
+ * {@link simpleMatches} for a unit that is not a primitive string (a `String` object a caller built,
+ * whose `startsWith` may answer anything): every atom and prefix of the table is asked of it, as the
+ * parser always did, so its own `startsWith` decides. A primitive string takes the index instead.
+ */
+function simpleMatchesByScan(essence: UcumEssence, s: string, pos: number): SimpleMatch[] {
+  const out: SimpleMatch[] = [];
+  for (const atom of essence.atoms) {
+    if (s.startsWith(atom.code, pos)) out.push({ atom, len: atom.code.length });
+  }
+  for (const prefix of essence.prefixes) {
+    if (!s.startsWith(prefix.code, pos)) continue;
+    const rem = pos + prefix.code.length;
+    for (const atom of essence.atoms) {
+      if (atom.metric && s.startsWith(atom.code, rem)) {
+        out.push({ prefix, atom, len: prefix.code.length + atom.code.length });
+      }
+    }
+  }
+  out.sort(byPreference);
   return out;
 }
 

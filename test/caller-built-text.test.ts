@@ -10,13 +10,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyGem,
+  loadCodeSystem,
   loadComplexMap,
   loadGems,
   loadRxNormGraph,
+  parseCsv,
   parseFixedWidth,
   parseRrf,
   parseUcum,
+  validateUcum,
 } from "../src/index.js";
+import { csvCorpus, outcome, ucumCorpus } from "./equivalence/corpus.js";
 import { only } from "./helpers.js";
 
 /** A string whose `split` answers `parts` (holes and all) whatever the separator. */
@@ -155,5 +160,42 @@ describe("parseUcum: two readings of one length", () => {
     expect(factor.atom.code).toBe("Pa");
     expect(factor.prefix).toBeUndefined();
     expect(factor.exponent).toBe(1);
+  });
+});
+
+describe("text in a String object: the same answers as the primitive", () => {
+  // A `String` object goes the way the readers always went, through its own methods; a primitive
+  // string goes the faster way. For an object that answers as its characters do, the two agree.
+  it("loadCodeSystem and parseCsv read a CSV the same either way", () => {
+    for (const c of csvCorpus().slice(0, 300)) {
+      const load = (content: string): unknown =>
+        outcome(() => loadCodeSystem({ format: "csv", content, columns: c.columns }));
+      expect(load(asText(new String(c.content)))).toStrictEqual(load(c.content));
+      expect(outcome(() => parseCsv(asText(new String(c.content))))).toStrictEqual(
+        outcome(() => parseCsv(c.content)),
+      );
+    }
+  });
+
+  it("validateUcum reads a unit the same either way", () => {
+    for (const unit of ucumCorpus().slice(0, 200)) {
+      expect(outcome(() => validateUcum(asText(new String(unit))))).toStrictEqual(
+        outcome(() => validateUcum(unit)),
+      );
+    }
+  });
+
+  it("loadGems skips a blank line and refuses a malformed flag in a line list it was handed", () => {
+    const gems = loadGems({
+      direction: "9-to-10",
+      content: asText(
+        new SplitsInto("", ["0010 A000 00000", "   ", "0011 A001 0000x", "V290 NoDx 11000"]),
+      ),
+    });
+    expect(gems.count).toBe(2);
+    expect(applyGem(gems, "V290").mapped).toBe(false);
+    expect(gems.warnings).toStrictEqual([
+      { code: "TERM_GEM_MALFORMED_ROW", line: 3, detail: "flag field is not a 5-digit code" },
+    ]);
   });
 });

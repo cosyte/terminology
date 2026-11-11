@@ -64,6 +64,7 @@ interface CsvSink {
  *   final field; the row holding it is still handed to the sink).
  */
 function scanCsv(content: string, sink: CsvSink): boolean {
+  if (typeof content !== "string") return readCsvByCharAt(content, sink);
   const n = content.length;
   const cells: string[] = [];
   let column = 0;
@@ -138,6 +139,67 @@ function scanCsv(content: string, sink: CsvSink): boolean {
     endField(n);
     endRow();
   }
+  return inQuotes;
+}
+
+/**
+ * Read CSV content that is not a primitive string (a `String` object a caller built, whose methods
+ * may answer anything) the way the reader always has: a character at a time through its own
+ * `length` and `charAt`, each field built by appending, every field kept. The same state machine as
+ * {@link scanCsv}, which a primitive string takes; the rows go to the same sink.
+ */
+function readCsvByCharAt(content: string, sink: CsvSink): boolean {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let fieldStart = true;
+  let sawAny = false;
+  const n = content.length;
+
+  for (let i = 0; i < n; i++) {
+    const ch = content.charAt(i);
+    if (inQuotes) {
+      if (ch === '"') {
+        if (content.charAt(i + 1) === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+      continue;
+    }
+    if (ch === '"' && fieldStart) {
+      inQuotes = true;
+      fieldStart = false;
+      sawAny = true;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+      fieldStart = true;
+      sawAny = true;
+    } else if (ch === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      fieldStart = true;
+      sawAny = false;
+    } else if (ch !== "\r") {
+      field += ch;
+      fieldStart = false;
+      sawAny = true;
+    }
+  }
+  // A field with any text, or a row with an earlier field, has seen content (see `scanCsv`).
+  if (sawAny) {
+    row.push(field);
+    rows.push(row);
+  }
+  for (const r of rows) sink.row(r, r.length);
   return inQuotes;
 }
 

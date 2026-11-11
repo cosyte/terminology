@@ -130,13 +130,78 @@ export function loadGems(source: GemSource): GemMap {
   const entries = new Map<string, GemEntry[]>();
   const warnings: GemLoadWarning[] = [];
   let count = 0;
+
+  /**
+   * One line that is not blank: its number, and its three fields, or how many it has when that is
+   * not three. Every line reaches here in file order, by either reader below.
+   */
+  const addLine = (lineNo: number, fields: GemFields | number): void => {
+    if (typeof fields === "number") {
+      warnings.push(
+        Object.freeze({
+          code: "TERM_GEM_MALFORMED_ROW",
+          line: lineNo,
+          detail: `expected 3 whitespace-delimited fields, found ${String(fields)}`,
+        }),
+      );
+      return;
+    }
+    const [src, tgt, flagStr] = fields;
+    const flags = decodeFlags(flagStr);
+    if (flags === undefined) {
+      warnings.push(
+        Object.freeze({
+          code: "TERM_GEM_MALFORMED_ROW",
+          line: lineNo,
+          detail: "flag field is not a 5-digit code",
+        }),
+      );
+      return;
+    }
+    const entry: Writable<GemEntry> = { source: src, flags };
+    // A No-Map row carries the sentinel target and no real code: never surface it as a target.
+    if (!isNoMapSentinel(tgt)) entry.target = tgt;
+    const frozen = Object.freeze(entry);
+    const list = entries.get(src);
+    if (list) list.push(frozen);
+    else entries.set(src, [frozen]);
+    count++;
+  };
+
   const content = source.content;
+  if (typeof content === "string") readLinesInPlace(content, addLine);
+  else readLinesBySplit(content, addLine);
+
+  // Freeze each source's candidate list, then hand out the index as a read-only view rather than the
+  // map itself. `Object.freeze` below reaches neither: a `Map`'s entries live in an internal slot,
+  // and the lists were only `readonly` to TypeScript. Without both, a holder could delete an
+  // ICD-9 → ICD-10 mapping, or push a target the steward's file never authored into one, and
+  // {@link applyGem} would answer from it.
+  for (const list of entries.values()) Object.freeze(list);
+  return Object.freeze({
+    direction: source.direction,
+    ...(source.version !== undefined ? { version: source.version } : {}),
+    count,
+    entries: frozenMap(entries, "a loaded GEM map's entries"),
+    warnings: Object.freeze(warnings),
+  });
+}
+
+/** A line's three fields: source, target, flags. */
+type GemFields = readonly [string, string, string];
+
+/** Where a reader hands each line that is not blank (see `loadGems`). */
+type GemLineSink = (lineNo: number, fields: GemFields | number) => void;
+
+/**
+ * Read GEM text in place: each line's fields are found by character code and only a well-formed
+ * line's three are cut out, rather than splitting the file into lines and each line into an array of
+ * fields. A line ends at a line feed; a carriage return before it, like any other whitespace, only
+ * separates fields. The fields are what trimming the line and splitting it on `\s+` gave (see
+ * {@link readLinesBySplit}), and lines are numbered from 1, counting line feeds.
+ */
+function readLinesInPlace(content: string, sink: GemLineSink): void {
   const n = content.length;
-  // Each line is read in place: its fields are found by character code and only the three of a
-  // well-formed line are cut out, rather than splitting the file into lines and each line into an
-  // array of fields. A line ends at a line feed; a carriage return before it, like any other
-  // whitespace, only separates fields. The fields are what trimming the line and splitting it on
-  // `\s+` gave, and a line is numbered as before, from 1, counting line feeds.
   let lineNo = 0;
   for (let start = 0; start <= n;) {
     let end = content.indexOf("\n", start);
@@ -171,51 +236,33 @@ export function loadGems(source: GemSource): GemMap {
     start = end + 1;
     if (fieldCount === 0) continue;
     if (fieldCount !== 3) {
-      warnings.push(
-        Object.freeze({
-          code: "TERM_GEM_MALFORMED_ROW",
-          line: lineNo,
-          detail: `expected 3 whitespace-delimited fields, found ${String(fieldCount)}`,
-        }),
-      );
-      continue;
-    }
-    const flags = decodeFlags(ownString(content.slice(flagStart, flagEnd)));
-    if (flags === undefined) {
-      warnings.push(
-        Object.freeze({
-          code: "TERM_GEM_MALFORMED_ROW",
-          line: lineNo,
-          detail: "flag field is not a 5-digit code",
-        }),
-      );
+      sink(lineNo, fieldCount);
       continue;
     }
     // Copied out of the file's text, so the loaded map does not keep the file alive (`ownString`).
-    const src = ownString(content.slice(srcStart, srcEnd));
-    const tgt = ownString(content.slice(tgtStart, tgtEnd));
-    const entry: Writable<GemEntry> = { source: src, flags };
-    // A No-Map row carries the sentinel target and no real code: never surface it as a target.
-    if (!isNoMapSentinel(tgt)) entry.target = tgt;
-    const frozen = Object.freeze(entry);
-    const list = entries.get(src);
-    if (list) list.push(frozen);
-    else entries.set(src, [frozen]);
-    count++;
+    sink(lineNo, [
+      ownString(content.slice(srcStart, srcEnd)),
+      ownString(content.slice(tgtStart, tgtEnd)),
+      ownString(content.slice(flagStart, flagEnd)),
+    ]);
   }
-  // Freeze each source's candidate list, then hand out the index as a read-only view rather than the
-  // map itself. `Object.freeze` below reaches neither: a `Map`'s entries live in an internal slot,
-  // and the lists were only `readonly` to TypeScript. Without both, a holder could delete an
-  // ICD-9 → ICD-10 mapping, or push a target the steward's file never authored into one, and
-  // {@link applyGem} would answer from it.
-  for (const list of entries.values()) Object.freeze(list);
-  return Object.freeze({
-    direction: source.direction,
-    ...(source.version !== undefined ? { version: source.version } : {}),
-    count,
-    entries: frozenMap(entries, "a loaded GEM map's entries"),
-    warnings: Object.freeze(warnings),
-  });
+}
+
+/**
+ * Read GEM content that is not a primitive string (a `String` object a caller built, whose `split`
+ * may answer anything) the way the loader always has: split into lines on `\r?\n`, each line trimmed
+ * and split on `\s+`, a hole in the line list skipped. A primitive string never comes here.
+ */
+function readLinesBySplit(content: string, sink: GemLineSink): void {
+  const lines = content.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (raw === undefined) continue;
+    const trimmed = raw.trim();
+    if (trimmed === "") continue;
+    const fields = trimmed.split(/\s+/);
+    sink(i + 1, fields.length === 3 ? (fields as unknown as GemFields) : fields.length);
+  }
 }
 
 /** Build the scenario→choice-list combination structure from a source's combination entries. */
