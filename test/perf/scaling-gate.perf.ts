@@ -8,9 +8,10 @@
  * everywhere passes, and always will. The base against head comparison on a pull request
  * (`bench/terminology.bench.mjs`) is the instrument for that.
  *
- * Each base phase is sized to take about 10 ms or more on a GitHub-hosted runner, where the first
- * run of these gates measured RRF and RxNorm loads under the contract's 4 ms floor at a third of
- * these input counts. The input count only lengthens a phase; it does not move a ratio.
+ * Each base phase is sized to take 10 ms or more on the fastest GitHub-hosted runner we have seen:
+ * runs of these gates on that class measured one phase at 8 ms and, on another runner, 3.8 ms, and
+ * the contract refuses a phase under 4 ms. The input count only lengthens a phase; it does not move
+ * a ratio.
  *
  * The queries (lookup, translate, membership) are not gated here: their cost should not grow with
  * the input at all, and the gate's floor reads a flat cost as a broken fixture. Their scaling with
@@ -126,8 +127,8 @@ const csvOptions: ScalingGateOptions<string, CodeSystem> = {
   name: "@cosyte/terminology loadCodeSystem, CSV",
   parse: csvLoad,
   weigh: (cs) => cs.count,
-  count: { n: 12, generate: () => loincCsv(200) },
-  size: { inputs: 8, size: 200, generate: (_i, rows) => loincCsv(rows) },
+  count: { n: 24, generate: () => loincCsv(200) },
+  size: { inputs: 12, size: 200, generate: (_i, rows) => loincCsv(rows) },
 };
 
 const rrfLoad = (text: string): CodeSystem =>
@@ -137,8 +138,8 @@ const rrfOptions: ScalingGateOptions<string, CodeSystem> = {
   name: "@cosyte/terminology loadCodeSystem, RRF",
   parse: rrfLoad,
   weigh: (cs) => cs.count,
-  count: { n: 12, generate: () => rxnconso(600) },
-  size: { inputs: 6, size: 2_000, generate: (_i, rows) => rxnconso(rows) },
+  count: { n: 36, generate: () => rxnconso(600) },
+  size: { inputs: 18, size: 2_000, generate: (_i, rows) => rxnconso(rows) },
 };
 
 type FhirCodeSystemJson = ReturnType<typeof hierarchyCodeSystem>["resource"];
@@ -150,16 +151,16 @@ const fhirOptions: ScalingGateOptions<FhirCodeSystemJson, CodeSystem> = {
   name: "@cosyte/terminology loadCodeSystem, FHIR CodeSystem",
   parse: fhirLoad,
   weigh: (cs) => cs.count,
-  count: { n: 12, generate: () => hierarchyCodeSystem(1_000).resource },
-  size: { inputs: 3, size: 2_000, generate: (_i, n) => hierarchyCodeSystem(n).resource },
+  count: { n: 36, generate: () => hierarchyCodeSystem(1_000).resource },
+  size: { inputs: 9, size: 2_000, generate: (_i, n) => hierarchyCodeSystem(n).resource },
 };
 
 const gemOptions: ScalingGateOptions<string, GemMap> = {
   name: "@cosyte/terminology loadGems",
   parse: (text) => loadGems(gemSource(text)),
   weigh: (map) => map.count,
-  count: { n: 48, generate: () => gemFile(500) },
-  size: { inputs: 6, size: 3_000, generate: (_i, lines) => gemFile(lines) },
+  count: { n: 96, generate: () => gemFile(500) },
+  size: { inputs: 12, size: 3_000, generate: (_i, lines) => gemFile(lines) },
 };
 
 type RxRelease = ReturnType<typeof rxnormRelease>;
@@ -168,8 +169,8 @@ const rxOptions: ScalingGateOptions<RxRelease, RxNormGraph> = {
   name: "@cosyte/terminology loadRxNormGraph",
   parse: (release) => loadRxNormGraph(release),
   weigh: (graph) => graph.conceptCount,
-  count: { n: 12, generate: () => rxnormRelease(60) },
-  size: { inputs: 12, size: 60, generate: (_i, drugs) => rxnormRelease(drugs) },
+  count: { n: 36, generate: () => rxnormRelease(60) },
+  size: { inputs: 36, size: 60, generate: (_i, drugs) => rxnormRelease(drugs) },
 };
 
 type ConceptMapJson = ReturnType<typeof conceptMap>;
@@ -178,8 +179,8 @@ const mapOptions: ScalingGateOptions<ConceptMapJson, ConceptMap> = {
   name: "@cosyte/terminology loadConceptMap",
   parse: (json) => loadConceptMap(json),
   weigh: (map) => map.group.length,
-  count: { n: 36, generate: () => conceptMap(1_000) },
-  size: { inputs: 12, size: 2_000, generate: (_i, n) => conceptMap(n) },
+  count: { n: 72, generate: () => conceptMap(1_000) },
+  size: { inputs: 24, size: 2_000, generate: (_i, n) => conceptMap(n) },
 };
 
 /** A loaded is-a value set and the hierarchy it is expanded over. */
