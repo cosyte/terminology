@@ -1,0 +1,22 @@
+{
+  "csv": {
+    "inputs": 834,
+    "sha256": "f55a9b6930ef36b117b578042f0075644df383d10a5b494e93435853efc91e3f"
+  },
+  "gems": {
+    "inputs": 410,
+    "sha256": "ac1abfa135f7b1677dcea6a2a9a0a680f03b20e24b3a025699733eed15a41b8b"
+  },
+  "valueset": {
+    "inputs": 723,
+    "sha256": "5ec989e0f6d7f29ad29175426572ae0a9693f9eca7ba189a0d54a36bca3ee667"
+  },
+  "translate": {
+    "inputs": 301,
+    "sha256": "5a3f445862719cc6a1a7c46bbcb59527667b1d1fd52e6ebb281870914f6f296b"
+  },
+  "ucum": {
+    "inputs": 969,
+    "sha256": "4ba59daedea062c73ef5f147431a1891dfd29097c253b1497e8d3dd926b305f2"
+  }
+}
