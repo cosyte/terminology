@@ -11,6 +11,9 @@ on:
     # 04:29 UTC. An odd minute: GitHub delays scheduled runs at the start of every hour.
     - cron: "29 4 * * *"
   workflow_dispatch:
+  # Temporary: proves the depth on the pull request that adds this file.
+  pull_request:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -18,6 +18,9 @@ on:
     - cron: "47 6 * * 0"
     - cron: "47 6 * * 3"
   workflow_dispatch:
+  # Temporary: measures the first full score on the pull request that adds this file.
+  pull_request:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
