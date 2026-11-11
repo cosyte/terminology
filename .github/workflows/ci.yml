@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    # Temporary: the branch that adopts the testing standard, before its pull request opens.
-    branches: [main, test/testing-standard]
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
@@ -59,10 +58,10 @@ jobs:
   # `cosyte-phi-scan` from @cosyte/script-utils (ST34): the cross-cutting SSN and email floor over
   # the whole repository, with scripts/phi-allow-list.txt and scripts/phi-scan.exclude.
   #
-  # `verify` runs on every system: Linux, Windows and macOS, each on Node 22, 24 and 26. The
-  # Ubuntu legs keep the names the ruleset requires; the Windows and macOS legs are new contexts,
-  # `ci / verify (<node>, windows-latest)` and `ci / verify (<node>, macos-latest)`. The suite also
-  # runs under Bun and under Deno, each in its own job (`bun`, `deno`), on Linux.
+  # `verify` runs on Linux and macOS, each on Node 22, 24 and 26. The Ubuntu legs keep the names the
+  # ruleset requires; the macOS legs are new contexts, `ci / verify (<node>, macos-latest)`. The
+  # suite also runs under Bun and under Deno, each in its own job (`bun`, `deno`), on Linux. Windows
+  # runs the suite in the `windows` job below rather than in `verify`: see there.
   #
   # The testing and performance standards' jobs run beside `verify`, never after it, so a pull
   # request waits for the slowest job rather than their sum:
@@ -80,7 +79,7 @@ jobs:
   ci:
     uses: cosyte/.github/.github/workflows/ci.yml@398cd4ded647dddd9f2e220ceb042840f59e1426 # workflows-2026-11-10-398cd4ded647
     with:
-      os: '["ubuntu-latest", "windows-latest", "macos-latest"]'
+      os: '["ubuntu-latest", "macos-latest"]'
       run-phi-scan: true
       run-bun: true
       run-deno: true
@@ -88,6 +87,40 @@ jobs:
       run-mutation: true
       run-scaling-gate: true
       run-bench-compare: true
+
+  # `verify`'s steps on Windows, on Node 22, 24 and 26, up to the build: not attw and the packed
+  # smoke after it. Not the shared `verify` on `windows-latest`: that leg runs `pnpm attw`, and the
+  # attw gate in @cosyte/script-utils 0.1.10 starts `node_modules/.bin/attw` directly, which on
+  # Windows is a `.cmd` shim Node cannot start without a shell (measured: `spawnSync ...
+  # node_modules\.bin\attw ENOENT`, after every earlier step passed). Once a script-utils release
+  # runs that gate on Windows, add "windows-latest" to `os` above and delete this job. Not a
+  # required context.
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24", "26"]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm phi-scan
+      - run: pnpm test
+      - run: pnpm test:coverage
+      - run: pnpm build
 
   # The runnable programs under examples/. They import the package by name, which resolves through
   # its own `exports` to `dist/`, so the build comes first. Each example checks its own output and

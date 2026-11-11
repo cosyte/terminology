@@ -95,12 +95,12 @@ const COVERAGE_DIRS = [
 
 /**
  * Test files that cannot run under one runtime, each named with its reason. CI runs the suite on
- * Node in `verify` (Linux, Windows, macOS), and again under Bun and under Deno.
+ * Node in `verify` (Linux, macOS) and `windows`, and again under Bun and under Deno.
  *
  * - Deno, `test/docs-content.test.ts`: it builds the package first, and tsup's declaration build
  *   cannot load TypeScript under Deno ("You need to install \"typescript\" in your project",
  *   measured on Deno 2.9.8 in CI), so no sample has a built package to run against. The samples
- *   run on Node in every `verify` leg.
+ *   run on Node on every system.
  */
 const RUNTIME_EXCLUDES = "Deno" in globalThis ? ["test/docs-content.test.ts"] : [];
 
