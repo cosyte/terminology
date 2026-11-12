@@ -42,7 +42,7 @@
     {
       "type": "category",
       "label": "Reference",
-      "items": ["diagnostic-codes", "code-system-identities", "bundled-content"]
+      "items": ["diagnostic-codes", "code-system-identities", "bundled-content", "limitations"]
     },
     {
       "type": "category",
