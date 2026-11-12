@@ -32,6 +32,11 @@ the case where a wrong answer is worse than no answer.
 It does not guess, run a map backwards, convert magnitudes, ship a code-system release or parse a wire
 format. [Limitations](./limitations.md) lists each, with what to do instead.
 
+The package is not content-free: it bundles the UCUM unit table, the code-system identities, the
+SNOMED CT concepts the complex-map resolver names, and RxNorm's relationship and term-type names
+(`RELA`, `RELA_INVERSE`, `TERM_TYPES`).
+[What is bundled](./bundled-content.md) lists each, with its copyright.
+
 ## Status
 
 The 0.1 line, published on npm. Below `1.0.0` every release is a patch. A breaking or narrowing
