@@ -23,6 +23,6 @@ Add a changeset for every meaningful change:
 pnpm changeset
 ```
 
-The package is on the 0.1 line. Below 1.0, pick **minor** for a breaking change (it is called out
-in the changelog) and **patch** for everything else. The release standard (Changesets writes the
-changelog of every published package) is ST35 in the umbrella's `plans/standards.md`.
+The package is on the 0.1 line. Below 1.0, every release is a **patch**, and a breaking or
+narrowing change is no exception: it ships as a patch whose changeset states the change and what a
+caller must do. Never pick minor or major.
