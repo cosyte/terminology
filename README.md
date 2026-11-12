@@ -77,6 +77,13 @@ Node.js 22 or later, tested on 22, 24, and 26.
 The package is published on the 0.1 line, and the command above installs the real package; the
 registry, not this page, is the authority on the exact version.
 
+Below `1.0.0` a break can ship in a patch, so a caret range such as `^0.1.7` does not protect a
+consumer. Pin the exact version:
+
+```bash
+npm install --save-exact @cosyte/terminology@0.1.7
+```
+
 ## Usage
 
 The guides and the full API reference are at

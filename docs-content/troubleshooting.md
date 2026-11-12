@@ -158,6 +158,12 @@ a value from your data. The result objects do: an outcome names the code, unit, 
 asked about, and a code in a patient's context can be PHI. Log the `code` and the position, not the
 whole result. See [handle errors and warnings](./handle-errors-and-warnings.md).
 
+No field of a `TerminologyError` or of a load warning holds raw input, so those are safe to log. The
+fields that do hold what you passed in are on the outcomes: `LookupUnknown.input`,
+`TranslateUnmapped.source`, `RxNormUnknown.rxcui`, `NdcUnmapped.ndc`, `ValueSetMembership.coding` and
+`UnknownSystem.input`. Do not log them, and never log a whole outcome. In an example, read the field
+into a variable or assert on it, and put the value in a comment marked as synthetic.
+
 ## Limits of this release
 
 - One release per code system in an expansion context: the engine cannot hold several and pick the
