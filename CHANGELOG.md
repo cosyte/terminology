@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.8
+
+### Patch Changes
+
+- ffd1bca: Document what is safe to log, and install with an exact version, since below 1.0 a break can ship in a patch. No change for a caller.
+- a5ce03f: Document that below 1.0 every release is a patch, and that a breaking or narrowing change ships as a patch whose changeset states the change and what a caller must do.
+
 ## 0.1.7
 
 ### Patch Changes
