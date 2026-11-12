@@ -35,8 +35,9 @@ resolver names, and RxNorm's relationship and term-type names, is listed with it
 
 ## Status
 
-**The 0.1 line, published on npm.** The public API is settled: below `1.0.0` a breaking change ships
-in a new minor version, never a patch, and the changelog says what broke. The **engine is
+**The 0.1 line, published on npm.** The public API is settled: below `1.0.0` every release is a
+patch, and a breaking or narrowing change ships as a patch whose changeset states the change and
+what a caller must do. The **engine is
 complete**: every operation below ships today. The surface:
 
 - the code-system **identity resolver** (`resolveSystem`) and the ConceptMap **`$translate`** engine
