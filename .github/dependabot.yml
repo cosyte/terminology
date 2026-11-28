@@ -44,6 +44,11 @@ updates:
       # on the 22 line. A newer major type-checks calls that Node 22 does not have.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # @changesets/cli is held below major 3. On 3.0.3 a release run published to npm and then
+      # skipped the steps that create the GitHub release, start the docs rebuild, and check the
+      # install, because the shared release workflow did not see the publish reported.
+      - dependency-name: "@changesets/cli"
+        update-types: ["version-update:semver-major"]
       # @cosyte/process owns the tool versions. vitest stays a direct devDependency only because
       # test files import it (typecheck needs its types), and prettier only because the release's
       # `changeset version` resolves Prettier from this repo's root; both are pinned to exactly the
