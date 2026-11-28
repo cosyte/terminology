@@ -62,7 +62,7 @@
  *     nothing.
  *  8. THE PRETTIER PASS IS LEFT ON HERE, AND THAT IS DERIVED FROM THIS REPO'S OWN
  *     CONFIG RATHER THAN COPIED FROM A SIBLING. Changesets runs the document it
- *     writes through Prettier unless `"format": false` turns the pass off, and
+ *     writes through Prettier unless `"prettier": false` turns the pass off, and
  *     the right answer differs per repo: four sibling repos reached it three
  *     different ways. THIS REPO HAS NO `.prettierignore` AT ALL AND ITS
  *     `format:check` GLOBS `"*.{json,md,yml}"`, so `CHANGELOG.md` is inside the
@@ -203,7 +203,7 @@ const PROBE_BODY = `${PROBE_SUMMARY}\n\n${ARCHIVE_HEADING}\n`;
 const changelog = readFileSync(CHANGELOG_PATH, "utf8");
 const config = JSON.parse(readFileSync(CONFIG_PATH, "utf8")) as {
   changelog?: unknown;
-  format?: unknown;
+  prettier?: unknown;
 };
 const pkg = JSON.parse(readFileSync(PACKAGE_PATH, "utf8")) as {
   name?: string;
@@ -519,9 +519,9 @@ describe("changelog generation is on", () => {
     // The discriminator, derived from this repo rather than inherited from a sibling: there is
     // no `.prettierignore` at all, and `format:check` globs root markdown, so `CHANGELOG.md` is
     // inside this repo's own formatting gate. A repo whose `.prettierignore` lists `*.md` needs
-    // `"format": false` instead; the two behavioural cases below are what make that a
+    // `"prettier": false` instead; the two behavioural cases below are what make that a
     // measurement rather than a preference.
-    expect(config.format).toBeUndefined();
+    expect(config.prettier).toBeUndefined();
     expect(existsSync(join(REPO_ROOT, ".prettierignore"))).toBe(false);
     expect(pkg.scripts?.["format:check"] ?? "").toBe("cosyte-process format --check");
   });
@@ -697,20 +697,12 @@ describe("no pending changeset opens a line with an ATX or setext heading", () =
   });
 });
 
-/**
- * The cases that run the real `changeset version` in a scratch repository, with the runtime the
- * suite runs on. Skipped under Deno: the Changesets CLI calls `enableCompileCache` from
- * `node:module`, which Deno does not provide (measured on Deno 2.9.8 in CI), so the CLI cannot start
- * there. A release runs it on Node, where these cases run.
- */
-const itRunsChangesets = it.skipIf("Deno" in globalThis);
-
 describe("the shape that makes generated output land correctly", () => {
   it("puts nothing but the H1 above the first heading", () => {
     expect(shapeViolation(changelog)).toBeUndefined();
   });
 
-  itRunsChangesets(
+  it(
     "writes the new version section between the H1 and the archived history",
     { timeout: 90_000 },
     async () => {
@@ -757,7 +749,7 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  itRunsChangesets(
+  it(
     "survives the version-heading prefix collision, across two consecutive releases",
     // Above the two 60s `spawnSync` ceilings this case can spend, so a hung subprocess
     // reports as itself rather than as a case timeout.
@@ -796,7 +788,7 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  itRunsChangesets(
+  it(
     "writes no version heading at all when the generator is off (the control)",
     { timeout: 90_000 },
     () => {
@@ -815,17 +807,15 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  itRunsChangesets(
+  it(
     "writes raw output this repo's own format:check rejects when the Prettier pass is off (the control)",
     { timeout: 90_000 },
     async () => {
       // The setting proved load-bearing rather than assumed, in the direction that applies
-      // HERE. `"format": false` (named `"prettier": false` before Changesets 3) is the right
-      // answer in a sibling whose `.prettierignore` lists `*.md`; it is the wrong answer in
-      // this repo. With the pass off the generator writes a line holding only the bullet's
-      // two-space indent where the summary has a blank line, which this repo's Prettier
-      // config rejects. (Before Changesets 3 it also wrote `## <version>` and
-      // `### Patch Changes` on adjacent lines; it now puts a blank line between them.)
+      // HERE. `"prettier": false` is the right answer in a sibling whose `.prettierignore`
+      // lists `*.md`; it is the wrong answer in this repo. With the pass off the generator
+      // writes `## <version>` and `### Patch Changes` on adjacent lines with no blank line
+      // between them, which this repo's Prettier config rejects.
       //
       // STATED HONESTLY, BECAUSE THIS IS WHERE THIS REPO DIVERGES FROM TWO OF ITS SIBLINGS:
       // that raw document is NOT what a Version PR here would carry. This repo's `version`
@@ -835,12 +825,12 @@ describe("the shape that makes generated output land correctly", () => {
       // that with it off, a canonical published changelog rests entirely on `CHANGELOG.md`
       // staying inside that one glob list, and the archive is byte identical either way
       // so nothing is bought in exchange.
-      const off = runVersion({ changelogBody: changelog, configOverrides: { format: false } });
+      const off = runVersion({ changelogBody: changelog, configOverrides: { prettier: false } });
 
       expect(headings(off.changelog).slice(0, 2)).toEqual(["# Changelog", `## ${off.version}`]);
       await expect(formatCheckAccepts(off.changelog)).resolves.toBe(false);
-      // Named concretely rather than left as "something is off": a whitespace-only line.
-      expect(off.changelog).toContain("\n  \n");
+      // Named concretely rather than left as "something is off": the two headings collide.
+      expect(off.changelog).toContain(`## ${off.version}\n### Patch Changes`);
       // The archived history is byte identical in BOTH arms, which is what makes the
       // trade one-sided: leaving the pass on costs nothing.
       expect(archivedHistory(off.changelog)).toBe(archivedHistory(changelog));
@@ -885,7 +875,7 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  itRunsChangesets(
+  it(
     "splits the header when prose follows the H1 (the negative control)",
     { timeout: 90_000 },
     () => {

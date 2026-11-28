@@ -41,9 +41,9 @@ release formats with made-up identifiers, and the two vendored conformance suite
 
 - **The test suite and the coverage gate** run on every pull request and on `main`, on Node.js 22,
   24 and 26, each on Linux, Windows and macOS, and again every night on `main`. The suite also runs
-  under Bun and under Deno on Linux. Under Deno two groups are skipped, by name and with their
+  under Bun and under Deno on Linux. Under Deno one group is skipped, by name and with its
   reason in the test code: the doc samples, because the package build they run against cannot load
-  TypeScript there, and the cases that run the Changesets release tool, which does not start there.
+  TypeScript there.
   Under Bun one case is skipped: the one that pins the error Node's `node:v8` serializer raises,
   which Bun raises as a different class.
   A floor that is not met fails the run. The two conformance
